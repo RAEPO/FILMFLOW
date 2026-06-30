@@ -19,20 +19,20 @@ const RAPIDAPI_KEY = "8005f3a9f0msh569c86a87385975p1a6738jsnb8d6ee75afb3";
 
 async function fetchYoutubeData(url) {
   const patterns = [
-    /youtube\.com\/watch\?v=([^&]+)/,
-    /youtu\.be\/([^?]+)/,
-    /youtube\.com\/shorts\/([^?]+)/,
-    /youtube\.com\/embed\/([^?]+)/,
+    /[?&]v=([a-zA-Z0-9_-]{11})/,
+    /youtu\.be\/([a-zA-Z0-9_-]{11})/,
+    /shorts\/([a-zA-Z0-9_-]{11})/,
+    /embed\/([a-zA-Z0-9_-]{11})/,
   ];
   let videoId = null;
   for (let i = 0; i < patterns.length; i++) {
     const m = url.match(patterns[i]);
     if (m) { videoId = m[1]; break; }
   }
-  if (!videoId) throw new Error("유튜브 URL에서 영상 ID를 찾을 수 없어요.");
+  if (!videoId) throw new Error("유튜브 URL에서 영상 ID를 찾을 수 없어요. URL 형식을 확인해주세요.");
 
   const res = await fetch(
-    "https://youtube-v31.p.rapidapi.com/videos?part=snippet%2CcontentDetails%2Cstatistics&id=" + videoId,
+    "https://youtube-v31.p.rapidapi.com/videos?part=contentDetails%2Csnippet%2Cstatistics&id=" + videoId,
     {
       method: "GET",
       headers: {
@@ -41,8 +41,9 @@ async function fetchYoutubeData(url) {
       }
     }
   );
+  if (!res.ok) throw new Error("API 요청 실패 (상태 코드: " + res.status + "). API 키 또는 구독 상태를 확인해주세요.");
   const data = await res.json();
-  if (!data.items || data.items.length === 0) throw new Error("영상을 찾을 수 없어요. URL을 확인해주세요.");
+  if (!data.items || data.items.length === 0) throw new Error("영상을 찾을 수 없어요. (영상 ID: " + videoId + ") URL을 확인해주세요.");
   const item = data.items[0];
   const stats = item.statistics || {};
   const snippet = item.snippet || {};
