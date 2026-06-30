@@ -15,6 +15,8 @@ async function firebaseSet(path, data) {
   });
 }
 
+const RAPIDAPI_KEY = "8005f3a9f0msh569c86a87385975p1a6738jsnb8d6ee75afb3";
+
 async function fetchYoutubeData(url) {
   const patterns = [
     /youtube\.com\/watch\?v=([^&]+)/,
@@ -28,11 +30,19 @@ async function fetchYoutubeData(url) {
     if (m) { videoId = m[1]; break; }
   }
   if (!videoId) throw new Error("유튜브 URL에서 영상 ID를 찾을 수 없어요.");
+
   const res = await fetch(
-    "https://www.googleapis.com/youtube/v3/videos?part=snippet,statistics,contentDetails&id=" + videoId + "&key=" + YOUTUBE_API_KEY
+    "https://youtube-v31.p.rapidapi.com/videos?part=snippet%2CcontentDetails%2Cstatistics&id=" + videoId,
+    {
+      method: "GET",
+      headers: {
+        "x-rapidapi-key": RAPIDAPI_KEY,
+        "x-rapidapi-host": "youtube-v31.p.rapidapi.com"
+      }
+    }
   );
   const data = await res.json();
-  if (!data.items || data.items.length === 0) throw new Error("영상을 찾을 수 없어요.");
+  if (!data.items || data.items.length === 0) throw new Error("영상을 찾을 수 없어요. URL을 확인해주세요.");
   const item = data.items[0];
   const stats = item.statistics || {};
   const snippet = item.snippet || {};
@@ -75,10 +85,10 @@ const STAGE_ICON = {"기획":"💡","촬영":"🎥","편집":"✂️","검토":"
 const TAGS = ["유튜브","인스타그램","틱톡","쇼츠","광고","브이로그"];
 const TAG_COLOR = {"유튜브":"#f87171","인스타그램":"#c084fc","틱톡":"#38bdf8","쇼츠":"#fb923c","광고":"#fbbf24","브이로그":"#34d399"};
 const WEEKDAYS = ["일","월","화","수","목","금","토"];
-const CONFIRM_STATUS = ["컨펌중","컨펌완료","수정","반려"];
-const WORK_STATUS = ["기획중","작업중","작업완료","수정중"];
-const MODIFY_STATUS = ["수정 완료","수정중","대기"];
-const UPLOAD_STATUS = ["완료","예정","-"];
+const CONFIRM_STATUS = ["대기","컨펌중","컨펌완료","수정","반려"];
+const WORK_STATUS = ["대기","기획중","작업중","작업완료","수정중"];
+const MODIFY_STATUS = ["대기","수정 완료","수정중"];
+const UPLOAD_STATUS = ["대기","완료","예정","-"];
 const CONFIRM_COLOR = {"컨펌중":"#fbbf24","컨펌완료":"#34d399","수정":"#f87171","반려":"#6b7280"};
 const WORK_COLOR = {"기획중":"#818cf8","작업중":"#fb923c","작업완료":"#34d399","수정중":"#f87171"};
 const AVATAR_COLORS = ["#6366f1","#ec4899","#fb923c","#34d399","#38bdf8","#c084fc","#f87171"];
