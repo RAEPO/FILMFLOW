@@ -868,7 +868,7 @@ function AddTaskModal(props) {
 
 function CalendarView(props) {
   const { t } = useTheme();
-  const { tasks, onSelectTask, onAddTask } = props;
+  const { tasks, onSelectTask, onAddTask, ads } = props;
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -879,24 +879,63 @@ function CalendarView(props) {
   while(cells.length%7!==0) cells.push({day:cells.length-firstDay-daysInMonth+1,cur:false});
   const pad=function(n){ return String(n).padStart(2,"0"); };
   const dateStr=function(d){ return year+"-"+pad(month+1)+"-"+pad(d); };
-  const tasksOn=function(d){ return tasks.filter(function(tk){ return tk.due===dateStr(d); }); };
+
+  // 광고 데이터를 캘린더용 아이템으로 변환 (제작일, 예상완료일 둘 다)
+  const adItems = [];
+  (ads||[]).forEach(function(ad){
+    const label = ad.content || "광고";
+    if (ad.workDate) adItems.push({id:"ad_work_"+ad.id, due:ad.workDate, title:label, kind:"adWork", status:ad.workStatus||"기획중", raw:ad});
+    if (ad.expectedDate) adItems.push({id:"ad_exp_"+ad.id, due:ad.expectedDate, title:label, kind:"adExpected", status:ad.workStatus||"기획중", raw:ad});
+  });
+
+  const tasksOn=function(d){
+    const ds = dateStr(d);
+    const taskItems = tasks.filter(function(tk){ return tk.due===ds; }).map(function(tk){ return Object.assign({},tk,{kind:"task"}); });
+    const adsOnDay = adItems.filter(function(a){ return a.due===ds; });
+    return taskItems.concat(adsOnDay);
+  };
   const isToday=function(d){ return d===today.getDate()&&month===today.getMonth()&&year===today.getFullYear(); };
   const prevMonth=function(){ if(month===0){setMonth(11);setYear(function(y){ return y-1; });}else setMonth(function(m){ return m-1; }); };
   const nextMonth=function(){ if(month===11){setMonth(0);setYear(function(y){ return y+1; });}else setMonth(function(m){ return m+1; }); };
   const monthTasks=tasks.filter(function(tk){ return tk.due&&tk.due.startsWith(year+"-"+pad(month+1)); });
+  const monthAds=adItems.filter(function(a){ return a.due&&a.due.startsWith(year+"-"+pad(month+1)); });
+
+  const itemColor = function(item){
+    if (item.kind==="task") return STAGE_COLOR[item.status]||"#818cf8";
+    if (item.kind==="adWork") return "#fbbf24";
+    if (item.kind==="adExpected") return "#38bdf8";
+    return "#818cf8";
+  };
+  const itemIcon = function(item){
+    if (item.kind==="task") return STAGE_ICON[item.status]||"🎬";
+    if (item.kind==="adWork") return "📢";
+    if (item.kind==="adExpected") return "🏁";
+    return "•";
+  };
+  const itemLabelSuffix = function(item){
+    if (item.kind==="adWork") return " (제작일)";
+    if (item.kind==="adExpected") return " (예상완료)";
+    return "";
+  };
+
   return (
     <div>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20}}>
         <button onClick={prevMonth} style={{background:t.surface2,border:"1px solid "+t.border,borderRadius:8,padding:"7px 14px",color:t.text3,cursor:"pointer",fontSize:14}}>‹</button>
-        <div style={{textAlign:"center"}}><div style={{fontSize:20,fontWeight:800,color:t.text}}>{year}년 {month+1}월</div><div style={{fontSize:12,color:t.text4,marginTop:2}}>{monthTasks.length}개 영상</div></div>
+        <div style={{textAlign:"center"}}><div style={{fontSize:20,fontWeight:800,color:t.text}}>{year}년 {month+1}월</div><div style={{fontSize:12,color:t.text4,marginTop:2}}>{monthTasks.length}개 영상 · {monthAds.length}개 광고 일정</div></div>
         <button onClick={nextMonth} style={{background:t.surface2,border:"1px solid "+t.border,borderRadius:8,padding:"7px 14px",color:t.text3,cursor:"pointer",fontSize:14}}>›</button>
+      </div>
+      <div style={{display:"flex",gap:14,marginBottom:14,flexWrap:"wrap"}}>
+        <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:9,height:9,borderRadius:3,background:"#818cf8"}}/><span style={{fontSize:11,color:t.text4}}>제작 영상</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:9,height:9,borderRadius:3,background:"#fbbf24"}}/><span style={{fontSize:11,color:t.text4}}>광고 제작일</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:5}}><div style={{width:9,height:9,borderRadius:3,background:"#38bdf8"}}/><span style={{fontSize:11,color:t.text4}}>광고 예상완료일</span></div>
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",marginBottom:4}}>
         {WEEKDAYS.map(function(w,i){ return <div key={w} style={{textAlign:"center",fontSize:11,fontWeight:700,padding:"6px 0",color:i===0?"#f87171":i===6?"#818cf8":t.text4}}>{w}</div>; })}
       </div>
       <div style={{display:"grid",gridTemplateColumns:"repeat(7,1fr)",gap:3}}>
         {cells.map(function(cell,i){
-          const dayTasks=cell.cur?tasksOn(cell.day):[];
+          const dayItems=cell.cur?tasksOn(cell.day):[];
           const col=i%7;
           return (
             <div key={i} onClick={function(){ if(cell.cur) onAddTask(dateStr(cell.day)); }}
@@ -907,10 +946,10 @@ function CalendarView(props) {
                 <span>{cell.day}</span>
                 {isToday(cell.day)&&<span style={{fontSize:9,background:"#6366f1",color:"#fff",borderRadius:99,padding:"1px 5px",fontWeight:700}}>오늘</span>}
               </div>
-              {dayTasks.slice(0,3).map(function(tk){
-                return <div key={tk.id} onClick={function(e){ e.stopPropagation(); onSelectTask(tk); }} style={{background:STAGE_COLOR[tk.status]+"25",border:"1px solid "+(STAGE_COLOR[tk.status]+"40"),borderRadius:5,padding:"2px 5px",fontSize:10,color:STAGE_COLOR[tk.status],fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginBottom:2,cursor:"pointer"}}>{STAGE_ICON[tk.status]} {tk.title}</div>;
+              {dayItems.slice(0,3).map(function(item){
+                return <div key={item.id} onClick={function(e){ e.stopPropagation(); if(item.kind==="task") onSelectTask(item); }} style={{background:itemColor(item)+"25",border:"1px solid "+(itemColor(item)+"40"),borderRadius:5,padding:"2px 5px",fontSize:10,color:itemColor(item),fontWeight:600,whiteSpace:"nowrap",overflow:"hidden",textOverflow:"ellipsis",marginBottom:2,cursor:item.kind==="task"?"pointer":"default"}}>{itemIcon(item)} {item.title}{itemLabelSuffix(item)}</div>;
               })}
-              {dayTasks.length>3&&<div style={{fontSize:10,color:t.text4}}>+{dayTasks.length-3}</div>}
+              {dayItems.length>3&&<div style={{fontSize:10,color:t.text4}}>+{dayItems.length-3}</div>}
             </div>
           );
         })}
@@ -926,6 +965,21 @@ function CalendarView(props) {
                 <div style={{width:3,height:30,borderRadius:99,background:STAGE_COLOR[tk.status],flexShrink:0}} />
                 <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:t.text}}>{tk.title}</div><div style={{fontSize:11,color:t.text4,marginTop:1}}>{STAGE_ICON[tk.status]} {tk.status} · {tk.tag}</div></div>
                 <div style={{display:"flex",alignItems:"center",gap:10}}><span style={{fontSize:11,color:t.text4}}>{tk.due.slice(5)}</span><span style={{fontSize:10,color:PRIORITY_COLOR[tk.priority],background:PRIORITY_COLOR[tk.priority]+"18",padding:"2px 7px",borderRadius:20,fontWeight:700}}>{tk.priority}</span></div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      {monthAds.length>0&&(
+        <div style={{marginTop:14,background:t.surface,borderRadius:14,border:"1px solid "+t.border,overflow:"hidden"}}>
+          <div style={{padding:"11px 18px",borderBottom:"1px solid "+t.border,fontSize:12,fontWeight:700,color:t.text4,textTransform:"uppercase",letterSpacing:".5px"}}>{month+1}월 광고 일정</div>
+          {monthAds.sort(function(a,b){ return a.due.localeCompare(b.due); }).map(function(item,i){
+            const color = itemColor(item);
+            return (
+              <div key={item.id} style={{display:"flex",alignItems:"center",gap:12,padding:"10px 18px",borderBottom:i<monthAds.length-1?"1px solid "+t.border:"none"}}>
+                <div style={{width:3,height:30,borderRadius:99,background:color,flexShrink:0}} />
+                <div style={{flex:1}}><div style={{fontSize:13,fontWeight:600,color:t.text}}>{itemIcon(item)} {item.title}</div><div style={{fontSize:11,color:t.text4,marginTop:1}}>{item.kind==="adWork"?"제작일":"예상완료일"} · {item.status}</div></div>
+                <span style={{fontSize:11,color:t.text4}}>{item.due.slice(5)}</span>
               </div>
             );
           })}
@@ -1364,17 +1418,21 @@ function AdDetailModal(props) {
   );
 }
 
-function AdPanel() {
+function AdPanel(props) {
   const { t } = useTheme();
+  const onAdsChange = props.onAdsChange;
   const [adTab,setAdTab]=useState("ai");
   const [aiAds,setAiAds]=useFirebaseData("ads/ai",[]);
   const [intAds,setIntAds]=useFirebaseData("ads/interview",[]);
   const [selected,setSelected]=useState(null);
   const [selectedType,setSelectedType]=useState(null);
+  useEffect(function(){
+    if (onAdsChange) onAdsChange(aiAds.concat(intAds));
+  }, [aiAds, intAds]);
   const updateAi=function(u){ setAiAds(aiAds.map(function(a){ return a.id===u.id?u:a; })); };
   const updateInt=function(u){ setIntAds(intAds.map(function(a){ return a.id===u.id?u:a; })); };
-  const addAiAd=function(){ setAiAds(aiAds.concat([{id:"ad_"+Date.now(),requester:"",content:"새 광고",requestDate:"",planUrl:"",refUrl:"",planConfirm:"컨펌중",workRequest:"기획중",resizing:"",workStatus:"기획중",workDate:"",expectedDate:"",completedDate:"",confirmRequestDate:"",videoUrl:"",finalConfirm:"컨펌중",modifyContent:"",modifyStatus:"대기",note:"",uploadDate:"",insta:"-",youtube:"-"}])); };
-  const addIntAd=function(){ setIntAds(intAds.concat([{id:"int_"+Date.now(),requester:"영상팀",questionUrl:"",content:"새 인터뷰 광고",shootDate:"",editStart:"",roughCut:"",questionConfirm:"컨펌중",modify:"대기",modifyContent:"",request:"",extra:"",phrase:"",workStatus:"기획중",workDate:"",expectedDate:"",completedDate:"",confirmRequestDate:"",videoUrl:"",finalConfirm:"컨펌중",modifyContent2:"",modifyStatus:"대기",note:"",uploadDate:"",insta:"-",youtube:"-"}])); };
+  const addAiAd=function(){ setAiAds(aiAds.concat([{id:"ad_"+Date.now(),requester:"",content:"새 광고",requestDate:"",planUrl:"",refUrl:"",planConfirm:"대기",workRequest:"대기",resizing:"",workStatus:"대기",workDate:"",expectedDate:"",completedDate:"",confirmRequestDate:"",videoUrl:"",finalConfirm:"대기",modifyContent:"",modifyStatus:"대기",note:"",uploadDate:"",insta:"대기",youtube:"대기"}])); };
+  const addIntAd=function(){ setIntAds(intAds.concat([{id:"int_"+Date.now(),requester:"영상팀",questionUrl:"",content:"새 인터뷰 광고",shootDate:"",editStart:"",roughCut:"",questionConfirm:"대기",modify:"대기",modifyContent:"",request:"",extra:"",phrase:"",workStatus:"대기",workDate:"",expectedDate:"",completedDate:"",confirmRequestDate:"",videoUrl:"",finalConfirm:"대기",modifyContent2:"",modifyStatus:"대기",note:"",uploadDate:"",insta:"대기",youtube:"대기"}])); };
   const thS={padding:"9px 11px",fontSize:11,fontWeight:700,color:t.text4,textAlign:"left",whiteSpace:"nowrap",borderBottom:"1px solid "+t.border,textTransform:"uppercase",letterSpacing:".4px",background:t.bg};
   const tdS={padding:"9px 11px",fontSize:12,color:t.text2,borderBottom:"1px solid "+t.border,verticalAlign:"middle",whiteSpace:"nowrap"};
   const adTabStyle=function(tab){ return {padding:"6px 16px",background:adTab===tab?"#6366f120":"transparent",border:"1px solid "+(adTab===tab?"#6366f1":t.border),borderRadius:20,cursor:"pointer",fontSize:12,fontWeight:adTab===tab?700:500,color:adTab===tab?"#818cf8":t.text4}; };
@@ -1392,6 +1450,10 @@ function AdPanel() {
         </div>
         <button onClick={adTab==="ai"?addAiAd:addIntAd} style={{background:"#6366f1",border:"none",borderRadius:8,padding:"7px 14px",fontWeight:700,fontSize:12,color:"#fff",cursor:"pointer"}}>+ 추가</button>
       </div>
+      <div style={{fontSize:11,color:t.text4,marginBottom:10,display:"flex",alignItems:"center",gap:6}}>
+        <span style={{display:"inline-flex",width:7,height:7,borderRadius:"50%",background:"#34d399"}}/>
+        제작일·예상완료일이 캘린더 탭에 자동으로 표시됩니다
+      </div>
       <div style={{background:t.surface,borderRadius:14,border:"1px solid "+t.border,overflow:"auto"}}>
         <table style={{width:"100%",borderCollapse:"collapse",minWidth:1000}}>
           <thead><tr>{headers.map(function(h){ return <th key={h} style={thS}>{h}</th>; })}</tr></thead>
@@ -1407,16 +1469,23 @@ function AdPanel() {
                   <td style={tdS}>{adTab==="ai"?<UrlCell url={ad.planUrl} />:(ad.editStart||"-")}</td>
                   <td style={tdS}>{adTab==="ai"?<UrlCell url={ad.refUrl} />:(ad.roughCut||"-")}</td>
                   <td style={tdS}>{adTab==="ai"?<StatusBadge value={ad.planConfirm} options={CONFIRM_STATUS} colorMap={CONFIRM_COLOR} onChange={function(v){ updateAd(Object.assign({},ad,{planConfirm:v})); }} />:<StatusBadge value={ad.questionConfirm} options={CONFIRM_STATUS} colorMap={CONFIRM_COLOR} onChange={function(v){ updateAd(Object.assign({},ad,{questionConfirm:v})); }} />}</td>
-                  <td style={tdS}>{adTab==="ai"?<StatusBadge value={ad.workRequest} options={WORK_STATUS} colorMap={WORK_COLOR} onChange={function(v){ updateAd(Object.assign({},ad,{workRequest:v})); }} />:<StatusBadge value={ad.modify} options={["수정완료","수정중","대기"]} colorMap={{"수정완료":"#34d399","수정중":"#f87171","대기":"#fbbf24"}} onChange={function(v){ updateAd(Object.assign({},ad,{modify:v})); }} />}</td>
+                  <td style={tdS}>{adTab==="ai"?<StatusBadge value={ad.workRequest} options={WORK_STATUS} colorMap={WORK_COLOR} onChange={function(v){ updateAd(Object.assign({},ad,{workRequest:v})); }} />:<StatusBadge value={ad.modify} options={["대기","수정완료","수정중"]} colorMap={{"대기":"#6b7280","수정완료":"#34d399","수정중":"#f87171"}} onChange={function(v){ updateAd(Object.assign({},ad,{modify:v})); }} />}</td>
                   <td style={Object.assign({},tdS,{maxWidth:110,overflow:"hidden",textOverflow:"ellipsis"})}><span style={{fontSize:11,color:t.text4}}>{adTab==="ai"?(ad.resizing||"-"):(ad.request||"-")}</span></td>
                   <td style={Object.assign({},tdS,{maxWidth:100})}><span style={{fontSize:11,color:t.text4}}>{adTab==="ai"?"":(ad.phrase||"-")}</span></td>
                   <td style={tdS}><StatusBadge value={ad.workStatus} options={WORK_STATUS} colorMap={WORK_COLOR} onChange={function(v){ updateAd(Object.assign({},ad,{workStatus:v})); }} /></td>
-                  <td style={tdS}>{ad.expectedDate||"-"}</td>
+                  <td style={tdS}>
+                    <input type="date" value={ad.workDate||""} onChange={function(e){ updateAd(Object.assign({},ad,{workDate:e.target.value})); }} onClick={function(e){ e.stopPropagation(); }}
+                      style={{background:"transparent",border:"none",color:t.text2,fontSize:12,outline:"none",cursor:"pointer",colorScheme:"dark"}} />
+                  </td>
+                  <td style={tdS}>
+                    <input type="date" value={ad.expectedDate||""} onChange={function(e){ updateAd(Object.assign({},ad,{expectedDate:e.target.value})); }} onClick={function(e){ e.stopPropagation(); }}
+                      style={{background:"transparent",border:"none",color:t.text2,fontSize:12,outline:"none",cursor:"pointer",colorScheme:"dark"}} />
+                  </td>
                   <td style={tdS}><UrlCell url={ad.videoUrl} /></td>
                   <td style={tdS}><StatusBadge value={ad.finalConfirm} options={CONFIRM_STATUS} colorMap={CONFIRM_COLOR} onChange={function(v){ updateAd(Object.assign({},ad,{finalConfirm:v})); }} /></td>
-                  <td style={tdS}><StatusBadge value={ad.modifyStatus} options={MODIFY_STATUS} colorMap={{"수정 완료":"#34d399","수정중":"#f87171","대기":"#fbbf24"}} onChange={function(v){ updateAd(Object.assign({},ad,{modifyStatus:v})); }} /></td>
-                  <td style={tdS}><StatusBadge value={ad.insta} options={UPLOAD_STATUS} colorMap={{"완료":"#34d399","예정":"#fbbf24","-":"#6b7280"}} onChange={function(v){ updateAd(Object.assign({},ad,{insta:v})); }} /></td>
-                  <td style={tdS}><StatusBadge value={ad.youtube} options={UPLOAD_STATUS} colorMap={{"완료":"#34d399","예정":"#fbbf24","-":"#6b7280"}} onChange={function(v){ updateAd(Object.assign({},ad,{youtube:v})); }} /></td>
+                  <td style={tdS}><StatusBadge value={ad.modifyStatus} options={MODIFY_STATUS} colorMap={{"대기":"#6b7280","수정 완료":"#34d399","수정중":"#f87171"}} onChange={function(v){ updateAd(Object.assign({},ad,{modifyStatus:v})); }} /></td>
+                  <td style={tdS}><StatusBadge value={ad.insta} options={UPLOAD_STATUS} colorMap={{"대기":"#6b7280","완료":"#34d399","예정":"#fbbf24","-":"#6b7280"}} onChange={function(v){ updateAd(Object.assign({},ad,{insta:v})); }} /></td>
+                  <td style={tdS}><StatusBadge value={ad.youtube} options={UPLOAD_STATUS} colorMap={{"대기":"#6b7280","완료":"#34d399","예정":"#fbbf24","-":"#6b7280"}} onChange={function(v){ updateAd(Object.assign({},ad,{youtube:v})); }} /></td>
                   <td style={tdS}>{ad.uploadDate||"-"}</td>
                   <td style={tdS}><button onClick={function(e){ e.stopPropagation(); deleteAd(ad.id); }} style={{background:"none",border:"none",color:t.text5,cursor:"pointer",fontSize:15}}>×</button></td>
                 </tr>
@@ -1466,6 +1535,7 @@ export default function App() {
   const [addDate, setAddDate] = useState("");
   const [selectedTask, setSelectedTask] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
+  const [adsData, setAdsData] = useState([]);
 
   const isAdmin = currentUser && currentUser.role === "admin";
   const moveTask = function(id, dir){ setTasksRaw(tasks.map(function(tk){ return tk.id===id?Object.assign({},tk,{status:STAGES[STAGES.indexOf(tk.status)+dir]}):tk; })); };
@@ -1539,9 +1609,9 @@ export default function App() {
           </div>
 
           {tab==="admin" && isAdmin && <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} visibleTabs={vt} setVisibleTabs={function(v){ setVisibleTabsRaw(v); }} tasks={tasks} onUpdateTasks={setTasksRaw} />}
-          {tab==="calendar" && <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={openAdd} />}
+          {tab==="calendar" && <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={openAdd} ads={adsData} />}
           {tab==="board" && <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={moveTask} onDelete={deleteTask} users={users} />}
-          {tab==="ad" && <AdPanel />}
+          {tab==="ad" && <AdPanel onAdsChange={setAdsData} />}
           {tab==="stats" && <div style={{maxWidth:700,margin:"0 auto"}}><StatsPanel tasks={tasks} currentUser={currentUser} /></div>}
           {tab==="ai" && <AIPanel tasks={tasks} users={users} />}
           {tab==="videoanalysis" && <VideoAnalysisPanel tasks={tasks} />}
