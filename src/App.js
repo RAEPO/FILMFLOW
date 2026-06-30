@@ -355,7 +355,7 @@ function AuthScreen(props) {
           <div style={{ fontSize: 13, fontWeight: 900, color: "#818cf8", letterSpacing: "2px", marginBottom: 4 }}>TIMBEL</div>
           <div style={{ fontSize: 18, fontWeight: 800, color: "#f9fafb" }}>영상 제작 스케줄러</div>
           <div style={{ fontSize: 11, color: "#34d399", marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
-            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399" }} />Firebase 실시간 동기화
+            <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399" }} />실시간 동기화
           </div>
         </div>
         <div style={{ display: "flex", background: "#0d1117", borderRadius: 10, padding: 3, marginBottom: 20, border: "1px solid #1f2937" }}>
@@ -1018,7 +1018,13 @@ function TaskDetailModal(props) {
   const currentUser = props.currentUser;
   const onNotify = props.onNotify;
   const [comment, setComment] = useState("");
+  const [editMode, setEditMode] = useState(false);
+  const [editForm, setEditForm] = useState({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "" });
   const idx = STAGES.indexOf(task.status);
+  const memberNames = users.filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return u.name; });
+  const setEF = function (k, v) { setEditForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
+  const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "8px 11px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
+
   const addComment = function () {
     if (!comment.trim()) return;
     const trimmed = comment.trim();
@@ -1029,6 +1035,66 @@ function TaskDetailModal(props) {
     }
     setComment("");
   };
+
+  const saveEdit = function () {
+    if (!editForm.title.trim()) return;
+    onUpdate(Object.assign({}, task, editForm));
+    setEditMode(false);
+  };
+
+  if (editMode) {
+    return (
+      <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
+        <div style={{ background: t.surface, borderRadius: 18, width: 400, maxHeight: "85vh", overflowY: "auto", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c", padding: "22px 24px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
+            <div style={{ fontSize: 15, fontWeight: 800, color: t.text }}>✏️ 영상 정보 수정</div>
+            <button onClick={function () { setEditMode(false); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20 }}>×</button>
+          </div>
+          <div style={{ marginBottom: 11 }}>
+            <div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>제목</div>
+            <input value={editForm.title} onChange={function (e) { setEF("title", e.target.value); }} style={inp} />
+          </div>
+          <div style={{ marginBottom: 11 }}>
+            <div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>설명</div>
+            <input value={editForm.desc} onChange={function (e) { setEF("desc", e.target.value); }} style={inp} />
+          </div>
+          <div style={{ marginBottom: 11 }}>
+            <div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>마감일</div>
+            <input type="date" value={editForm.due} onChange={function (e) { setEF("due", e.target.value); }} style={inp} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 11 }}>
+            <div>
+              <div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>담당자</div>
+              <select value={editForm.assignee} onChange={function (e) { setEF("assignee", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>
+                {memberNames.map(function (m) { return <option key={m}>{m}</option>; })}
+              </select>
+            </div>
+            <div>
+              <div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>우선순위</div>
+              <select value={editForm.priority} onChange={function (e) { setEF("priority", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>
+                {PRIORITIES.map(function (p) { return <option key={p}>{p}</option>; })}
+              </select>
+            </div>
+          </div>
+          <div style={{ marginBottom: 11 }}>
+            <div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>플랫폼</div>
+            <select value={editForm.tag} onChange={function (e) { setEF("tag", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>
+              {TAGS.map(function (tg) { return <option key={tg}>{tg}</option>; })}
+            </select>
+          </div>
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 파일 링크</div>
+            <input value={editForm.fileUrl} onChange={function (e) { setEF("fileUrl", e.target.value); }} placeholder="https://..." style={inp} />
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={function () { setEditMode(false); }} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 9, padding: "10px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
+            <button onClick={saveEdit} style={{ flex: 1, background: "#6366f1", border: "none", borderRadius: 9, padding: "10px 0", cursor: "pointer", color: "#fff", fontWeight: 700 }}>저장</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
       <div style={{ background: t.surface, borderRadius: 18, width: 460, maxHeight: "85vh", display: "flex", flexDirection: "column", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
@@ -1056,6 +1122,7 @@ function TaskDetailModal(props) {
           <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
             {idx > 0 ? <button onClick={function () { onMove(task.id, -1); onClose(); }} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 8, padding: "6px 0", fontSize: 11, cursor: "pointer", color: t.text4 }}>← {STAGES[idx - 1]}</button> : null}
             {idx < STAGES.length - 1 ? <button onClick={function () { onMove(task.id, 1); onClose(); }} style={{ flex: 1, background: "#6366f120", border: "1px solid #6366f140", borderRadius: 8, padding: "6px 0", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>{STAGES[idx + 1]} →</button> : null}
+            <button onClick={function () { setEditForm({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "" }); setEditMode(true); }} style={{ background: t.surface2, border: "1px solid " + t.border2, borderRadius: 8, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: t.text4, flexShrink: 0 }}>✏️ 정보 수정</button>
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px" }}>
@@ -1242,7 +1309,7 @@ function CalendarView(props) {
   };
 
   return (
-    <div>
+    <div style={{ minWidth: 0 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
         <button onClick={goPrevMonth} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 8, padding: "7px 14px", color: t.text3, cursor: "pointer", fontSize: 14 }}>‹</button>
         <div style={{ textAlign: "center" }}>
@@ -1271,13 +1338,13 @@ function CalendarView(props) {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", marginBottom: 4 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", marginBottom: 4 }}>
         {WEEKDAYS.map(function (w, i) {
           return <div key={w} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, padding: "6px 0", color: weekdayColor(i) }}>{w}</div>;
         })}
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 3 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 3 }}>
         {cells.map(function (cell, i) {
           const dayItems = cell.cur ? getDayItems(cell.day) : [];
           const colIdx = i % 7;
@@ -1286,16 +1353,16 @@ function CalendarView(props) {
           const isHoliday = !!holidayName;
           return (
             <div key={i} onClick={function () { if (cell.cur) onAddTask(dateStr(cell.day)); }}
-              style={{ minHeight: 88, background: cell.cur ? (isToday(cell.day) ? "#1e1b4b" : t.surface) : t.bg, borderRadius: 10, padding: "7px 7px 5px", border: "1px solid " + (isToday(cell.day) ? "#6366f1" : isHoliday ? "#f8717150" : t.border), cursor: cell.cur ? "pointer" : "default" }}>
+              style={{ minHeight: 88, minWidth: 0, overflow: "hidden", background: cell.cur ? (isToday(cell.day) ? "#1e1b4b" : t.surface) : t.bg, borderRadius: 10, padding: "7px 7px 5px", border: "1px solid " + (isToday(cell.day) ? "#6366f1" : isHoliday ? "#f8717150" : t.border), cursor: cell.cur ? "pointer" : "default", boxSizing: "border-box" }}>
               <div style={{ fontSize: 12, fontWeight: isToday(cell.day) || isHoliday ? 800 : 500, color: !cell.cur ? t.border2 : isToday(cell.day) ? "#818cf8" : isHoliday ? "#f87171" : weekdayColor(colIdx), marginBottom: isHoliday ? 1 : 4, display: "flex", justifyContent: "space-between" }}>
                 <span>{cell.day}</span>
-                {isToday(cell.day) ? <span style={{ fontSize: 9, background: "#6366f1", color: "#fff", borderRadius: 99, padding: "1px 5px", fontWeight: 700 }}>오늘</span> : null}
+                {isToday(cell.day) ? <span style={{ fontSize: 9, background: "#6366f1", color: "#fff", borderRadius: 99, padding: "1px 5px", fontWeight: 700, flexShrink: 0 }}>오늘</span> : null}
               </div>
               {holidayName ? <div style={{ fontSize: 9, color: "#f87171", fontWeight: 600, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>🎌 {holidayName}</div> : null}
               {dayItems.slice(0, 3).map(function (item) {
                 return (
                   <div key={item.id} onClick={function (e) { e.stopPropagation(); if (item.kind === "task") onSelectTask(item); }}
-                    style={{ background: getItemColor(item) + "25", border: "1px solid " + (getItemColor(item) + "40"), borderRadius: 5, padding: "2px 5px", fontSize: 10, color: getItemColor(item), fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 2, cursor: item.kind === "task" ? "pointer" : "default" }}>
+                    style={{ background: getItemColor(item) + "25", border: "1px solid " + (getItemColor(item) + "40"), borderRadius: 5, padding: "2px 5px", fontSize: 10, color: getItemColor(item), fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 2, cursor: item.kind === "task" ? "pointer" : "default", maxWidth: "100%", boxSizing: "border-box" }}>
                     {getItemIcon(item)} {item.title}{getItemSuffix(item)}
                   </div>
                 );
@@ -1952,6 +2019,44 @@ export default function App() {
       { id: "task_1", title: "6월 메인 브이로그", desc: "월간 하이라이트 영상", assignee: "박래성", priority: "높음", tag: "유튜브", due: "2026-06-30", status: "편집", comments: [] },
       { id: "task_2", title: "신제품 리뷰 영상", desc: "스마트폰 언박싱 & 리뷰", assignee: "이한희", priority: "높음", tag: "유튜브", due: "2026-06-28", status: "촬영", comments: [] },
       { id: "task_3", title: "여름 쇼츠 #1", desc: "15초 숏폼 콘텐츠", assignee: "박래성", priority: "중간", tag: "쇼츠", due: "2026-06-27", status: "업로드 완료", comments: [] },
+      { id: "imp_1", title: "어느날속기사 위진아님 인터뷰 영상 제작", desc: "인터뷰 영상 촬영 및 제작", assignee: "이한희", priority: "중간", tag: "유튜브", due: "2026-06-08", status: "기획", comments: [] },
+      { id: "imp_2", title: "광고영상 운영 업무 시트 제작", desc: "운영 업무 관리 시트", assignee: "박래성", priority: "낮음", tag: "광고", due: "2026-06-08", status: "기획", comments: [] },
+      { id: "imp_3", title: "세미나 광고 가편집", desc: "세미나 홍보 영상", assignee: "박래성", priority: "중간", tag: "광고", due: "2026-06-09", status: "편집", comments: [] },
+      { id: "imp_4", title: "어느날속기사 위진아님 인터뷰 쇼츠 2개 제작", desc: "인터뷰 쇼츠 콘텐츠", assignee: "이한희", priority: "중간", tag: "쇼츠", due: "2026-06-09", status: "편집", comments: [] },
+      { id: "imp_5", title: "소리자바아카데미 피크닉 스케치 영상 제작", desc: "피크닉 행사 스케치", assignee: "이한희", priority: "중간", tag: "유튜브", due: "2026-06-09", status: "기획", comments: [] },
+      { id: "imp_6", title: "어느날속기사 위진아님 인터뷰 썸네일 제작", desc: "인터뷰 영상 썸네일", assignee: "이한희", priority: "낮음", tag: "유튜브", due: "2026-06-09", status: "검토", comments: [] },
+      { id: "imp_7", title: "지명과장 빨리치기 편집 (반려)", desc: "빨리치기 콘텐츠 재편집", assignee: "박래성", priority: "높음", tag: "쇼츠", due: "2026-06-09", status: "편집", comments: [] },
+      { id: "imp_8", title: "소리자바아카데미 피크닉 스케치 영상 제작", desc: "피크닉 행사 스케치 영상", assignee: "이한희", priority: "중간", tag: "유튜브", due: "2026-06-10", status: "편집", comments: [] },
+      { id: "imp_9", title: "미자부 빨리치기 파일 편집 전달", desc: "빨리치기 콘텐츠 편집본 전달", assignee: "박래성", priority: "중간", tag: "쇼츠", due: "2026-06-10", status: "검토", comments: [] },
+      { id: "imp_10", title: "속기 탐구생활 라이브콘텐츠 속기사 편집", desc: "라이브 콘텐츠 후편집", assignee: "박래성", priority: "중간", tag: "유튜브", due: "2026-06-10", status: "편집", comments: [] },
+      { id: "imp_11", title: "소리자바아카데미 피크닉 스케치 영상 제작", desc: "피크닉 행사 스케치 영상", assignee: "이한희", priority: "중간", tag: "유튜브", due: "2026-06-11", status: "편집", comments: [] },
+      { id: "imp_12", title: "속기 탐구생활 라이브콘텐츠 속기사 편집", desc: "라이브 콘텐츠 후편집", assignee: "박래성", priority: "중간", tag: "유튜브", due: "2026-06-11", status: "편집", comments: [] },
+      { id: "imp_13", title: "어느날속기사 위진아님 광고 영상 가편집 1편", desc: "광고 영상 1편 가편집", assignee: "이한희", priority: "높음", tag: "광고", due: "2026-06-11", status: "편집", comments: [] },
+      { id: "imp_14", title: "어느날속기사 위진아님 광고 영상 가편집 2편", desc: "광고 영상 2편 가편집", assignee: "이한희", priority: "높음", tag: "광고", due: "2026-06-11", status: "편집", comments: [] },
+      { id: "imp_15", title: "물어보속 3 가편집", desc: "콘텐츠 시리즈 가편집", assignee: "박래성", priority: "중간", tag: "유튜브", due: "2026-06-12", status: "편집", comments: [] },
+      { id: "imp_16", title: "소리자바아카데미 피크닉 스케치 영상 제작 및 전달", desc: "피크닉 행사 스케치 영상 최종 전달", assignee: "이한희", priority: "중간", tag: "유튜브", due: "2026-06-12", status: "업로드 완료", comments: [] },
+      { id: "imp_17", title: "어느날속기사 위진아님 광고 영상 가편집 1편", desc: "광고 영상 1편 가편집", assignee: "이한희", priority: "높음", tag: "광고", due: "2026-06-12", status: "편집", comments: [] },
+      { id: "imp_18", title: "어느날속기사 위진아님 광고 영상 가편집 2편", desc: "광고 영상 2편 가편집", assignee: "이한희", priority: "높음", tag: "광고", due: "2026-06-12", status: "편집", comments: [] },
+      { id: "imp_19", title: "어느날속기사 위진아님 광고 영상 1편 제작", desc: "광고 영상 1편 본편집", assignee: "이한희", priority: "높음", tag: "광고", due: "2026-06-15", status: "편집", comments: [] },
+      { id: "imp_20", title: "어느날속기사 위진아님 광고 영상 2편 제작", desc: "광고 영상 2편 본편집", assignee: "이한희", priority: "높음", tag: "광고", due: "2026-06-15", status: "편집", comments: [] },
+      { id: "imp_21", title: "소리자바아카데미 피크닉 스케치 영상 썸네일", desc: "피크닉 스케치 영상 썸네일 제작", assignee: "이한희", priority: "낮음", tag: "유튜브", due: "2026-06-15", status: "검토", comments: [] },
+      { id: "imp_22", title: "어느날속기사 위진아님 광고 영상 1편 수정", desc: "광고 영상 1편 수정본", assignee: "이한희", priority: "높음", tag: "광고", due: "2026-06-16", status: "검토", comments: [] },
+      { id: "imp_23", title: "어느날속기사 위진아님 광고 영상 2편 수정", desc: "광고 영상 2편 수정본", assignee: "이한희", priority: "높음", tag: "광고", due: "2026-06-16", status: "검토", comments: [] },
+      { id: "imp_24", title: "웨비나용 영상 소스 편집 전달", desc: "웨비나 사용 영상 소스", assignee: "박래성", priority: "중간", tag: "유튜브", due: "2026-06-16", status: "편집", comments: [] },
+      { id: "imp_25", title: "속기협회 피크닉 스케치 영상 썸네일 제작", desc: "피크닉 스케치 영상 썸네일", assignee: "이한희", priority: "낮음", tag: "유튜브", due: "2026-06-17", status: "검토", comments: [] },
+      { id: "imp_26", title: "속기협회 어느날 속기사 오수정 제작", desc: "속기사 콘텐츠 제작", assignee: "이한희", priority: "중간", tag: "유튜브", due: "2026-06-17", status: "기획", comments: [] },
+      { id: "imp_27", title: "속기협회 어느날 속기사 오수정 제작", desc: "속기사 콘텐츠 제작", assignee: "이한희", priority: "중간", tag: "유튜브", due: "2026-06-18", status: "촬영", comments: [] },
+      { id: "imp_28", title: "빨리치기 콘텐츠 작업", desc: "빨리치기 콘텐츠 제작", assignee: "박래성", priority: "중간", tag: "쇼츠", due: "2026-06-18", status: "편집", comments: [] },
+      { id: "imp_29", title: "어느날속기사 위진아님 광고 영상 1편 리사이징", desc: "광고 영상 1편 사이즈 변환", assignee: "이한희", priority: "중간", tag: "광고", due: "2026-06-18", status: "검토", comments: [] },
+      { id: "imp_30", title: "어느날속기사 위진아님 광고 영상 2편 리사이징", desc: "광고 영상 2편 사이즈 변환", assignee: "이한희", priority: "중간", tag: "광고", due: "2026-06-18", status: "검토", comments: [] },
+      { id: "imp_31", title: "속기협회 어느날 속기사 오수정 제작", desc: "속기사 콘텐츠 제작", assignee: "이한희", priority: "중간", tag: "유튜브", due: "2026-06-19", status: "편집", comments: [] },
+      { id: "imp_32", title: "빨리치기 10건 최종 작업 전달", desc: "빨리치기 콘텐츠 10건 최종본 전달", assignee: "박래성", priority: "높음", tag: "쇼츠", due: "2026-06-19", status: "업로드 완료", comments: [] },
+      { id: "imp_33", title: "속기협회 오수정님 광고 제작", desc: "오수정님 광고 영상 제작", assignee: "이한희", priority: "중간", tag: "광고", due: "2026-06-24", status: "기획", comments: [] },
+      { id: "imp_34", title: "김보영 인터뷰 촬영 (대구)", desc: "김보영 인터뷰 출장 촬영", assignee: "박래성", priority: "중간", tag: "유튜브", due: "2026-06-25", status: "촬영", comments: [] },
+      { id: "imp_35", title: "베리어프리 촬영 (교육팀)", desc: "교육팀 베리어프리 콘텐츠 촬영", assignee: "박래성", priority: "중간", tag: "유튜브", due: "2026-06-23", status: "촬영", comments: [] },
+      { id: "imp_36", title: "속기협회 어느날 속기사 오수정 썸네일 제작", desc: "오수정 콘텐츠 썸네일", assignee: "이한희", priority: "낮음", tag: "유튜브", due: "2026-06-22", status: "검토", comments: [] },
+      { id: "imp_37", title: "속기협회 어느날 속기사 오수정 쇼츠 2개 제작", desc: "쇼츠 콘텐츠 2편", assignee: "이한희", priority: "중간", tag: "쇼츠", due: "2026-06-23", status: "편집", comments: [] },
+      { id: "imp_38", title: "속기협회 어느날 속기사 오수정 제작", desc: "속기사 콘텐츠 제작", assignee: "이한희", priority: "중간", tag: "유튜브", due: "2026-06-23", status: "편집", comments: [] },
     ]);
   }, [tasksReady]);
 
@@ -2080,7 +2185,7 @@ export default function App() {
 
         <NoticeBanner notices={notices} />
 
-        <div style={{ maxWidth: 1300, margin: "0 auto", padding: "20px" }}>
+        <div style={{ maxWidth: 1300, margin: "0 auto", padding: "20px", minWidth: 0, boxSizing: "border-box" }}>
           <div style={{ display: "flex", gap: 2, marginBottom: 22, borderBottom: "1px solid " + t.border }}>
             {isAdmin ? <button onClick={function () { setTab("admin"); }} style={{ padding: "8px 18px", background: "none", border: "none", borderBottom: tab === "admin" ? "2px solid #f87171" : "2px solid transparent", cursor: "pointer", fontWeight: tab === "admin" ? 700 : 500, fontSize: 13, color: tab === "admin" ? "#f87171" : t.text4, marginBottom: -1 }}>🛡️ 관리자</button> : null}
             {displayTabs.map(function (tp) {
