@@ -1914,8 +1914,18 @@ function AdPanel(props) {
 }
 
 export default function App() {
+  useEffect(function () {
+    document.body.style.margin = "0";
+    document.body.style.padding = "0";
+    document.documentElement.style.margin = "0";
+    document.documentElement.style.padding = "0";
+  }, []);
   const [isDark, setIsDark] = useState(true);
   const t = isDark ? DARK : LIGHT;
+  useEffect(function () {
+    document.body.style.background = t.bg;
+    document.documentElement.style.background = t.bg;
+  }, [t.bg]);
   const [users, setUsersRaw, usersReady] = useFirebaseData("users", []);
   const [tasks, setTasksRaw, tasksReady] = useFirebaseData("tasks", []);
   const [notices, setNoticesRaw, noticesReady] = useFirebaseData("notices", []);
