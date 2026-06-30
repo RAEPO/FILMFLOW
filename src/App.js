@@ -124,6 +124,10 @@ const KOREAN_HOLIDAYS = {
   "2027-12-25": "성탄절",
 };
 
+const ROLE_COLOR = { "admin": "#f87171", "manager": "#fbbf24", "member": "#34d399", "viewer": "#94a3b8" };
+const ROLE_LABEL = { "admin": "관리자", "manager": "매니저", "member": "팀원", "viewer": "뷰어" };
+const ROLE_ORDER = ["viewer", "member", "manager"];
+
 const ThemeCtx = createContext();
 const useTheme = () => useContext(ThemeCtx);
 const DARK = { bg: "#0d1117", surface: "#111827", surface2: "#1f2937", border: "#1f2937", border2: "#374151", text: "#f9fafb", text2: "#d1d5db", text3: "#9ca3af", text4: "#6b7280", text5: "#4b5563", inputBg: "#1f2937", inputBorder: "#374151", headerBg: "#0d1117" };
@@ -340,7 +344,7 @@ function AuthScreen(props) {
     if (!form.name || !form.password || !form.dept || !form.rank || !form.position || !form.mobile) { setErr("필수 항목을 모두 입력해주세요."); return; }
     if (form.name === "admin") { setErr("사용할 수 없는 이름입니다."); return; }
     if (users.find(function (u) { return u.name === form.name; })) { setErr("이미 존재하는 이름입니다."); return; }
-    const newUser = { id: "user_" + Date.now(), name: form.name, password: form.password, dept: form.dept, rank: form.rank, position: form.position, officePhone: form.officePhone, mobile: form.mobile, role: "member", approved: false };
+    const newUser = { id: "user_" + Date.now(), name: form.name, password: form.password, dept: form.dept, rank: form.rank, position: form.position, officePhone: form.officePhone, mobile: form.mobile, role: "viewer", approved: false };
     await onRegister(newUser);
     setErr(""); setMode("login"); setForm({ name: "", password: "", dept: "", rank: "", position: "", officePhone: "", mobile: "" });
     alert("가입 신청 완료! 관리자 승인 후 로그인 가능합니다.");
@@ -481,7 +485,14 @@ function AdminPanel(props) {
   const members = users.filter(function (u) { return u.role !== "admin"; });
   const approve = function (id) { onUpdateUsers(users.map(function (u) { return u.id === id ? Object.assign({}, u, { approved: true }) : u; })); };
   const reject = function (id) { onUpdateUsers(users.filter(function (u) { return u.id !== id; })); };
-  const toggleRole = function (id) { onUpdateUsers(users.map(function (u) { return u.id === id ? Object.assign({}, u, { role: u.role === "manager" ? "member" : "manager" }) : u; })); };
+  const toggleRole = function (id) {
+    onUpdateUsers(users.map(function (u) {
+      if (u.id !== id) return u;
+      const cur = ROLE_ORDER.indexOf(u.role);
+      const next = ROLE_ORDER[(cur + 1) % ROLE_ORDER.length];
+      return Object.assign({}, u, { role: next });
+    }));
+  };
   const deleteUser = function (id) { onUpdateUsers(users.filter(function (u) { return u.id !== id; })); };
   const addNotice = function () {
     if (!noticeForm.title || !noticeForm.content) return;
@@ -489,8 +500,8 @@ function AdminPanel(props) {
     else onUpdateNotices([].concat(notices, [{ id: "notice_" + Date.now(), title: noticeForm.title, content: noticeForm.content, active: noticeForm.active }]));
     setNoticeForm({ title: "", content: "", active: true });
   };
-  const roleColor = { "admin": "#f87171", "manager": "#fbbf24", "member": "#34d399" };
-  const roleLabel = { "admin": "관리자", "manager": "매니저", "member": "팀원" };
+  const roleColor = ROLE_COLOR;
+  const roleLabel = ROLE_LABEL;
   const aTabStyle = function (v) { return { padding: "8px 16px", background: "none", border: "none", borderBottom: aTab === v ? "2px solid #f87171" : "2px solid transparent", cursor: "pointer", fontWeight: aTab === v ? 700 : 500, fontSize: 13, color: aTab === v ? "#f87171" : t.text4, marginBottom: -1 }; };
   const s = { background: t.surface, borderRadius: 13, border: "1px solid " + t.border, overflow: "hidden", marginBottom: 14 };
   return (
@@ -543,7 +554,7 @@ function AdminPanel(props) {
                     <div style={{ fontSize: 11, color: t.text4, marginTop: 2 }}>{u.dept} · {u.rank} / {u.position} · {u.mobile}</div>
                   </div>
                   <div style={{ display: "flex", gap: 6 }}>
-                    <button onClick={function () { toggleRole(u.id); }} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 8, padding: "5px 10px", fontSize: 11, color: t.text3, cursor: "pointer" }}>{u.role === "manager" ? "팀원으로" : "매니저로"}</button>
+                    <button onClick={function () { toggleRole(u.id); }} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 8, padding: "5px 10px", fontSize: 11, color: t.text3, cursor: "pointer" }}>{ROLE_LABEL[ROLE_ORDER[(ROLE_ORDER.indexOf(u.role) + 1) % ROLE_ORDER.length]]}로 변경</button>
                     <button onClick={function () { deleteUser(u.id); }} style={{ background: "#f8717120", border: "1px solid #f8717140", borderRadius: 8, padding: "5px 10px", fontSize: 11, color: "#f87171", cursor: "pointer" }}>삭제</button>
                   </div>
                 </div>
@@ -1120,9 +1131,9 @@ function TaskDetailModal(props) {
             <button onClick={onClose} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20, padding: 0, marginLeft: 12 }}>×</button>
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
-            {idx > 0 ? <button onClick={function () { onMove(task.id, -1); onClose(); }} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 8, padding: "6px 0", fontSize: 11, cursor: "pointer", color: t.text4 }}>← {STAGES[idx - 1]}</button> : null}
-            {idx < STAGES.length - 1 ? <button onClick={function () { onMove(task.id, 1); onClose(); }} style={{ flex: 1, background: "#6366f120", border: "1px solid #6366f140", borderRadius: 8, padding: "6px 0", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>{STAGES[idx + 1]} →</button> : null}
-            <button onClick={function () { setEditForm({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "" }); setEditMode(true); }} style={{ background: t.surface2, border: "1px solid " + t.border2, borderRadius: 8, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: t.text4, flexShrink: 0 }}>✏️ 정보 수정</button>
+            {onMove && idx > 0 ? <button onClick={function () { onMove(task.id, -1); onClose(); }} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 8, padding: "6px 0", fontSize: 11, cursor: "pointer", color: t.text4 }}>← {STAGES[idx - 1]}</button> : null}
+            {onMove && idx < STAGES.length - 1 ? <button onClick={function () { onMove(task.id, 1); onClose(); }} style={{ flex: 1, background: "#6366f120", border: "1px solid #6366f140", borderRadius: 8, padding: "6px 0", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>{STAGES[idx + 1]} →</button> : null}
+            {onMove ? <button onClick={function () { setEditForm({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "" }); setEditMode(true); }} style={{ background: t.surface2, border: "1px solid " + t.border2, borderRadius: 8, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: t.text4, flexShrink: 0 }}>✏️ 정보 수정</button> : null}
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px" }}>
@@ -1418,14 +1429,14 @@ function CalendarView(props) {
                   <span style={{ fontSize: 10, color: PRIORITY_COLOR[tk.priority], background: PRIORITY_COLOR[tk.priority] + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>{tk.priority}</span>
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {hasPrev ? (
+                  {hasPrev && onMove ? (
                     <button onClick={function (e) { handleMoveClick(e, tk.id, -1); }} style={{ background: t.bg, border: "1px solid " + t.border, borderRadius: 6, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: t.text4, fontWeight: 600 }}>← 이전 단계</button>
                   ) : null}
-                  {hasNext ? (
+                  {hasNext && onMove ? (
                     <button onClick={function (e) { handleMoveClick(e, tk.id, 1); }} style={{ background: "#6366f118", border: "1px solid #6366f130", borderRadius: 6, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>다음 단계 →</button>
                   ) : null}
-                  <button onClick={function (e) { handleEditClick(e, tk); }} style={{ background: t.bg, border: "1px solid " + t.border, borderRadius: 6, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: t.text4, fontWeight: 600 }}>✏️ 수정</button>
-                  <button onClick={function (e) { handleDeleteClick(e, tk); }} style={{ background: "#f8717118", border: "1px solid #f8717130", borderRadius: 6, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: "#f87171", fontWeight: 600 }}>🗑️ 삭제</button>
+                  <button onClick={function (e) { handleEditClick(e, tk); }} style={{ background: t.bg, border: "1px solid " + t.border, borderRadius: 6, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: t.text4, fontWeight: 600 }}>{onMove ? "✏️ 수정" : "🔍 자세히"}</button>
+                  {onDelete ? <button onClick={function (e) { handleDeleteClick(e, tk); }} style={{ background: "#f8717118", border: "1px solid #f8717130", borderRadius: 6, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: "#f87171", fontWeight: 600 }}>🗑️ 삭제</button> : null}
                 </div>
               </div>
             );
@@ -1484,7 +1495,7 @@ function BoardView(props) {
                   <div key={tk.id} onClick={function () { onSelectTask(tk); }} style={{ background: t.surface2, borderRadius: 11, padding: "11px 13px", marginBottom: 8, border: "1px solid " + t.border, cursor: "pointer" }}>
                     <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                       <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>{tk.title}</span>
-                      <button onClick={function (e) { e.stopPropagation(); onDelete(tk.id); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 14, padding: 0 }}>×</button>
+                      {onDelete ? <button onClick={function (e) { e.stopPropagation(); onDelete(tk.id); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 14, padding: 0 }}>×</button> : null}
                     </div>
                     <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
                       <span style={{ fontSize: 10, color: PRIORITY_COLOR[tk.priority], background: PRIORITY_COLOR[tk.priority] + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{tk.priority}</span>
@@ -1498,10 +1509,12 @@ function BoardView(props) {
                         <span style={{ fontSize: 10, color: t.text4 }}>{tk.due && tk.due.slice(5)}</span>
                       </div>
                     </div>
-                    <div style={{ display: "flex", gap: 5 }} onClick={function (e) { e.stopPropagation(); }}>
-                      {STAGES.indexOf(tk.status) > 0 ? <button onClick={function () { onMove(tk.id, -1); }} style={{ flex: 1, background: t.bg, border: "1px solid " + t.border, borderRadius: 6, padding: "4px 0", fontSize: 10, cursor: "pointer", color: t.text4 }}>← 이전</button> : null}
-                      {STAGES.indexOf(tk.status) < STAGES.length - 1 ? <button onClick={function () { onMove(tk.id, 1); }} style={{ flex: 1, background: "#6366f118", border: "1px solid #6366f130", borderRadius: 6, padding: "4px 0", fontSize: 10, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>다음 →</button> : null}
-                    </div>
+                    {onMove ? (
+                      <div style={{ display: "flex", gap: 5 }} onClick={function (e) { e.stopPropagation(); }}>
+                        {STAGES.indexOf(tk.status) > 0 ? <button onClick={function () { onMove(tk.id, -1); }} style={{ flex: 1, background: t.bg, border: "1px solid " + t.border, borderRadius: 6, padding: "4px 0", fontSize: 10, cursor: "pointer", color: t.text4 }}>← 이전</button> : null}
+                        {STAGES.indexOf(tk.status) < STAGES.length - 1 ? <button onClick={function () { onMove(tk.id, 1); }} style={{ flex: 1, background: "#6366f118", border: "1px solid #6366f130", borderRadius: 6, padding: "4px 0", fontSize: 10, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>다음 →</button> : null}
+                      </div>
+                    ) : null}
                   </div>
                 );
               })}
@@ -1853,8 +1866,8 @@ function AdDetailModal(props) {
   const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 8, padding: "7px 10px", fontSize: 12, color: t.text, boxSizing: "border-box", outline: "none" };
   const ta = Object.assign({}, inp, { minHeight: 56, resize: "vertical" });
   const lbl = function (tx) { return <div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{tx}</div>; };
-  const aiF = [["요청자", "requester"], ["요청 내용", "content"], ["요청일", "requestDate", "date"], ["기획안 URL (MYBOX·드라이브 등)", "planUrl"], ["레퍼런스 URL", "refUrl"], ["리사이징", "resizing"], ["제작일", "workDate", "date"], ["예상 완료일", "expectedDate", "date"], ["실제 완료일", "completedDate", "date"], ["컨펌 요청일", "confirmRequestDate", "date"], ["영상 파일 URL (MYBOX·드라이브 등)", "videoUrl"], ["수정 내용", "modifyContent", "textarea"], ["업로드일", "uploadDate", "date"], ["비고", "note"]];
-  const intF = [["요청자", "requester"], ["요청 내용", "content"], ["촬영일", "shootDate", "date"], ["편집 시작", "editStart", "date"], ["가편집 전달", "roughCut", "date"], ["수정 내용", "modifyContent", "textarea"], ["요청사항", "request"], ["추가 사항", "extra"], ["마케팅 문구", "phrase"], ["제작일", "workDate", "date"], ["예상 완료일", "expectedDate", "date"], ["실제 완료일", "completedDate", "date"], ["컨펌 요청일", "confirmRequestDate", "date"], ["영상 파일 URL (MYBOX·드라이브 등)", "videoUrl"], ["수정 내용2", "modifyContent2", "textarea"], ["업로드일", "uploadDate", "date"], ["비고", "note"]];
+  const aiF = [["요청자", "requester"], ["요청 내용", "content"], ["요청일", "requestDate", "date"], ["기획안 URL (웹 드라이브 등)", "planUrl"], ["레퍼런스 URL", "refUrl"], ["리사이징", "resizing"], ["제작일", "workDate", "date"], ["예상 완료일", "expectedDate", "date"], ["실제 완료일", "completedDate", "date"], ["컨펌 요청일", "confirmRequestDate", "date"], ["영상 파일 URL (웹 드라이브 등)", "videoUrl"], ["수정 내용", "modifyContent", "textarea"], ["업로드일", "uploadDate", "date"], ["비고", "note"]];
+  const intF = [["요청자", "requester"], ["요청 내용", "content"], ["촬영일", "shootDate", "date"], ["편집 시작", "editStart", "date"], ["가편집 전달", "roughCut", "date"], ["수정 내용", "modifyContent", "textarea"], ["요청사항", "request"], ["추가 사항", "extra"], ["마케팅 문구", "phrase"], ["제작일", "workDate", "date"], ["예상 완료일", "expectedDate", "date"], ["실제 완료일", "completedDate", "date"], ["컨펌 요청일", "confirmRequestDate", "date"], ["영상 파일 URL (웹 드라이브 등)", "videoUrl"], ["수정 내용2", "modifyContent2", "textarea"], ["업로드일", "uploadDate", "date"], ["비고", "note"]];
   const fields = type === "ai" ? aiF : intF;
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
@@ -2070,6 +2083,8 @@ export default function App() {
   const [adsData, setAdsData] = useState([]);
 
   const isAdmin = currentUser && currentUser.role === "admin";
+  const isViewer = currentUser && currentUser.role === "viewer";
+  const VIEWER_BLOCKED_TABS = ["ad", "ai"];
 
   const setCurrentUser = function (user) {
     setCurrentUserRaw(user);
@@ -2104,7 +2119,7 @@ export default function App() {
   const updateTask = function (u) { setTasksRaw(tasks.map(function (tk) { return tk.id === u.id ? u : tk; })); setSelectedTask(u); };
   const openAdd = function (date) { setAddDate(date || ""); setShowAdd(true); };
   const vt = Array.isArray(visibleTabs) ? visibleTabs : Object.values(visibleTabs || {});
-  const displayTabs = isAdmin ? ALL_TABS : ALL_TABS.filter(function (tp) { return vt.includes(tp.id); });
+  const displayTabs = isAdmin ? ALL_TABS : ALL_TABS.filter(function (tp) { return vt.includes(tp.id) && !(isViewer && VIEWER_BLOCKED_TABS.includes(tp.id)); });
 
   const sendNotification = function (toUser, fromUser, taskTitle, text) {
     const newNotif = {
@@ -2154,7 +2169,7 @@ export default function App() {
     <ThemeCtx.Provider value={{ t: t, isDark: isDark }}>
       <div style={{ minHeight: "100vh", background: t.bg, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", color: t.text, transition: "background .2s,color .2s" }}>
         {showAdd ? <AddTaskModal onAdd={addTask} onClose={function () { setShowAdd(false); }} defaultDate={addDate} users={users} /> : null}
-        {selectedTask ? <TaskDetailModal task={selectedTask} onClose={function () { setSelectedTask(null); }} onUpdate={updateTask} onMove={function (id, dir) { moveTask(id, dir); setSelectedTask(function (prev) { return Object.assign({}, prev, { status: STAGES[STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} /> : null}
+        {selectedTask ? <TaskDetailModal task={selectedTask} onClose={function () { setSelectedTask(null); }} onUpdate={updateTask} onMove={isViewer ? null : function (id, dir) { moveTask(id, dir); setSelectedTask(function (prev) { return Object.assign({}, prev, { status: STAGES[STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} /> : null}
         {showProfile ? <ProfileModal currentUser={currentUser} onClose={function () { setShowProfile(false); }} onUpdate={function (updated) { setUsersRaw(users.map(function (u) { return u.id === updated.id ? updated : u; })); setCurrentUser(updated); setShowProfile(false); }} /> : null}
 
         <div style={{ borderBottom: "1px solid " + t.border, padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", background: t.headerBg, position: "sticky", top: 0, zIndex: 50 }}>
@@ -2179,23 +2194,25 @@ export default function App() {
             </div>
             {!isAdmin ? <button onClick={function () { setShowProfile(true); }} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 8, padding: "7px 12px", fontSize: 12, color: t.text4, cursor: "pointer" }}>⚙️ 내 정보</button> : null}
             <button onClick={function () { setCurrentUser(null); }} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 8, padding: "7px 12px", fontSize: 12, color: t.text4, cursor: "pointer" }}>로그아웃</button>
-            {!isAdmin ? <button onClick={function () { openAdd(); }} style={{ background: "#6366f1", border: "none", borderRadius: 8, padding: "7px 15px", fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer" }}>+ 추가</button> : null}
+            {!isAdmin && !isViewer ? <button onClick={function () { openAdd(); }} style={{ background: "#6366f1", border: "none", borderRadius: 8, padding: "7px 15px", fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer" }}>+ 추가</button> : null}
           </div>
         </div>
 
         <NoticeBanner notices={notices} />
 
-        <div style={{ maxWidth: 1300, margin: "0 auto", padding: "20px", minWidth: 0, boxSizing: "border-box" }}>
-          <div style={{ display: "flex", gap: 2, marginBottom: 22, borderBottom: "1px solid " + t.border }}>
-            {isAdmin ? <button onClick={function () { setTab("admin"); }} style={{ padding: "8px 18px", background: "none", border: "none", borderBottom: tab === "admin" ? "2px solid #f87171" : "2px solid transparent", cursor: "pointer", fontWeight: tab === "admin" ? 700 : 500, fontSize: 13, color: tab === "admin" ? "#f87171" : t.text4, marginBottom: -1 }}>🛡️ 관리자</button> : null}
+        <div style={{ borderBottom: "1px solid " + t.border, padding: "0 24px", background: t.headerBg }}>
+          <div style={{ maxWidth: 1300, margin: "0 auto", display: "flex", gap: 2, justifyContent: "center" }}>
+            {isAdmin ? <button onClick={function () { setTab("admin"); }} style={{ padding: "10px 18px", background: "none", border: "none", borderBottom: tab === "admin" ? "2px solid #f87171" : "2px solid transparent", cursor: "pointer", fontWeight: tab === "admin" ? 700 : 500, fontSize: 13, color: tab === "admin" ? "#f87171" : t.text4, marginBottom: -1 }}>🛡️ 관리자</button> : null}
             {displayTabs.map(function (tp) {
-              return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={{ padding: "8px 18px", background: "none", border: "none", borderBottom: tab === tp.id ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: tab === tp.id ? 700 : 500, fontSize: 13, color: tab === tp.id ? "#818cf8" : t.text4, marginBottom: -1 }}>{tp.label}</button>;
+              return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={{ padding: "10px 18px", background: "none", border: "none", borderBottom: tab === tp.id ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: tab === tp.id ? 700 : 500, fontSize: 13, color: tab === tp.id ? "#818cf8" : t.text4, marginBottom: -1 }}>{tp.label}</button>;
             })}
           </div>
+        </div>
 
+        <div style={{ maxWidth: 1300, margin: "0 auto", padding: "20px", minWidth: 0, boxSizing: "border-box" }}>
           {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} visibleTabs={vt} setVisibleTabs={function (v) { setVisibleTabsRaw(v); }} tasks={tasks} onUpdateTasks={setTasksRaw} /> : null}
-          {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={openAdd} ads={adsData} onMove={moveTask} onDelete={deleteTask} /> : null}
-          {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={moveTask} onDelete={deleteTask} users={users} /> : null}
+          {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} readOnly={isViewer} /> : null}
+          {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} readOnly={isViewer} /> : null}
           {tab === "ad" ? <AdPanel onAdsChange={setAdsData} /> : null}
           {tab === "stats" ? <div style={{ maxWidth: 700, margin: "0 auto" }}><StatsPanel tasks={tasks} currentUser={currentUser} /></div> : null}
           {tab === "ai" ? <AIPanel tasks={tasks} users={users} /> : null}
