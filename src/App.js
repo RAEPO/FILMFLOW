@@ -1014,9 +1014,17 @@ function CalendarView(props) {
   );
 }
 
+function getAdBoardStatus(ad) {
+  if (ad.insta === "완료" || ad.youtube === "완료") return "업로드 완료";
+  if (ad.finalConfirm === "컨펌완료" || ad.workStatus === "작업완료") return "검토";
+  if (ad.workStatus === "작업중" || ad.workStatus === "수정중") return "편집";
+  if (ad.workStatus === "기획중") return "기획";
+  return "기획";
+}
+
 function BoardView(props) {
   const { t } = useTheme();
-  const { tasks, onSelectTask, onMove, onDelete, users } = props;
+  const { tasks, onSelectTask, onMove, onDelete, users, ads, onSelectAd } = props;
   const memberNames = ["전체"].concat(users.filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return u.name; }));
   const [filterMember, setFilterMember] = useState("전체");
   const today = new Date();
@@ -1028,10 +1036,14 @@ function BoardView(props) {
   if (years.indexOf(String(today.getFullYear())) === -1) years.push(String(today.getFullYear()));
   let filtered = filterMember === "전체" ? tasks : tasks.filter(function (tk) { return tk.assignee === filterMember; });
   if (monthFilter === "month") { const prefix = selYear + "-" + pad(selMonth); filtered = filtered.filter(function (tk) { return tk.due && tk.due.indexOf(prefix) === 0; }); }
+  let filteredAds = ads || [];
+  if (filterMember !== "전체") filteredAds = filteredAds.filter(function (ad) { return ad.requester === filterMember; });
+  if (monthFilter === "month") { const prefix = selYear + "-" + pad(selMonth); filteredAds = filteredAds.filter(function (ad) { const d = ad.workDate || ad.expectedDate || ""; return d && d.indexOf(prefix) === 0; }); }
   const filterBtnStyle = function (active) { return { padding: "5px 14px", borderRadius: 20, border: "1px solid " + (active ? "#6366f1" : t.border), background: active ? "#6366f120" : "transparent", cursor: "pointer", fontSize: 12, fontWeight: 600, color: active ? "#818cf8" : t.text4 }; };
 
   return (
     <div>
+      <div style={{ fontSize: 11, color: t.text4, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 9, height: 9, borderRadius: 3, border: "1px dashed #fbbf24" }} />📢 점선 테두리 카드는 광고 관리에서 등록된 항목입니다</div>
       <div style={{ background: t.surface, borderRadius: 12, border: "1px solid " + t.border, padding: "12px 14px", marginBottom: 14 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 9, textTransform: "uppercase", letterSpacing: ".5px" }}>기간 필터</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -1052,11 +1064,12 @@ function BoardView(props) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(0,1fr))", gap: 12 }}>
         {STAGES.map(function (col) {
           const colTasks = filtered.filter(function (tk) { return tk.status === col; });
+          const colAds = filteredAds.filter(function (ad) { return getAdBoardStatus(ad) === col; });
           return (
             <div key={col} style={{ background: t.surface, borderRadius: 14, padding: "12px 10px", border: "1px solid " + t.border }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12, paddingBottom: 10, borderBottom: "1px solid " + t.border }}>
                 <span>{STAGE_ICON[col]}</span><span style={{ fontWeight: 700, fontSize: 12, color: t.text3 }}>{col}</span>
-                <span style={{ marginLeft: "auto", background: STAGE_COLOR[col] + "20", color: STAGE_COLOR[col], borderRadius: 99, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>{colTasks.length}</span>
+                <span style={{ marginLeft: "auto", background: STAGE_COLOR[col] + "20", color: STAGE_COLOR[col], borderRadius: 99, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>{colTasks.length + colAds.length}</span>
               </div>
               {colTasks.map(function (tk) {
                 return (
@@ -1082,7 +1095,24 @@ function BoardView(props) {
                   </div>
                 );
               })}
-              {colTasks.length === 0 ? <div style={{ textAlign: "center", padding: "22px 0", color: t.text5, fontSize: 12 }}>비어있음</div> : null}
+              {colAds.map(function (ad) {
+                return (
+                  <div key={ad.id} onClick={function () { if (onSelectAd) onSelectAd(ad); }} style={{ background: t.surface2, borderRadius: 11, padding: "11px 13px", marginBottom: 8, border: "1px dashed #fbbf2470", cursor: "pointer" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>📢 {ad.content || "광고"}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
+                      <span style={{ fontSize: 10, color: "#fbbf24", background: "#fbbf2418", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>광고</span>
+                      <span style={{ fontSize: 10, color: WORK_COLOR[ad.workStatus] || t.text4, background: (WORK_COLOR[ad.workStatus] || t.text4) + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{ad.workStatus || "대기"}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 11, color: t.text3 }}>{ad.requester || "미배정"}</span>
+                      <span style={{ fontSize: 10, color: t.text4 }}>{(ad.workDate || ad.expectedDate || "").slice(5)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+              {colTasks.length === 0 && colAds.length === 0 ? <div style={{ textAlign: "center", padding: "22px 0", color: t.text5, fontSize: 12 }}>비어있음</div> : null}
             </div>
           );
         })}
@@ -1552,7 +1582,7 @@ export default function App() {
         <div style={{ maxWidth: 1300, margin: "0 auto", padding: "20px", minWidth: 0, boxSizing: "border-box" }}>
           {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} visibleTabs={vt} setVisibleTabs={function (v) { setVisibleTabsRaw(v); }} tasks={tasks} onUpdateTasks={setTasksRaw} /> : null}
           {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} /> : null}
-          {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} /> : null}
+          {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} ads={adsData} onSelectAd={function () { setTab("ad"); }} /> : null}
           {tab === "ad" ? <AdPanel onAdsChange={setAdsData} onNewAd={sendAdNotification} currentUser={currentUser} /> : null}
           {tab === "stats" ? <div style={{ maxWidth: 700, margin: "0 auto" }}><StatsPanel tasks={tasks} currentUser={currentUser} /></div> : null}
           {tab === "ai" ? <AIPanel tasks={tasks} users={users} /> : null}
