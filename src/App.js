@@ -101,7 +101,7 @@ const WORK_COLOR = { "대기": "#6b7280", "기획중": "#818cf8", "작업중": "
 const AVATAR_COLORS = ["#6366f1", "#ec4899", "#fb923c", "#34d399", "#38bdf8", "#c084fc", "#f87171"];
 const ALL_TABS = [
   { id: "calendar", label: "📅 영상 캘린더" }, { id: "adCalendar", label: "🗓️ 마케팅 캘린더" }, { id: "designCalendar", label: "🎨 디자인 캘린더" }, { id: "board", label: "🎞️ 제작 보드" },
-  { id: "ad", label: "📢 광고 관리" }, { id: "stats", label: "📊 통계" }, { id: "ai", label: "🤖 AI 분석" },
+  { id: "ad", label: "📢 광고 관리" }, { id: "stats", label: "📊 통계" }, { id: "overtime", label: "⏰ 야근 기록" }, { id: "ai", label: "🤖 AI 분석" },
 ];
 const ADMIN_USER = { id: "admin", name: "admin", password: "admin1234", dept: "경영진", rank: "대표", position: "관리자", officePhone: "", mobile: "", role: "admin", approved: true };
 const ROLE_COLOR = { "admin": "#f87171", "manager": "#fbbf24", "member": "#34d399", "viewer": "#94a3b8" };
@@ -1553,6 +1553,138 @@ function AdPanel(props) {
   );
 }
 
+function OvertimeEntryModal(props) {
+  const { t } = useTheme();
+  const { onAdd, onClose, kind } = props;
+  const [form, setForm] = useState({ date: "", hours: "", note: "" });
+  const set = function (k, v) { setForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
+  const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "9px 12px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
+  const isEntry = kind === "entry";
+  const submit = function () {
+    const hoursNum = Number(form.hours);
+    if (!form.date || !hoursNum || hoursNum <= 0) return;
+    onAdd({ date: form.date, hours: hoursNum, note: form.note });
+    onClose();
+  };
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
+      <div style={{ background: t.surface, borderRadius: 18, padding: "22px 26px", width: 340, border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+        <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, color: t.text }}>{isEntry ? "⏰ 야근 기록 추가" : "🏖️ 대체휴가 사용 추가"}</div>
+        <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>날짜</div><input type="date" value={form.date} onChange={function (e) { set("date", e.target.value); }} style={inp} /></div>
+        <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{isEntry ? "야근 시간 (시간 단위, 예: 2.5)" : "사용 시간 (시간 단위, 예: 4)"}</div><input type="number" step="0.5" min="0" value={form.hours} onChange={function (e) { set("hours", e.target.value); }} placeholder="예: 2.5" style={inp} /></div>
+        <div style={{ marginBottom: 18 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{isEntry ? "사유" : "메모"}</div><input value={form.note} onChange={function (e) { set("note", e.target.value); }} placeholder={isEntry ? "예: 편집 마감 대응" : "예: 반차로 사용"} style={inp} /></div>
+        <div style={{ display: "flex", gap: 8 }}>
+          <button onClick={onClose} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 9, padding: "10px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
+          <button onClick={submit} style={{ flex: 1, background: isEntry ? "#6366f1" : "#fb923c", border: "none", borderRadius: 9, padding: "10px 0", cursor: "pointer", color: "#fff", fontWeight: 700 }}>추가</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function OvertimePanel(props) {
+  const { t } = useTheme();
+  const { currentUser, users, isAdmin } = props;
+  const [entries, setEntries] = useFirebaseData("overtimeEntries", []);
+  const [usage, setUsage] = useFirebaseData("overtimeUsage", []);
+  const [view, setView] = useState("mine");
+  const [showAddEntry, setShowAddEntry] = useState(false);
+  const [showAddUsage, setShowAddUsage] = useState(false);
+  const myName = currentUser.name;
+  const sumHours = function (list) { return list.reduce(function (a, x) { return a + Number(x.hours || 0); }, 0); };
+  const fmt = function (n) { return (Math.round(n * 10) / 10).toString().replace(/\.0$/, ""); };
+  const myEntries = entries.filter(function (e) { return e.user === myName; }).slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  const myUsage = usage.filter(function (u) { return u.user === myName; }).slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+  const myTotalOvertime = sumHours(myEntries);
+  const myTotalUsed = sumHours(myUsage);
+  const myRemaining = myTotalOvertime - myTotalUsed;
+  const addEntry = function (data) { setEntries(entries.concat([{ id: "ot_" + Date.now(), user: myName, date: data.date, hours: data.hours, reason: data.note, createdAt: Date.now() }])); };
+  const deleteEntry = function (id) { setEntries(entries.filter(function (e) { return e.id !== id; })); };
+  const addUsage = function (data) { setUsage(usage.concat([{ id: "otu_" + Date.now(), user: myName, date: data.date, hours: data.hours, note: data.note, createdAt: Date.now() }])); };
+  const deleteUsage = function (id) { setUsage(usage.filter(function (u) { return u.id !== id; })); };
+  const members = users.filter(function (u) { return u.approved; });
+  const summaryByUser = members.map(function (u) {
+    const ot = sumHours(entries.filter(function (e) { return e.user === u.name; }));
+    const us = sumHours(usage.filter(function (x) { return x.user === u.name; }));
+    return { name: u.name, overtime: ot, used: us, remaining: ot - us };
+  }).sort(function (a, b) { return b.remaining - a.remaining; });
+  const s = { background: t.surface, borderRadius: 13, border: "1px solid " + t.border, overflow: "hidden" };
+  const viewBtn = function (v) { return { padding: "6px 16px", background: view === v ? "#6366f120" : "transparent", border: "1px solid " + (view === v ? "#6366f1" : t.border), borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: view === v ? 700 : 500, color: view === v ? "#818cf8" : t.text4 }; };
+  return (
+    <div style={{ maxWidth: 760, margin: "0 auto" }}>
+      {showAddEntry ? <OvertimeEntryModal kind="entry" onAdd={addEntry} onClose={function () { setShowAddEntry(false); }} /> : null}
+      {showAddUsage ? <OvertimeEntryModal kind="usage" onAdd={addUsage} onClose={function () { setShowAddUsage(false); }} /> : null}
+      {isAdmin ? (
+        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+          <button style={viewBtn("mine")} onClick={function () { setView("mine"); }}>내 기록</button>
+          <button style={viewBtn("all")} onClick={function () { setView("all"); }}>👥 전체 현황</button>
+        </div>
+      ) : null}
+      {view === "mine" ? (
+        <div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+            <div style={Object.assign({}, s, { padding: "14px 0", textAlign: "center" })}><div style={{ fontSize: 22, fontWeight: 900, color: "#818cf8" }}>{fmt(myTotalOvertime)}h</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>누적 야근시간</div></div>
+            <div style={Object.assign({}, s, { padding: "14px 0", textAlign: "center" })}><div style={{ fontSize: 22, fontWeight: 900, color: "#fb923c" }}>{fmt(myTotalUsed)}h</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>대체휴가 사용시간</div></div>
+            <div style={Object.assign({}, s, { padding: "14px 0", textAlign: "center" })}><div style={{ fontSize: 22, fontWeight: 900, color: myRemaining >= 0 ? "#34d399" : "#f87171" }}>{fmt(myRemaining)}h</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>잔여 시간</div></div>
+          </div>
+          <div style={Object.assign({}, s, { marginBottom: 16 })}>
+            <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>⏰ 야근 기록 ({myEntries.length})</span>
+              <button onClick={function () { setShowAddEntry(true); }} style={{ background: "#6366f1", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>+ 추가</button>
+            </div>
+            {myEntries.length === 0 ? <div style={{ padding: "24px", textAlign: "center", color: t.text5, fontSize: 13 }}>기록된 야근이 없습니다</div> : null}
+            {myEntries.map(function (e) {
+              return (
+                <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", borderBottom: "1px solid " + t.border }}>
+                  <span style={{ fontSize: 12, color: t.text4, width: 84, flexShrink: 0 }}>{e.date}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#818cf8", width: 48, flexShrink: 0 }}>{fmt(e.hours)}h</span>
+                  <span style={{ fontSize: 12, color: t.text3, flex: 1 }}>{e.reason || "-"}</span>
+                  <button onClick={function () { deleteEntry(e.id); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 14 }}>×</button>
+                </div>
+              );
+            })}
+          </div>
+          <div style={s}>
+            <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>🏖️ 대체휴가 사용 기록 ({myUsage.length})</span>
+              <button onClick={function () { setShowAddUsage(true); }} style={{ background: "#fb923c", border: "none", borderRadius: 8, padding: "6px 12px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>+ 추가</button>
+            </div>
+            {myUsage.length === 0 ? <div style={{ padding: "24px", textAlign: "center", color: t.text5, fontSize: 13 }}>사용 기록이 없습니다</div> : null}
+            {myUsage.map(function (u) {
+              return (
+                <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", borderBottom: "1px solid " + t.border }}>
+                  <span style={{ fontSize: 12, color: t.text4, width: 84, flexShrink: 0 }}>{u.date}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#fb923c", width: 48, flexShrink: 0 }}>{fmt(u.hours)}h</span>
+                  <span style={{ fontSize: 12, color: t.text3, flex: 1 }}>{u.note || "-"}</span>
+                  <button onClick={function () { deleteUsage(u.id); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 14 }}>×</button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      ) : (
+        <div style={s}>
+          <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 직원 야근 현황 ({summaryByUser.length}명)</div>
+          {summaryByUser.length === 0 ? <div style={{ padding: "24px", textAlign: "center", color: t.text5, fontSize: 13 }}>등록된 직원이 없습니다</div> : null}
+          {summaryByUser.map(function (item) {
+            return (
+              <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderBottom: "1px solid " + t.border }}>
+                <Avatar name={item.name} size={30} users={users} />
+                <span style={{ fontSize: 13, fontWeight: 700, color: t.text, width: 90, flexShrink: 0 }}>{item.name}</span>
+                <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+                  <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#818cf8" }}>{fmt(item.overtime)}h</div><div style={{ fontSize: 10, color: t.text4 }}>누적</div></div>
+                  <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#fb923c" }}>{fmt(item.used)}h</div><div style={{ fontSize: 10, color: t.text4 }}>사용</div></div>
+                  <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: item.remaining >= 0 ? "#34d399" : "#f87171" }}>{fmt(item.remaining)}h</div><div style={{ fontSize: 10, color: t.text4 }}>잔여</div></div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   useEffect(function () {
     document.body.style.margin = "0"; document.body.style.padding = "0";
@@ -1735,6 +1867,7 @@ export default function App() {
           {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} ads={adsData} onSelectAd={function () { setTab("ad"); }} /> : null}
           {tab === "ad" ? <AdPanel onAdsChange={setAdsData} onNewAd={sendAdNotification} currentUser={currentUser} /> : null}
           {tab === "stats" ? <div style={{ maxWidth: 760, margin: "0 auto" }}><StatsPanel videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} currentUser={currentUser} /></div> : null}
+          {tab === "overtime" ? <OvertimePanel currentUser={currentUser} users={users} isAdmin={isAdmin} /> : null}
           {tab === "ai" ? <AIPanel tasks={tasks} users={users} /> : null}
         </div>
       </div>
