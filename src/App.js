@@ -1017,6 +1017,7 @@ function CalendarView(props) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
+  const [dayDetail, setDayDetail] = useState(null);
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const prevDays = new Date(year, month, 0).getDate();
@@ -1026,6 +1027,8 @@ function CalendarView(props) {
   while (cells.length % 7 !== 0) cells.push({ day: cells.length - firstDay - daysInMonth + 1, cur: false });
   const pad = function (n) { return String(n).padStart(2, "0"); };
   const dateStr = function (d) { return year + "-" + pad(month + 1) + "-" + pad(d); };
+  const todayStr = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
+  const isOverdue = function (item) { return item.due && item.due < todayStr && item.status === stageList[0]; };
   const adItems = [];
   if (ads) {
     for (let j = 0; j < ads.length; j++) {
@@ -1069,6 +1072,7 @@ function CalendarView(props) {
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 9, height: 9, borderRadius: 3, background: "#fbbf24" }} /><span style={{ fontSize: 11, color: t.text4 }}>광고 제작일</span></div>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 9, height: 9, borderRadius: 3, background: "#38bdf8" }} /><span style={{ fontSize: 11, color: t.text4 }}>광고 예상완료일</span></div>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ fontSize: 11 }}>🎌</span><span style={{ fontSize: 11, color: t.text4 }}>공휴일</span></div>
+        {videoMode ? <div style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ fontSize: 11 }}>⏰</span><span style={{ fontSize: 11, color: t.text4 }}>시작 지연 (시작일 지났는데 기획 단계)</span></div> : null}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", marginBottom: 4 }}>
         {WEEKDAYS.map(function (w, i) { return <div key={w} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, padding: "6px 0", color: weekdayColor(i) }}>{w}</div>; })}
@@ -1088,9 +1092,10 @@ function CalendarView(props) {
               </div>
               {holidayName ? <div style={{ fontSize: 9, color: "#f87171", fontWeight: 600, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>🎌 {holidayName}</div> : null}
               {dayItems.slice(0, 3).map(function (item) {
-                return <div key={item.id} onClick={function (e) { e.stopPropagation(); if (item.kind === "task") onSelectTask(item); else if (onSelectAd) onSelectAd(item); }} style={{ background: getItemColor(item) + "25", border: "1px solid " + (getItemColor(item) + "40"), borderRadius: 5, padding: "2px 5px", fontSize: 10, color: getItemColor(item), fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 2, cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{getItemIcon(item)} {item.title}{getItemSuffix(item)}</div>;
+                const overdue = item.kind === "task" && isOverdue(item);
+                return <div key={item.id} onClick={function (e) { e.stopPropagation(); if (item.kind === "task") onSelectTask(item); else if (onSelectAd) onSelectAd(item); }} style={{ background: overdue ? "#f8717130" : getItemColor(item) + "25", border: "1px solid " + (overdue ? "#f87171" : (getItemColor(item) + "40")), borderRadius: 5, padding: "2px 5px", fontSize: 10, color: overdue ? "#f87171" : getItemColor(item), fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 2, cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{overdue ? "⏰ " : ""}{getItemIcon(item)} {item.title}{getItemSuffix(item)}</div>;
               })}
-              {dayItems.length > 3 ? <div style={{ fontSize: 10, color: t.text4 }}>+{dayItems.length - 3}</div> : null}
+              {dayItems.length > 3 ? <div onClick={function (e) { e.stopPropagation(); setDayDetail({ date: dateStr(cell.day), items: dayItems }); }} style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>+{dayItems.length - 3}개 더보기</div> : null}
             </div>
           );
         })}
@@ -1116,13 +1121,15 @@ function CalendarView(props) {
           <div style={{ padding: "11px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>{month + 1}월 스케줄 목록</div>
           {monthTasks.map(function (tk, i) {
             const idx = stageList.indexOf(tk.status), isLast = i === monthTasks.length - 1, hasPrev = idx > 0, hasNext = idx < stageList.length - 1;
+            const overdue = isOverdue(tk);
             return (
-              <div key={tk.id} style={{ padding: "13px 18px", borderBottom: isLast ? "none" : "1px solid " + t.border }}>
+              <div key={tk.id} style={{ padding: "13px 18px", borderBottom: isLast ? "none" : "1px solid " + t.border, background: overdue ? "#f8717110" : "transparent" }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
                   <div onClick={function (e) { handleEditClick(e, tk); }} style={{ width: 3, height: 30, borderRadius: 99, background: stageColorMap[tk.status], flexShrink: 0, cursor: "pointer" }} />
                   <div onClick={function (e) { handleEditClick(e, tk); }} style={{ flex: 1, minWidth: 100, cursor: "pointer" }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{tk.title}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 1 }}>{stageIconMap[tk.status]} {tk.status} · {tk.tag}</div></div>
-                  <span style={{ fontSize: 11, color: t.text4, flexShrink: 0 }}>{tk.due.slice(5)}</span>
+                  <span style={{ fontSize: 11, color: overdue ? "#f87171" : t.text4, fontWeight: overdue ? 700 : 400, flexShrink: 0 }}>{tk.due.slice(5)}</span>
                   <span style={{ fontSize: 10, color: PRIORITY_COLOR[tk.priority], background: PRIORITY_COLOR[tk.priority] + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>{tk.priority}</span>
+                  {overdue ? <span style={{ fontSize: 10, color: "#f87171", background: "#f8717120", padding: "2px 7px", borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>⏰ 시작 지연</span> : null}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {hasPrev && onMove ? <button onClick={function (e) { handleMoveClick(e, tk.id, -1); }} style={{ background: t.bg, border: "1px solid " + t.border, borderRadius: 6, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: t.text4, fontWeight: 600 }}>← 이전 단계</button> : null}
@@ -1142,6 +1149,27 @@ function CalendarView(props) {
             const isLast = i === monthAds.length - 1;
             return <div key={item.id} onClick={function () { if (onSelectAd) onSelectAd(item); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", borderBottom: isLast ? "none" : "1px solid " + t.border, cursor: onSelectAd ? "pointer" : "default" }}><div style={{ width: 3, height: 30, borderRadius: 99, background: getItemColor(item), flexShrink: 0 }} /><div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{getItemIcon(item)} {item.title}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 1 }}>{item.kind === "adWork" ? "제작일" : "예상완료일"} · {item.status}</div></div><span style={{ fontSize: 11, color: t.text4 }}>{item.due.slice(5)}</span></div>;
           })}
+        </div>
+      ) : null}
+      {dayDetail ? (
+        <div onClick={function () { setDayDetail(null); }} style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 250, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
+          <div onClick={function (e) { e.stopPropagation(); }} style={{ background: t.surface, borderRadius: 18, width: "min(92vw, 420px)", maxHeight: "80vh", display: "flex", flexDirection: "column", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid " + t.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: t.text }}>{dayDetail.date} 일정 ({dayDetail.items.length})</div>
+              <button onClick={function () { setDayDetail(null); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20 }}>×</button>
+            </div>
+            <div style={{ padding: "8px 12px", overflowY: "auto" }}>
+              {dayDetail.items.map(function (item) {
+                const overdue = item.kind === "task" && isOverdue(item);
+                return (
+                  <div key={item.id} onClick={function () { setDayDetail(null); if (item.kind === "task") onSelectTask(item); else if (onSelectAd) onSelectAd(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px", borderRadius: 9, cursor: "pointer", marginBottom: 3, background: overdue ? "#f8717115" : "transparent" }}>
+                    <span style={{ width: 8, height: 8, borderRadius: "50%", background: overdue ? "#f87171" : getItemColor(item), flexShrink: 0 }} />
+                    <span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0 }}>{overdue ? "⏰ " : ""}{getItemIcon(item)} {item.title}{getItemSuffix(item)}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       ) : null}
     </div>
@@ -1169,6 +1197,7 @@ function CombinedCalendarView(props) {
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
+  const [dayDetail, setDayDetail] = useState(null);
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const prevDays = new Date(year, month, 0).getDate();
@@ -1234,7 +1263,7 @@ function CombinedCalendarView(props) {
                 const info = COMBINED_TYPE_INFO[item.kind];
                 return <div key={item.kind + "_" + item.id} onClick={function () { handleItemClick(item); }} style={{ background: info.color + "25", border: "1px solid " + (info.color + "40"), borderRadius: 5, padding: "2px 5px", fontSize: 10, color: info.color, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 2, cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{info.icon} {item.title}</div>;
               })}
-              {dayItems.length > 3 ? <div style={{ fontSize: 10, color: t.text4 }}>+{dayItems.length - 3}</div> : null}
+              {dayItems.length > 3 ? <div onClick={function (e) { e.stopPropagation(); setDayDetail({ date: dateStr(cell.day), items: dayItems }); }} style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>+{dayItems.length - 3}개 더보기</div> : null}
             </div>
           );
         })}
@@ -1254,6 +1283,27 @@ function CombinedCalendarView(props) {
               </div>
             );
           })}
+        </div>
+      ) : null}
+      {dayDetail ? (
+        <div onClick={function () { setDayDetail(null); }} style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 250, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
+          <div onClick={function (e) { e.stopPropagation(); }} style={{ background: t.surface, borderRadius: 18, width: "min(92vw, 420px)", maxHeight: "80vh", display: "flex", flexDirection: "column", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+            <div style={{ padding: "16px 20px", borderBottom: "1px solid " + t.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: 15, fontWeight: 800, color: t.text }}>{dayDetail.date} 일정 ({dayDetail.items.length})</div>
+              <button onClick={function () { setDayDetail(null); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20 }}>×</button>
+            </div>
+            <div style={{ padding: "8px 12px", overflowY: "auto" }}>
+              {dayDetail.items.map(function (item) {
+                const info = COMBINED_TYPE_INFO[item.kind];
+                return (
+                  <div key={item.kind + "_" + item.id} onClick={function () { setDayDetail(null); handleItemClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px", borderRadius: 9, cursor: "pointer", marginBottom: 3 }}>
+                    <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0 }}>{info.icon} {info.label}</span>
+                    <span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       ) : null}
     </div>
@@ -1282,8 +1332,8 @@ function BoardView(props) {
   if (monthFilter === "month") { const prefix = selYear + "-" + pad(selMonth); filteredDesign = filteredDesign.filter(function (dt) { return dt.due && dt.due.indexOf(prefix) === 0; }); }
   const filterBtnStyle = function (active) { return { padding: "5px 14px", borderRadius: 20, border: "1px solid " + (active ? "#6366f1" : t.border), background: active ? "#6366f120" : "transparent", cursor: "pointer", fontSize: 12, fontWeight: 600, color: active ? "#818cf8" : t.text4 }; };
   const todayStr = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
-  const isOverdueVideo = function (tk) { return tk.due && tk.due < todayStr && tk.status !== "업로드 완료"; };
-  const isOverdueDesign = function (dt) { return dt.due && dt.due < todayStr && dt.status !== "완료"; };
+  const isOverdueVideo = function (tk) { return tk.due && tk.due < todayStr && tk.status === STAGES[0]; };
+  const isOverdueDesign = function (dt) { return dt.due && dt.due < todayStr && dt.status === DESIGN_STAGES[0]; };
   const totalItems = filtered.length + filteredAds.length + filteredDesign.length;
   const doneItems = filtered.filter(function (tk) { return tk.status === "업로드 완료"; }).length + filteredAds.filter(function (ad) { return getAdBoardStatus(ad) === "업로드 완료"; }).length + filteredDesign.filter(function (dt) { return dt.status === "완료"; }).length;
   const doneRate = totalItems ? Math.round(doneItems / totalItems * 100) : 0;
@@ -1306,7 +1356,7 @@ function BoardView(props) {
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 3, background: "#818cf8" }} />🎬 영상 캘린더 항목</span>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 3, background: "#fbbf24" }} />📢 광고 관리 항목</span>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 3, background: "#f87171" }} />🎨 디자인 캘린더 항목</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 3, background: "#f87171", border: "1px solid #fff" }} />⏰ 마감 지연</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 3, background: "#f87171", border: "1px solid #fff" }} />⏰ 시작 지연 (시작일 지났는데 기획 단계)</span>
       </div>
       <div style={{ background: t.surface, borderRadius: 12, border: "1px solid " + t.border, padding: "12px 14px", marginBottom: 14 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 9, textTransform: "uppercase", letterSpacing: ".5px" }}>기간 필터</div>
