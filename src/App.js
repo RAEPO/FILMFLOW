@@ -1281,12 +1281,32 @@ function BoardView(props) {
   if (filterMember !== "전체") filteredDesign = filteredDesign.filter(function (dt) { return dt.assignee === filterMember; });
   if (monthFilter === "month") { const prefix = selYear + "-" + pad(selMonth); filteredDesign = filteredDesign.filter(function (dt) { return dt.due && dt.due.indexOf(prefix) === 0; }); }
   const filterBtnStyle = function (active) { return { padding: "5px 14px", borderRadius: 20, border: "1px solid " + (active ? "#6366f1" : t.border), background: active ? "#6366f120" : "transparent", cursor: "pointer", fontSize: 12, fontWeight: 600, color: active ? "#818cf8" : t.text4 }; };
+  const todayStr = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
+  const isOverdueVideo = function (tk) { return tk.due && tk.due < todayStr && tk.status !== "업로드 완료"; };
+  const isOverdueDesign = function (dt) { return dt.due && dt.due < todayStr && dt.status !== "완료"; };
+  const totalItems = filtered.length + filteredAds.length + filteredDesign.length;
+  const doneItems = filtered.filter(function (tk) { return tk.status === "업로드 완료"; }).length + filteredAds.filter(function (ad) { return getAdBoardStatus(ad) === "업로드 완료"; }).length + filteredDesign.filter(function (dt) { return dt.status === "완료"; }).length;
+  const doneRate = totalItems ? Math.round(doneItems / totalItems * 100) : 0;
 
   return (
     <div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 12 }}>
+        {[["전체", totalItems, "#6366f1"], ["🎬 영상", filtered.length, "#818cf8"], ["📢 광고", filteredAds.length, "#fbbf24"], ["🎨 디자인", filteredDesign.length, "#f87171"]].map(function (item) {
+          return <div key={item[0]} style={{ background: t.surface, border: "1px solid " + t.border, borderRadius: 12, padding: "12px 0", textAlign: "center" }}><div style={{ fontSize: 22, fontWeight: 900, color: item[2] }}>{item[1]}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>{item[0]}</div></div>;
+        })}
+      </div>
+      <div style={{ background: t.surface, border: "1px solid " + t.border, borderRadius: 12, padding: "12px 16px", marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 완료율</span>
+          <span style={{ fontSize: 13, fontWeight: 800, color: "#34d399" }}>{doneRate}% ({doneItems}/{totalItems})</span>
+        </div>
+        <div style={{ background: t.bg, borderRadius: 99, height: 7 }}><div style={{ width: doneRate + "%", background: "linear-gradient(90deg,#6366f1,#34d399)", height: "100%", borderRadius: 99, transition: "width .3s" }} /></div>
+      </div>
       <div style={{ fontSize: 11, color: t.text4, marginBottom: 10, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 9, height: 9, borderRadius: 3, border: "1px dashed #fbbf24" }} />📢 광고 관리 항목</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 9, height: 9, borderRadius: 3, border: "1px dashed #f87171" }} />🎨 디자인 캘린더 항목</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 3, background: "#818cf8" }} />🎬 영상 캘린더 항목</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 3, background: "#fbbf24" }} />📢 광고 관리 항목</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 3, background: "#f87171" }} />🎨 디자인 캘린더 항목</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 3, background: "#f87171", border: "1px solid #fff" }} />⏰ 마감 지연</span>
       </div>
       <div style={{ background: t.surface, borderRadius: 12, border: "1px solid " + t.border, padding: "12px 14px", marginBottom: 14 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 9, textTransform: "uppercase", letterSpacing: ".5px" }}>기간 필터</div>
@@ -1299,7 +1319,7 @@ function BoardView(props) {
               <select value={selMonth} onChange={function (e) { setSelMonth(Number(e.target.value)); }} style={{ background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 8, padding: "5px 10px", fontSize: 12, color: t.text, outline: "none" }}>{[1,2,3,4,5,6,7,8,9,10,11,12].map(function (mNum) { return <option key={mNum} value={mNum}>{mNum}월</option>; })}</select>
             </span>
           ) : null}
-          <span style={{ fontSize: 12, color: t.text4, marginLeft: "auto" }}>{filtered.length}개 영상</span>
+          <span style={{ fontSize: 12, color: t.text4, marginLeft: "auto" }}>{totalItems}개 항목</span>
         </div>
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
@@ -1310,72 +1330,85 @@ function BoardView(props) {
           const colTasks = filtered.filter(function (tk) { return tk.status === col; });
           const colAds = filteredAds.filter(function (ad) { return getAdBoardStatus(ad) === col; });
           const colDesign = filteredDesign.filter(function (dt) { return getDesignBoardStatus(dt) === col; });
+          const colTotal = colTasks.length + colAds.length + colDesign.length;
           return (
-            <div key={col} style={{ background: t.surface, borderRadius: 14, padding: "12px 10px", border: "1px solid " + t.border }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12, paddingBottom: 10, borderBottom: "1px solid " + t.border }}>
-                <span>{STAGE_ICON[col]}</span><span style={{ fontWeight: 700, fontSize: 12, color: t.text3 }}>{col}</span>
-                <span style={{ marginLeft: "auto", background: STAGE_COLOR[col] + "20", color: STAGE_COLOR[col], borderRadius: 99, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>{colTasks.length + colAds.length + colDesign.length}</span>
+            <div key={col} style={{ background: t.surface, borderRadius: 14, padding: "13px 10px 10px", border: "1px solid " + t.border, borderTop: "3px solid " + STAGE_COLOR[col] }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <div style={{ width: 28, height: 28, borderRadius: 9, background: STAGE_COLOR[col] + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{STAGE_ICON[col]}</div>
+                <span style={{ fontWeight: 800, fontSize: 13, color: t.text2 }}>{col}</span>
+                <span style={{ marginLeft: "auto", background: STAGE_COLOR[col], color: "#fff", borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 800 }}>{colTotal}</span>
               </div>
+              <div style={{ background: t.bg, borderRadius: 99, height: 4, marginBottom: 12 }}><div style={{ width: totalItems ? (colTotal / totalItems * 100) + "%" : "0%", background: STAGE_COLOR[col], height: "100%", borderRadius: 99 }} /></div>
               {colTasks.map(function (tk) {
+                const overdue = isOverdueVideo(tk);
                 return (
-                  <div key={tk.id} onClick={function () { onSelectTask(tk); }} style={{ background: t.surface2, borderRadius: 11, padding: "11px 13px", marginBottom: 8, border: "1px solid " + t.border, cursor: "pointer" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>{tk.title}</span>
-                      {onDelete ? <button onClick={function (e) { e.stopPropagation(); onDelete(tk.id); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 14, padding: 0 }}>×</button> : null}
-                    </div>
-                    <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
-                      <span style={{ fontSize: 10, color: PRIORITY_COLOR[tk.priority], background: PRIORITY_COLOR[tk.priority] + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{tk.priority}</span>
-                      <span style={{ fontSize: 10, color: TAG_COLOR[tk.tag] || "#818cf8", background: (TAG_COLOR[tk.tag] || "#818cf8") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{tk.tag}</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Avatar name={tk.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text3 }}>{tk.assignee}</span></div>
-                      <div style={{ display: "flex", gap: 8 }}>{(tk.comments || []).length > 0 ? <span style={{ fontSize: 10, color: t.text4 }}>💬{tk.comments.length}</span> : null}{tk.fileUrl ? <span style={{ fontSize: 10, color: t.text4 }}>📎</span> : null}<span style={{ fontSize: 10, color: t.text4 }}>{tk.due && tk.due.slice(5)}</span></div>
-                    </div>
-                    {onMove ? (
-                      <div style={{ display: "flex", gap: 5 }} onClick={function (e) { e.stopPropagation(); }}>
-                        {STAGES.indexOf(tk.status) > 0 ? <button onClick={function () { onMove(tk.id, -1); }} style={{ flex: 1, background: t.bg, border: "1px solid " + t.border, borderRadius: 6, padding: "4px 0", fontSize: 10, cursor: "pointer", color: t.text4 }}>← 이전</button> : null}
-                        {STAGES.indexOf(tk.status) < STAGES.length - 1 ? <button onClick={function () { onMove(tk.id, 1); }} style={{ flex: 1, background: "#6366f118", border: "1px solid #6366f130", borderRadius: 6, padding: "4px 0", fontSize: 10, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>다음 →</button> : null}
+                  <div key={tk.id} onClick={function () { onSelectTask(tk); }} style={{ display: "flex", background: t.surface2, borderRadius: 10, marginBottom: 8, cursor: "pointer", overflow: "hidden", boxShadow: "0 1px 4px #00000030", border: "1px solid " + (overdue ? "#f8717160" : t.border) }}>
+                    <div style={{ width: 4, background: "#818cf8", flexShrink: 0 }} />
+                    <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>{tk.title}</span>
+                        {onDelete ? <button onClick={function (e) { e.stopPropagation(); onDelete(tk.id); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 14, padding: 0 }}>×</button> : null}
                       </div>
-                    ) : null}
+                      <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 10, color: PRIORITY_COLOR[tk.priority], background: PRIORITY_COLOR[tk.priority] + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{tk.priority}</span>
+                        <span style={{ fontSize: 10, color: TAG_COLOR[tk.tag] || "#818cf8", background: (TAG_COLOR[tk.tag] || "#818cf8") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{tk.tag}</span>
+                        {overdue ? <span style={{ fontSize: 10, color: "#f87171", background: "#f8717120", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>⏰ 지연</span> : null}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Avatar name={tk.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text3 }}>{tk.assignee}</span></div>
+                        <div style={{ display: "flex", gap: 8 }}>{(tk.comments || []).length > 0 ? <span style={{ fontSize: 10, color: t.text4 }}>💬{tk.comments.length}</span> : null}{tk.fileUrl ? <span style={{ fontSize: 10, color: t.text4 }}>📎</span> : null}<span style={{ fontSize: 10, color: overdue ? "#f87171" : t.text4, fontWeight: overdue ? 700 : 400 }}>{tk.due && tk.due.slice(5)}</span></div>
+                      </div>
+                      {onMove ? (
+                        <div style={{ display: "flex", gap: 5 }} onClick={function (e) { e.stopPropagation(); }}>
+                          {STAGES.indexOf(tk.status) > 0 ? <button onClick={function () { onMove(tk.id, -1); }} style={{ flex: 1, background: t.bg, border: "1px solid " + t.border, borderRadius: 6, padding: "4px 0", fontSize: 10, cursor: "pointer", color: t.text4 }}>← 이전</button> : null}
+                          {STAGES.indexOf(tk.status) < STAGES.length - 1 ? <button onClick={function () { onMove(tk.id, 1); }} style={{ flex: 1, background: "#6366f118", border: "1px solid #6366f130", borderRadius: 6, padding: "4px 0", fontSize: 10, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>다음 →</button> : null}
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 );
               })}
               {colAds.map(function (ad) {
                 return (
-                  <div key={ad.id} onClick={function () { if (onSelectAd) onSelectAd(ad); }} style={{ background: t.surface2, borderRadius: 11, padding: "11px 13px", marginBottom: 8, border: "1px dashed #fbbf2470", cursor: "pointer" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>📢 {ad.content || "광고"}</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
-                      <span style={{ fontSize: 10, color: "#fbbf24", background: "#fbbf2418", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>광고</span>
-                      <span style={{ fontSize: 10, color: WORK_COLOR[ad.workStatus] || t.text4, background: (WORK_COLOR[ad.workStatus] || t.text4) + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{ad.workStatus || "대기"}</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: 11, color: t.text3 }}>{ad.requester || "미배정"}</span>
-                      <span style={{ fontSize: 10, color: t.text4 }}>{(ad.workDate || ad.expectedDate || "").slice(5)}</span>
+                  <div key={ad.id} onClick={function () { if (onSelectAd) onSelectAd(ad); }} style={{ display: "flex", background: t.surface2, borderRadius: 10, marginBottom: 8, cursor: "pointer", overflow: "hidden", boxShadow: "0 1px 4px #00000030", border: "1px solid " + t.border }}>
+                    <div style={{ width: 4, background: "#fbbf24", flexShrink: 0 }} />
+                    <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>📢 {ad.content || "광고"}</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
+                        <span style={{ fontSize: 10, color: WORK_COLOR[ad.workStatus] || t.text4, background: (WORK_COLOR[ad.workStatus] || t.text4) + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{ad.workStatus || "대기"}</span>
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: 11, color: t.text3 }}>{ad.requester || "미배정"}</span>
+                        <span style={{ fontSize: 10, color: t.text4 }}>{(ad.workDate || ad.expectedDate || "").slice(5)}</span>
+                      </div>
                     </div>
                   </div>
                 );
               })}
               {colDesign.map(function (dt) {
+                const overdue = isOverdueDesign(dt);
                 return (
-                  <div key={dt.id} onClick={function () { if (onSelectDesign) onSelectDesign(dt); }} style={{ background: t.surface2, borderRadius: 11, padding: "11px 13px", marginBottom: 8, border: "1px dashed #f8717170", cursor: "pointer" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                      <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>🎨 {dt.title}</span>
-                    </div>
-                    <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
-                      <span style={{ fontSize: 10, color: "#f87171", background: "#f8717118", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>디자인</span>
-                      <span style={{ fontSize: 10, color: DESIGN_STAGE_COLOR[dt.status] || t.text4, background: (DESIGN_STAGE_COLOR[dt.status] || t.text4) + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{dt.status}</span>
-                      <span style={{ fontSize: 10, color: DESIGN_TAG_COLOR[dt.tag] || "#818cf8", background: (DESIGN_TAG_COLOR[dt.tag] || "#818cf8") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{dt.tag}</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Avatar name={dt.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text3 }}>{dt.assignee}</span></div>
-                      <span style={{ fontSize: 10, color: t.text4 }}>{dt.due && dt.due.slice(5)}</span>
+                  <div key={dt.id} onClick={function () { if (onSelectDesign) onSelectDesign(dt); }} style={{ display: "flex", background: t.surface2, borderRadius: 10, marginBottom: 8, cursor: "pointer", overflow: "hidden", boxShadow: "0 1px 4px #00000030", border: "1px solid " + (overdue ? "#f8717160" : t.border) }}>
+                    <div style={{ width: 4, background: "#f87171", flexShrink: 0 }} />
+                    <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>🎨 {dt.title}</span>
+                      </div>
+                      <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
+                        <span style={{ fontSize: 10, color: DESIGN_TAG_COLOR[dt.tag] || "#818cf8", background: (DESIGN_TAG_COLOR[dt.tag] || "#818cf8") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{dt.tag}</span>
+                        {overdue ? <span style={{ fontSize: 10, color: "#f87171", background: "#f8717120", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>⏰ 지연</span> : null}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Avatar name={dt.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text3 }}>{dt.assignee}</span></div>
+                        <span style={{ fontSize: 10, color: overdue ? "#f87171" : t.text4, fontWeight: overdue ? 700 : 400 }}>{dt.due && dt.due.slice(5)}</span>
+                      </div>
                     </div>
                   </div>
                 );
               })}
-              {colTasks.length === 0 && colAds.length === 0 && colDesign.length === 0 ? <div style={{ textAlign: "center", padding: "22px 0", color: t.text5, fontSize: 12 }}>비어있음</div> : null}
+              {colTotal === 0 ? <div style={{ textAlign: "center", padding: "22px 0", color: t.text5, fontSize: 12 }}>비어있음</div> : null}
             </div>
           );
         })}
