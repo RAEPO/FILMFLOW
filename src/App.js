@@ -212,7 +212,7 @@ function NotificationBell(props) {
       </button>
       {open ? (
         <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={function () { setOpen(false); }}>
-          <div onClick={function (e) { e.stopPropagation(); }} style={{ position: "absolute", top: 54, right: 24, width: 340, maxHeight: 420, background: t.surface, borderRadius: 14, border: "1px solid " + t.border, boxShadow: "0 16px 48px #000a", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+          <div onClick={function (e) { e.stopPropagation(); }} style={{ position: "absolute", top: 54, right: "clamp(4px,3vw,24px)", width: "min(90vw, 340px)", maxHeight: 420, background: t.surface, borderRadius: 14, border: "1px solid " + t.border, boxShadow: "0 16px 48px #000a", overflow: "hidden", display: "flex", flexDirection: "column" }}>
             <div style={{ padding: "12px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>알림 {unreadCount > 0 ? "(" + unreadCount + ")" : ""}</span>
               {unreadCount > 0 ? <button onClick={function () { onMarkAllRead(); }} style={{ background: "none", border: "none", color: "#818cf8", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>모두 읽음</button> : null}
@@ -348,7 +348,7 @@ function ProfileModal(props) {
   };
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-      <div style={{ background: t.surface, borderRadius: 20, width: 420, border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c", overflow: "hidden" }}>
+      <div style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 420px)", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c", overflow: "hidden" }}>
         <div style={{ background: "linear-gradient(135deg,#6366f1,#ec4899)", padding: "22px 24px 18px", position: "relative" }}>
           <button onClick={onClose} style={{ position: "absolute", top: 14, right: 16, background: "none", border: "none", color: "#ffffff88", cursor: "pointer", fontSize: 20 }}>×</button>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -577,7 +577,7 @@ function ReportModal(props) {
   const reportDate = today.getFullYear() + "." + pad(today.getMonth() + 1) + "." + pad(today.getDate());
   return (
     <div style={{ position: "fixed", inset: 0, background: "#000000cc", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-      <div style={{ background: "#fff", borderRadius: 20, width: 600, maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px #0004" }}>
+      <div style={{ background: "#fff", borderRadius: 20, width: "min(92vw, 600px)", maxHeight: "90vh", overflowY: "auto", boxShadow: "0 24px 64px #0004" }}>
         <div style={{ background: "linear-gradient(135deg,#1e293b,#0f172a)", padding: "26px 30px 22px", borderRadius: "20px 20px 0 0" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div>
@@ -591,7 +591,7 @@ function ReportModal(props) {
         <div style={{ padding: "22px 28px 28px" }}>
           <div style={{ marginBottom: 22 }}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", borderLeft: "3px solid #6366f1", paddingLeft: 10, marginBottom: 12 }}>📊 종합 현황</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 10 }}>
               {[["전체 " + sourceLabel, total, "#6366f1"], [doneStatus, done, "#22c55e"], ["진행 중", total - done, "#f59e0b"], ["완료율", rate + "%", "#3b82f6"]].map(function (item) {
                 return <div key={item[0]} style={{ background: "#f8fafc", borderRadius: 10, padding: "12px 0", textAlign: "center", border: "1px solid #e2e8f0" }}><div style={{ fontSize: 22, fontWeight: 800, color: item[2] }}>{item[1]}</div><div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{item[0]}</div></div>;
               })}
@@ -793,10 +793,10 @@ function StatsPanel(props) {
             <button onClick={function () { setShowReport(true); }} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#6366f1,#818cf8)", border: "none", borderRadius: 9, padding: "7px 16px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>📋 {mode === "all" ? "보고서 생성" : mode === "year" ? selYear + "년 보고" : selYear + "년 " + selMonth + "월 보고"}</button>
           </div>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 10 }}>
           {[["전체", total, cfg.accent], ["완료", done, "#34d399"], ["진행 중", total - done, "#fb923c"], ["완료율", rate + "%", "#38bdf8"]].map(function (item) { return <div key={item[0]} style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: item[2] }}>{item[1]}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>{item[0]}</div></div>; })}
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
           <div style={s}><div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".5px" }}>완료율</div><DonutChart rate={rate} /></div>
           <div style={s}><div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 14, textTransform: "uppercase", letterSpacing: ".5px" }}>단계별 비율</div><PieChart data={cfg.stages.map(function (st) { return { label: st, color: cfg.stageColor[st], count: filtered.filter(function (tk) { return tk.status === st; }).length }; })} /></div>
         </div>
@@ -849,10 +849,10 @@ function StatsPanel(props) {
           <span style={{ fontSize: 12, color: t.text4 }}>{total}개</span>
         </div>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 10 }}>
         {[["전체", total, "#6366f1"], ["완료", done, "#34d399"], ["진행 중", total - done, "#fb923c"], ["완료율", rate + "%", "#38bdf8"]].map(function (item) { return <div key={item[0]} style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: item[2] }}>{item[1]}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>{item[0]}</div></div>; })}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.4fr", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
         <div style={s}><div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 6, textTransform: "uppercase", letterSpacing: ".5px" }}>완료율</div><DonutChart rate={rate} /></div>
         <div style={s}><div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 14, textTransform: "uppercase", letterSpacing: ".5px" }}>유형별 비율</div><PieChart data={typeBreakdown} /></div>
       </div>
@@ -901,7 +901,7 @@ function TaskDetailModal(props) {
   if (editMode) {
     return (
       <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-        <div style={{ background: t.surface, borderRadius: 18, width: 400, maxHeight: "85vh", overflowY: "auto", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c", padding: "22px 24px" }}>
+        <div style={{ background: t.surface, borderRadius: 18, width: "min(92vw, 400px)", maxHeight: "85vh", overflowY: "auto", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c", padding: "22px 24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: t.text }}>{editTitle}</div>
             <button onClick={function () { setEditMode(false); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20 }}>×</button>
@@ -926,7 +926,7 @@ function TaskDetailModal(props) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-      <div style={{ background: t.surface, borderRadius: 18, width: 460, maxHeight: "85vh", display: "flex", flexDirection: "column", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+      <div style={{ background: t.surface, borderRadius: 18, width: "min(92vw, 460px)", maxHeight: "85vh", display: "flex", flexDirection: "column", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
         <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid " + t.border }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div style={{ flex: 1 }}>
@@ -991,7 +991,7 @@ function AddTaskModal(props) {
   const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "9px 12px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-      <div style={{ background: t.surface, borderRadius: 18, padding: "22px 26px", width: 370, border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+      <div style={{ background: t.surface, borderRadius: 18, padding: "22px 26px", width: "min(92vw, 370px)", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
         <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, color: t.text }}>{modalTitle}</div>
         {[["제목", "title", "text"], ["설명", "desc", "text"], ["마감일", "due", "date"]].map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><input type={item[2]} value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={inp} /></div>; })}
         {[["담당자", "assignee", memberNames.length ? memberNames : ["미배정"]], ["우선순위", "priority", PRIORITIES], [categoryLabel, "tag", tagList], ["단계", "status", stageList]].map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><select value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{item[2].map(function (o) { return <option key={o}>{o}</option>; })}</select></div>; })}
@@ -1290,7 +1290,7 @@ function BoardView(props) {
 
   return (
     <div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 10, marginBottom: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 10, marginBottom: 12 }}>
         {[["전체", totalItems, "#6366f1"], ["🎬 영상", filtered.length, "#818cf8"], ["📢 광고", filteredAds.length, "#fbbf24"], ["🎨 디자인", filteredDesign.length, "#f87171"]].map(function (item) {
           return <div key={item[0]} style={{ background: t.surface, border: "1px solid " + t.border, borderRadius: 12, padding: "12px 0", textAlign: "center" }}><div style={{ fontSize: 22, fontWeight: 900, color: item[2] }}>{item[1]}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>{item[0]}</div></div>;
         })}
@@ -1325,7 +1325,8 @@ function BoardView(props) {
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         {memberNames.map(function (m) { return <button key={m} onClick={function () { setFilterMember(m); }} style={filterBtnStyle(filterMember === m)}>{m}</button>; })}
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(0,1fr))", gap: 12 }}>
+      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 4, margin: "0 -2px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(200px,1fr))", gap: 12, minWidth: 900 }}>
         {STAGES.map(function (col) {
           const colTasks = filtered.filter(function (tk) { return tk.status === col; });
           const colAds = filteredAds.filter(function (ad) { return getAdBoardStatus(ad) === col; });
@@ -1412,6 +1413,7 @@ function BoardView(props) {
             </div>
           );
         })}
+        </div>
       </div>
     </div>
   );
@@ -1574,7 +1576,7 @@ function AIPanel(props) {
     <div>
       <div style={{ display: "flex", gap: 2, marginBottom: 18, borderBottom: "1px solid " + t.border }}>{mainTabBtn("ai", "🤖 AI 분석")}{mainTabBtn("video", "🔍 영상 분석")}</div>
       {mainTab === "ai" ? (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, alignItems: "start" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, alignItems: "start" }}>
           <div>
             <div style={s}><div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 3 }}>📄 제작 현황 요약</div><div style={{ fontSize: 12, color: t.text4 }}>현재 영상 제작 현황을 AI가 요약합니다</div><button disabled={lR} style={btn(lR, "#6366f1")} onClick={function () { callAI("다음 영상 제작 현황을 요약 리포트로 작성해주세요.\n\n" + summary, setReport, setLR); }}>{lR ? "생성 중..." : "리포트 생성"}</button>{report ? <div style={{ marginTop: 12, background: t.bg, borderRadius: 9, padding: "12px 14px", fontSize: 12, color: t.text2, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{report}</div> : null}</div>
             <div style={s}><div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 3 }}>💡 생산성 인사이트</div><div style={{ fontSize: 12, color: t.text4 }}>병목 지점과 개선 방향을 분석합니다</div><button disabled={lI} style={btn(lI, "#ec4899")} onClick={function () { callAI("다음 영상 제작 데이터를 분석해서 인사이트와 개선 제안 3가지 제공해주세요.\n\n" + summary, setInsight, setLI); }}>{lI ? "분석 중..." : "인사이트 분석"}</button>{insight ? <div style={{ marginTop: 12, background: t.bg, borderRadius: 9, padding: "12px 14px", fontSize: 12, color: t.text2, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{insight}</div> : null}</div>
@@ -1618,7 +1620,7 @@ function AdDetailModal(props) {
   const fields = type === "ai" ? aiF : intF;
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-      <div style={{ background: t.surface, borderRadius: 18, width: 520, maxHeight: "88vh", display: "flex", flexDirection: "column", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+      <div style={{ background: t.surface, borderRadius: 18, width: "min(92vw, 520px)", maxHeight: "88vh", display: "flex", flexDirection: "column", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
         <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid " + t.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontSize: 15, fontWeight: 800, color: t.text }}>{form.content || "광고 상세"}</div><button onClick={onClose} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20 }}>×</button></div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div style={{ gridColumn: "1/-1", display: "flex", gap: 7, flexWrap: "wrap" }}>
@@ -1738,7 +1740,7 @@ function OvertimeEntryModal(props) {
   };
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-      <div style={{ background: t.surface, borderRadius: 18, padding: "22px 26px", width: 340, border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+      <div style={{ background: t.surface, borderRadius: 18, padding: "22px 26px", width: "min(92vw, 340px)", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
         <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, color: t.text }}>{isEntry ? "⏰ 야근 기록 추가" : "🏖️ 대체휴가 사용 추가"}</div>
         <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>날짜</div><input type="date" value={form.date} onChange={function (e) { set("date", e.target.value); }} style={inp} /></div>
         <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{isEntry ? "야근 시간 (시간 단위, 예: 2.5)" : "사용 시간 (시간 단위, 예: 4)"}</div><input type="number" step="0.5" min="0" value={form.hours} onChange={function (e) { set("hours", e.target.value); }} placeholder="예: 2.5" style={inp} /></div>
@@ -1791,7 +1793,7 @@ function OvertimePanel(props) {
       </div>
       {view === "mine" ? (
         <div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: 10, marginBottom: 16 }}>
             <div style={Object.assign({}, s, { padding: "14px 0", textAlign: "center" })}><div style={{ fontSize: 22, fontWeight: 900, color: "#818cf8" }}>{fmt(myTotalOvertime)}h</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>누적 야근시간</div></div>
             <div style={Object.assign({}, s, { padding: "14px 0", textAlign: "center" })}><div style={{ fontSize: 22, fontWeight: 900, color: "#fb923c" }}>{fmt(myTotalUsed)}h</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>대체휴가 사용시간</div></div>
             <div style={Object.assign({}, s, { padding: "14px 0", textAlign: "center" })}><div style={{ fontSize: 22, fontWeight: 900, color: myRemaining >= 0 ? "#34d399" : "#f87171" }}>{fmt(myRemaining)}h</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>잔여 시간</div></div>
@@ -1833,7 +1835,7 @@ function OvertimePanel(props) {
         </div>
       ) : (
         <div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(100px, 1fr))", gap: 10, marginBottom: 16 }}>
             <div style={Object.assign({}, s, { padding: "14px 0", textAlign: "center" })}><div style={{ fontSize: 22, fontWeight: 900, color: "#818cf8" }}>{fmt(sumHours(entries))}h</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>팀 전체 누적 야근시간</div></div>
             <div style={Object.assign({}, s, { padding: "14px 0", textAlign: "center" })}><div style={{ fontSize: 22, fontWeight: 900, color: "#fb923c" }}>{fmt(sumHours(usage))}h</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>팀 전체 사용시간</div></div>
             <div style={Object.assign({}, s, { padding: "14px 0", textAlign: "center" })}><div style={{ fontSize: 22, fontWeight: 900, color: "#34d399" }}>{fmt(sumHours(entries) - sumHours(usage))}h</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>팀 전체 잔여 시간</div></div>
@@ -1940,7 +1942,7 @@ function MessagesPanel(props) {
   return (
     <div style={{ maxWidth: 900, margin: "0 auto" }}>
       <div style={{ background: t.surface, borderRadius: 14, border: "1px solid " + t.border, display: "flex", height: 620, overflow: "hidden" }}>
-        <div style={{ width: 250, flexShrink: 0, borderRight: "1px solid " + t.border, display: "flex", flexDirection: "column" }}>
+        <div style={{ width: "clamp(150px, 40vw, 250px)", flexShrink: 0, borderRight: "1px solid " + t.border, display: "flex", flexDirection: "column" }}>
           <div style={{ padding: "14px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
             <span>💬 메시지(메모)</span>
             {totalUnread > 0 ? <span style={{ fontSize: 10, background: "#f87171", color: "#fff", borderRadius: 99, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", fontWeight: 700 }}>{totalUnread > 9 ? "9+" : totalUnread}</span> : null}
@@ -2149,14 +2151,14 @@ export default function App() {
         {selectedDesignTask ? <TaskDetailModal task={selectedDesignTask} onClose={function () { setSelectedDesignTask(null); }} onUpdate={updateDesignTask} onMove={isViewer ? null : function (id, dir) { moveDesignTask(id, dir); setSelectedDesignTask(function (prev) { return Object.assign({}, prev, { status: DESIGN_STAGES[DESIGN_STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} tags={DESIGN_TAGS} categoryLabel="카테고리" editTitle="✏️ 디자인 업무 수정" /> : null}
         {showProfile ? <ProfileModal currentUser={currentUser} onClose={function () { setShowProfile(false); }} onUpdate={function (updated) { setUsersRaw(users.map(function (u) { return u.id === updated.id ? updated : u; })); setCurrentUser(updated); setShowProfile(false); }} /> : null}
 
-        <div style={{ borderBottom: "1px solid " + t.border, padding: "12px 24px", display: "flex", justifyContent: "space-between", alignItems: "center", background: t.headerBg, position: "sticky", top: 0, zIndex: 50 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ borderBottom: "1px solid " + t.border, padding: "10px clamp(10px,4vw,24px)", display: "flex", flexWrap: "wrap", rowGap: 8, justifyContent: "space-between", alignItems: "center", background: t.headerBg, position: "sticky", top: 0, zIndex: 50 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", rowGap: 6 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 15, fontWeight: 900, color: "#818cf8", letterSpacing: "2px" }}>TIMBEL</span><span style={{ fontSize: 13, fontWeight: 600, color: t.text3 }}>영상 제작 스케줄러</span></div>
             {isAdmin ? <span style={{ fontSize: 10, background: "#f8717120", color: "#f87171", border: "1px solid #f8717140", borderRadius: 20, padding: "2px 9px", fontWeight: 700 }}>🛡️ 관리자</span> : null}
             <span style={{ fontSize: 11, color: t.text4, background: t.surface2, padding: "2px 9px", borderRadius: 20, border: "1px solid " + t.border }}>{tasks.length}개</span>
             <SyncBadge synced={synced} />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", rowGap: 6 }}>
             <NotificationBell notifications={notifications || []} currentUser={currentUser} onMarkRead={markNotifRead} onMarkAllRead={markAllNotifsRead} onClickNotif={handleNotifClick} />
             <div style={{ display: "flex", alignItems: "center", background: t.surface2, border: "1px solid " + t.border, borderRadius: 10, padding: 3, gap: 2 }}>
               <button onClick={function () { setIsDark(false); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 7, border: "none", cursor: "pointer", background: !isDark ? "#fff" : "transparent", color: !isDark ? "#1e293b" : t.text4, fontWeight: !isDark ? 700 : 500, fontSize: 12 }}>☀️ 일반</button>
@@ -2174,14 +2176,14 @@ export default function App() {
 
         <NoticeBanner notices={notices} />
 
-        <div style={{ borderBottom: "1px solid " + t.border, padding: "0 24px", background: t.headerBg }}>
-          <div style={{ maxWidth: 1300, margin: "0 auto", display: "flex", gap: 2, justifyContent: "center" }}>
-            {isAdmin ? <button onClick={function () { setTab("admin"); }} style={{ padding: "10px 18px", background: "none", border: "none", borderBottom: tab === "admin" ? "2px solid #f87171" : "2px solid transparent", cursor: "pointer", fontWeight: tab === "admin" ? 700 : 500, fontSize: 13, color: tab === "admin" ? "#f87171" : t.text4, marginBottom: -1 }}>🛡️ 관리자</button> : null}
-            {displayTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={{ position: "relative", padding: "10px 18px", background: "none", border: "none", borderBottom: tab === tp.id ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: tab === tp.id ? 700 : 500, fontSize: 13, color: tab === tp.id ? "#818cf8" : t.text4, marginBottom: -1 }}>{tp.label}{tp.id === "messages" && myUnreadMessages > 0 ? <span style={{ position: "absolute", top: 4, right: 4, background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 99, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}</button>; })}
+        <div style={{ borderBottom: "1px solid " + t.border, padding: "0 clamp(6px,3vw,24px)", background: t.headerBg, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+          <div style={{ maxWidth: 1300, margin: "0 auto", display: "flex", gap: 2, justifyContent: "center", width: "max-content", minWidth: "100%" }}>
+            {isAdmin ? <button onClick={function () { setTab("admin"); }} style={{ flexShrink: 0, padding: "10px 16px", background: "none", border: "none", borderBottom: tab === "admin" ? "2px solid #f87171" : "2px solid transparent", cursor: "pointer", fontWeight: tab === "admin" ? 700 : 500, fontSize: 13, color: tab === "admin" ? "#f87171" : t.text4, marginBottom: -1, whiteSpace: "nowrap" }}>🛡️ 관리자</button> : null}
+            {displayTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={{ position: "relative", flexShrink: 0, padding: "10px 16px", background: "none", border: "none", borderBottom: tab === tp.id ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: tab === tp.id ? 700 : 500, fontSize: 13, color: tab === tp.id ? "#818cf8" : t.text4, marginBottom: -1, whiteSpace: "nowrap" }}>{tp.label}{tp.id === "messages" && myUnreadMessages > 0 ? <span style={{ position: "absolute", top: 4, right: 4, background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 99, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}</button>; })}
           </div>
         </div>
 
-        <div style={{ maxWidth: 1300, margin: "0 auto", padding: "20px", minWidth: 0, boxSizing: "border-box" }}>
+        <div style={{ maxWidth: 1300, margin: "0 auto", padding: "clamp(10px,4vw,20px)", minWidth: 0, boxSizing: "border-box" }}>
           {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} visibleTabs={vt} setVisibleTabs={function (v) { setVisibleTabsRaw(v); }} tasks={tasks} onUpdateTasks={setTasksRaw} /> : null}
           {tab === "unified" ? <CombinedCalendarView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onSelectAd={function () { setTab("ad"); }} /> : null}
           {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} onSelectAd={function () { setTab("ad"); }} /> : null}
