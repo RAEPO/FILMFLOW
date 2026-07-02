@@ -108,7 +108,7 @@ const WORK_COLOR = { "대기": "#6b7280", "기획중": "#818cf8", "작업중": "
 const AVATAR_COLORS = ["#6366f1", "#ec4899", "#fb923c", "#34d399", "#38bdf8", "#c084fc", "#f87171"];
 const ALL_TABS = [
   { id: "unified", label: "🗂️ 통합 캘린더" }, { id: "calendar", label: "📅 영상 캘린더" }, { id: "adCalendar", label: "🗓️ 마케팅 캘린더" }, { id: "designCalendar", label: "🎨 디자인 캘린더" }, { id: "board", label: "🎞️ 제작 보드" },
-  { id: "ad", label: "📢 광고 관리" }, { id: "stats", label: "📊 통계" }, { id: "overtime", label: "⏰ 야근 기록" }, { id: "ai", label: "🤖 AI 분석" },
+  { id: "ad", label: "📢 광고 관리" }, { id: "stats", label: "📊 통계" }, { id: "overtime", label: "⏰ 야근 기록" }, { id: "messages", label: "💬 메시지(메모)" }, { id: "ai", label: "🤖 AI 분석" },
 ];
 const ADMIN_USER = { id: "admin", name: "admin", password: "admin1234", dept: "경영진", rank: "대표", position: "관리자", officePhone: "", mobile: "", role: "admin", approved: true };
 const ROLE_COLOR = { "admin": "#f87171", "manager": "#fbbf24", "member": "#34d399", "viewer": "#94a3b8" };
@@ -941,9 +941,10 @@ function TaskDetailModal(props) {
             </div>
             <button onClick={onClose} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20, padding: 0, marginLeft: 12 }}>×</button>
           </div>
-          <div style={{ display: "flex", gap: 6, marginTop: 12 }}>
+          <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
             {onMove && idx > 0 ? <button onClick={function () { onMove(task.id, -1); onClose(); }} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 8, padding: "6px 0", fontSize: 11, cursor: "pointer", color: t.text4 }}>← {stageList[idx - 1]}</button> : null}
             {onMove && idx < stageList.length - 1 ? <button onClick={function () { onMove(task.id, 1); onClose(); }} style={{ flex: 1, background: "#6366f120", border: "1px solid #6366f140", borderRadius: 8, padding: "6px 0", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>{stageList[idx + 1]} →</button> : null}
+            {onMove && task.status !== stageList[stageList.length - 1] ? <button onClick={function () { onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1] })); onClose(); }} style={{ background: "#34d39920", border: "1px solid #34d39940", borderRadius: 8, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700, flexShrink: 0 }}>✅ 업무 완료</button> : null}
             {onMove ? <button onClick={function () { setEditForm({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "" }); setEditMode(true); }} style={{ background: t.surface2, border: "1px solid " + t.border2, borderRadius: 8, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: t.text4, flexShrink: 0 }}>✏️ 정보 수정</button> : null}
           </div>
         </div>
@@ -957,7 +958,7 @@ function TaskDetailModal(props) {
                 <div style={{ flex: 1 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
                     <span style={{ fontSize: 12, fontWeight: 700, color: t.text2 }}>{c.author}</span>
-                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ fontSize: 10, color: t.text5 }}>{c.time}</span>{c.author === currentUser.name ? <button onClick={function () { onUpdate(Object.assign({}, task, { comments: (task.comments || []).filter(function (x) { return x.id !== c.id; }) })); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 13, padding: 0 }}>×</button> : null}</div>
+                    <div style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ fontSize: 10, color: t.text5 }}>{c.time}</span>{(c.author === currentUser.name || currentUser.role === "admin" || currentUser.role === "manager") ? <button onClick={function () { onUpdate(Object.assign({}, task, { comments: (task.comments || []).filter(function (x) { return x.id !== c.id; }) })); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 13, padding: 0 }}>×</button> : null}</div>
                   </div>
                   <div style={{ background: t.surface2, borderRadius: 9, padding: "9px 12px", fontSize: 13, color: t.text2, lineHeight: 1.6 }}>{c.text}</div>
                 </div>
@@ -1155,6 +1156,13 @@ function getAdBoardStatus(ad) {
   return "기획";
 }
 
+function getDesignBoardStatus(dt) {
+  if (dt.status === "완료") return "업로드 완료";
+  if (dt.status === "피드백") return "검토";
+  if (dt.status === "시안 작업") return "편집";
+  return "기획";
+}
+
 function CombinedCalendarView(props) {
   const { t } = useTheme();
   const { videoTasks, marketingTasks, designTasks, ads, onSelectVideo, onSelectMarketing, onSelectDesign, onSelectAd } = props;
@@ -1254,7 +1262,7 @@ function CombinedCalendarView(props) {
 
 function BoardView(props) {
   const { t } = useTheme();
-  const { tasks, onSelectTask, onMove, onDelete, users, ads, onSelectAd } = props;
+  const { tasks, onSelectTask, onMove, onDelete, users, ads, onSelectAd, designTasks, onSelectDesign } = props;
   const memberNames = ["전체"].concat(users.filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return u.name; }));
   const [filterMember, setFilterMember] = useState("전체");
   const today = new Date();
@@ -1269,11 +1277,17 @@ function BoardView(props) {
   let filteredAds = ads || [];
   if (filterMember !== "전체") filteredAds = filteredAds.filter(function (ad) { return ad.requester === filterMember; });
   if (monthFilter === "month") { const prefix = selYear + "-" + pad(selMonth); filteredAds = filteredAds.filter(function (ad) { const d = ad.workDate || ad.expectedDate || ""; return d && d.indexOf(prefix) === 0; }); }
+  let filteredDesign = designTasks || [];
+  if (filterMember !== "전체") filteredDesign = filteredDesign.filter(function (dt) { return dt.assignee === filterMember; });
+  if (monthFilter === "month") { const prefix = selYear + "-" + pad(selMonth); filteredDesign = filteredDesign.filter(function (dt) { return dt.due && dt.due.indexOf(prefix) === 0; }); }
   const filterBtnStyle = function (active) { return { padding: "5px 14px", borderRadius: 20, border: "1px solid " + (active ? "#6366f1" : t.border), background: active ? "#6366f120" : "transparent", cursor: "pointer", fontSize: 12, fontWeight: 600, color: active ? "#818cf8" : t.text4 }; };
 
   return (
     <div>
-      <div style={{ fontSize: 11, color: t.text4, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 9, height: 9, borderRadius: 3, border: "1px dashed #fbbf24" }} />📢 점선 테두리 카드는 광고 관리에서 등록된 항목입니다</div>
+      <div style={{ fontSize: 11, color: t.text4, marginBottom: 10, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 9, height: 9, borderRadius: 3, border: "1px dashed #fbbf24" }} />📢 광고 관리 항목</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 9, height: 9, borderRadius: 3, border: "1px dashed #f87171" }} />🎨 디자인 캘린더 항목</span>
+      </div>
       <div style={{ background: t.surface, borderRadius: 12, border: "1px solid " + t.border, padding: "12px 14px", marginBottom: 14 }}>
         <div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 9, textTransform: "uppercase", letterSpacing: ".5px" }}>기간 필터</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -1295,11 +1309,12 @@ function BoardView(props) {
         {STAGES.map(function (col) {
           const colTasks = filtered.filter(function (tk) { return tk.status === col; });
           const colAds = filteredAds.filter(function (ad) { return getAdBoardStatus(ad) === col; });
+          const colDesign = filteredDesign.filter(function (dt) { return getDesignBoardStatus(dt) === col; });
           return (
             <div key={col} style={{ background: t.surface, borderRadius: 14, padding: "12px 10px", border: "1px solid " + t.border }}>
               <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 12, paddingBottom: 10, borderBottom: "1px solid " + t.border }}>
                 <span>{STAGE_ICON[col]}</span><span style={{ fontWeight: 700, fontSize: 12, color: t.text3 }}>{col}</span>
-                <span style={{ marginLeft: "auto", background: STAGE_COLOR[col] + "20", color: STAGE_COLOR[col], borderRadius: 99, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>{colTasks.length + colAds.length}</span>
+                <span style={{ marginLeft: "auto", background: STAGE_COLOR[col] + "20", color: STAGE_COLOR[col], borderRadius: 99, padding: "1px 8px", fontSize: 11, fontWeight: 700 }}>{colTasks.length + colAds.length + colDesign.length}</span>
               </div>
               {colTasks.map(function (tk) {
                 return (
@@ -1342,7 +1357,25 @@ function BoardView(props) {
                   </div>
                 );
               })}
-              {colTasks.length === 0 && colAds.length === 0 ? <div style={{ textAlign: "center", padding: "22px 0", color: t.text5, fontSize: 12 }}>비어있음</div> : null}
+              {colDesign.map(function (dt) {
+                return (
+                  <div key={dt.id} onClick={function () { if (onSelectDesign) onSelectDesign(dt); }} style={{ background: t.surface2, borderRadius: 11, padding: "11px 13px", marginBottom: 8, border: "1px dashed #f8717170", cursor: "pointer" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                      <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>🎨 {dt.title}</span>
+                    </div>
+                    <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
+                      <span style={{ fontSize: 10, color: "#f87171", background: "#f8717118", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>디자인</span>
+                      <span style={{ fontSize: 10, color: DESIGN_STAGE_COLOR[dt.status] || t.text4, background: (DESIGN_STAGE_COLOR[dt.status] || t.text4) + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{dt.status}</span>
+                      <span style={{ fontSize: 10, color: DESIGN_TAG_COLOR[dt.tag] || "#818cf8", background: (DESIGN_TAG_COLOR[dt.tag] || "#818cf8") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{dt.tag}</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Avatar name={dt.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text3 }}>{dt.assignee}</span></div>
+                      <span style={{ fontSize: 10, color: t.text4 }}>{dt.due && dt.due.slice(5)}</span>
+                    </div>
+                  </div>
+                );
+              })}
+              {colTasks.length === 0 && colAds.length === 0 && colDesign.length === 0 ? <div style={{ textAlign: "center", padding: "22px 0", color: t.text5, fontSize: 12 }}>비어있음</div> : null}
             </div>
           );
         })}
@@ -1821,6 +1854,124 @@ function OvertimePanel(props) {
   );
 }
 
+function MessagesPanel(props) {
+  const { t } = useTheme();
+  const { currentUser, users, isAdmin, messages, setMessages } = props;
+  const [selectedPartner, setSelectedPartner] = useState(null);
+  const [input, setInput] = useState("");
+  const myName = currentUser.name;
+
+  const partners = (function () {
+    const base = users.filter(function (u) { return u.approved && u.name !== myName; });
+    if (!isAdmin) base.unshift({ name: "admin", dept: "경영진", rank: "대표", position: "관리자" });
+    return base;
+  })();
+
+  const isRead = function (m) { return !!(m.readBy && m.readBy[myName]); };
+  const conversationWith = function (name) { return messages.filter(function (m) { return (m.from === myName && m.to === name) || (m.from === name && m.to === myName); }).slice().sort(function (a, b) { return a.createdAt - b.createdAt; }); };
+  const unreadFrom = function (name) { return messages.filter(function (m) { return m.from === name && m.to === myName && !isRead(m); }).length; };
+  const lastMessageWith = function (name) { const conv = conversationWith(name); return conv.length ? conv[conv.length - 1] : null; };
+  const partnersSorted = partners.slice().sort(function (a, b) {
+    const la = lastMessageWith(a.name), lb = lastMessageWith(b.name);
+    const ta = la ? la.createdAt : 0, tb = lb ? lb.createdAt : 0;
+    if (ta !== tb) return tb - ta;
+    return a.name < b.name ? -1 : 1;
+  });
+  const totalUnread = partners.reduce(function (a, p) { return a + unreadFrom(p.name); }, 0);
+
+  const markRead = function (name) {
+    let changed = false;
+    const updated = messages.map(function (m) {
+      if (m.from === name && m.to === myName && !isRead(m)) {
+        changed = true;
+        const rb = Object.assign({}, m.readBy || {});
+        rb[myName] = true;
+        return Object.assign({}, m, { readBy: rb });
+      }
+      return m;
+    });
+    if (changed) setMessages(updated);
+  };
+  useEffect(function () { if (selectedPartner) markRead(selectedPartner); }, [selectedPartner, messages.length]);
+
+  const send = function () {
+    if (!input.trim() || !selectedPartner) return;
+    const newMsg = { id: "msg_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7), from: myName, to: selectedPartner, text: input.trim(), createdAt: Date.now(), time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }), readBy: { [myName]: true } };
+    setMessages(messages.concat([newMsg]));
+    setInput("");
+  };
+
+  const conv = selectedPartner ? conversationWith(selectedPartner) : [];
+  const partnerInfo = selectedPartner ? partners.find(function (p) { return p.name === selectedPartner; }) : null;
+
+  return (
+    <div style={{ maxWidth: 900, margin: "0 auto" }}>
+      <div style={{ background: t.surface, borderRadius: 14, border: "1px solid " + t.border, display: "flex", height: 620, overflow: "hidden" }}>
+        <div style={{ width: 250, flexShrink: 0, borderRight: "1px solid " + t.border, display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span>💬 메시지(메모)</span>
+            {totalUnread > 0 ? <span style={{ fontSize: 10, background: "#f87171", color: "#fff", borderRadius: 99, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", fontWeight: 700 }}>{totalUnread > 9 ? "9+" : totalUnread}</span> : null}
+          </div>
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            {partnersSorted.length === 0 ? <div style={{ padding: "24px 16px", textAlign: "center", color: t.text5, fontSize: 12 }}>대화 가능한 팀원이 없습니다</div> : null}
+            {partnersSorted.map(function (p) {
+              const last = lastMessageWith(p.name);
+              const unread = unreadFrom(p.name);
+              const active = selectedPartner === p.name;
+              return (
+                <div key={p.name} onClick={function () { setSelectedPartner(p.name); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", cursor: "pointer", background: active ? "#6366f118" : "transparent", borderBottom: "1px solid " + t.border, borderLeft: active ? "3px solid #6366f1" : "3px solid transparent" }}>
+                  <Avatar name={p.name} size={30} users={users} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{p.name}</span>
+                      {unread > 0 ? <span style={{ fontSize: 10, background: "#f87171", color: "#fff", borderRadius: 99, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", fontWeight: 700, flexShrink: 0 }}>{unread > 9 ? "9+" : unread}</span> : null}
+                    </div>
+                    <div style={{ fontSize: 11, color: t.text4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{last ? (last.from === myName ? "나: " : "") + last.text : (p.rank || "") + (p.rank && p.position ? " · " : "") + (p.position || "")}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          {!selectedPartner ? (
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: t.text5, fontSize: 13 }}>왼쪽에서 대화할 팀원을 선택하세요</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+              <div style={{ padding: "14px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", gap: 10 }}>
+                <Avatar name={selectedPartner} size={30} users={users} />
+                <div><div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{selectedPartner}</div><div style={{ fontSize: 11, color: t.text4 }}>{partnerInfo ? [partnerInfo.rank, partnerInfo.position].filter(Boolean).join(" · ") : ""}</div></div>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {conv.length === 0 ? <div style={{ textAlign: "center", padding: "30px 0", color: t.text5, fontSize: 12 }}>아직 메시지가 없습니다. 첫 메시지를 보내보세요!</div> : null}
+                {conv.map(function (m) {
+                  const mine = m.from === myName;
+                  return (
+                    <div key={m.id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", gap: 8, alignItems: "flex-end" }}>
+                      {!mine ? <Avatar name={m.from} size={24} users={users} /> : null}
+                      <div style={{ maxWidth: "70%" }}>
+                        <div style={{ padding: "9px 13px", borderRadius: mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: mine ? "#6366f1" : t.surface2, color: mine ? "#fff" : t.text, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", border: mine ? "none" : "1px solid " + t.border }}>{m.text}</div>
+                        <div style={{ fontSize: 10, color: t.text5, marginTop: 3, textAlign: mine ? "right" : "left" }}>{m.time}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+                <div ref={function (el) { if (el) el.scrollIntoView({ behavior: "smooth" }); }} />
+              </div>
+              <div style={{ padding: "10px 16px 14px", borderTop: "1px solid " + t.border }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input value={input} onChange={function (e) { setInput(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter" && !e.shiftKey) send(); }} placeholder="메시지를 입력하세요..." style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 10, padding: "9px 13px", fontSize: 13, color: t.text, outline: "none" }} />
+                  <button onClick={send} disabled={!input.trim()} style={{ background: input.trim() ? "#6366f1" : t.surface2, border: "none", borderRadius: 10, padding: "0 18px", color: input.trim() ? "#fff" : t.text4, fontWeight: 700, fontSize: 13, cursor: input.trim() ? "pointer" : "not-allowed" }}>전송</button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   useEffect(function () {
     document.body.style.margin = "0"; document.body.style.padding = "0";
@@ -1836,6 +1987,7 @@ export default function App() {
   const [designTasks, setDesignTasksRaw, designTasksReady] = useFirebaseData("designTasks", []);
   const [notices, setNoticesRaw, noticesReady] = useFirebaseData("notices", []);
   const [notifications, setNotificationsRaw] = useFirebaseData("notifications", []);
+  const [directMessages, setDirectMessagesRaw] = useFirebaseData("directMessages", []);
   const [visibleTabs, setVisibleTabsRaw] = useFirebaseData("settings/visibleTabs", ALL_TABS.map(function (t) { return t.id; }));
   const synced = usersReady && tasksReady && noticesReady && marketingTasksReady && designTasksReady;
 
@@ -1876,6 +2028,7 @@ export default function App() {
 
   const isAdmin = currentUser && currentUser.role === "admin";
   const isViewer = currentUser && currentUser.role === "viewer";
+  const myUnreadMessages = currentUser ? directMessages.filter(function (m) { return m.to === currentUser.name && !(m.readBy && m.readBy[currentUser.name]); }).length : 0;
   const VIEWER_BLOCKED_TABS = ["ad", "ai", "overtime"];
 
   const setCurrentUser = function (user) {
@@ -1991,7 +2144,7 @@ export default function App() {
         <div style={{ borderBottom: "1px solid " + t.border, padding: "0 24px", background: t.headerBg }}>
           <div style={{ maxWidth: 1300, margin: "0 auto", display: "flex", gap: 2, justifyContent: "center" }}>
             {isAdmin ? <button onClick={function () { setTab("admin"); }} style={{ padding: "10px 18px", background: "none", border: "none", borderBottom: tab === "admin" ? "2px solid #f87171" : "2px solid transparent", cursor: "pointer", fontWeight: tab === "admin" ? 700 : 500, fontSize: 13, color: tab === "admin" ? "#f87171" : t.text4, marginBottom: -1 }}>🛡️ 관리자</button> : null}
-            {displayTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={{ padding: "10px 18px", background: "none", border: "none", borderBottom: tab === tp.id ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: tab === tp.id ? 700 : 500, fontSize: 13, color: tab === tp.id ? "#818cf8" : t.text4, marginBottom: -1 }}>{tp.label}</button>; })}
+            {displayTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={{ position: "relative", padding: "10px 18px", background: "none", border: "none", borderBottom: tab === tp.id ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: tab === tp.id ? 700 : 500, fontSize: 13, color: tab === tp.id ? "#818cf8" : t.text4, marginBottom: -1 }}>{tp.label}{tp.id === "messages" && myUnreadMessages > 0 ? <span style={{ position: "absolute", top: 4, right: 4, background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 99, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}</button>; })}
           </div>
         </div>
 
@@ -2001,10 +2154,11 @@ export default function App() {
           {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} onSelectAd={function () { setTab("ad"); }} /> : null}
           {tab === "adCalendar" ? <CalendarView tasks={marketingTasks} onSelectTask={setSelectedMarketingTask} onAddTask={isViewer ? function () {} : openAddMarketing} ads={adsData} onMove={isViewer ? null : moveMarketingTask} onDelete={isViewer ? null : deleteMarketingTask} onSelectAd={function () { setTab("ad"); }} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} taskLabel="마케팅 업무" taskUnitLabel="업무" /> : null}
           {tab === "designCalendar" ? <CalendarView tasks={designTasks} onSelectTask={setSelectedDesignTask} onAddTask={isViewer ? function () {} : openAddDesign} ads={[]} onMove={isViewer ? null : moveDesignTask} onDelete={isViewer ? null : deleteDesignTask} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} taskLabel="디자인 업무" taskUnitLabel="업무" /> : null}
-          {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} ads={adsData} onSelectAd={function () { setTab("ad"); }} /> : null}
+          {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} ads={adsData} onSelectAd={function () { setTab("ad"); }} designTasks={designTasks} onSelectDesign={setSelectedDesignTask} /> : null}
           {tab === "ad" ? <AdPanel onAdsChange={setAdsData} onNewAd={sendAdNotification} currentUser={currentUser} /> : null}
           {tab === "stats" ? <div style={{ maxWidth: 760, margin: "0 auto" }}><StatsPanel videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} currentUser={currentUser} /></div> : null}
           {tab === "overtime" ? <OvertimePanel currentUser={currentUser} users={users} isAdmin={isAdmin} /> : null}
+          {tab === "messages" ? <MessagesPanel currentUser={currentUser} users={users} isAdmin={isAdmin} messages={directMessages} setMessages={setDirectMessagesRaw} /> : null}
           {tab === "ai" ? <AIPanel tasks={tasks} users={users} /> : null}
         </div>
       </div>
