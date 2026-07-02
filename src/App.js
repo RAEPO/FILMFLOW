@@ -91,6 +91,13 @@ const DESIGN_STAGE_COLOR = { "기획": "#818cf8", "시안 작업": "#fb923c", "�
 const DESIGN_STAGE_ICON = { "기획": "💡", "시안 작업": "🎨", "피드백": "🔁", "완료": "✅" };
 const DESIGN_TAGS = ["로고", "배너", "템플릿", "인쇄물", "UI/UX", "기타"];
 const DESIGN_TAG_COLOR = { "로고": "#f87171", "배너": "#fbbf24", "템플릿": "#38bdf8", "인쇄물": "#c084fc", "UI/UX": "#34d399", "기타": "#94a3b8" };
+const COMBINED_TYPE_INFO = {
+  video: { color: "#818cf8", icon: "🎬", label: "영상" },
+  marketing: { color: "#fb923c", icon: "🗓️", label: "마케팅" },
+  design: { color: "#f87171", icon: "🎨", label: "디자인" },
+  adWork: { color: "#fbbf24", icon: "📢", label: "광고 제작일" },
+  adExpected: { color: "#38bdf8", icon: "🏁", label: "광고 예상완료" },
+};
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const CONFIRM_STATUS = ["대기", "컨펌중", "컨펌완료", "수정", "반려"];
 const WORK_STATUS = ["대기", "기획중", "작업중", "작업완료", "수정중"];
@@ -100,7 +107,7 @@ const CONFIRM_COLOR = { "대기": "#6b7280", "컨펌중": "#fbbf24", "컨펌완�
 const WORK_COLOR = { "대기": "#6b7280", "기획중": "#818cf8", "작업중": "#fb923c", "작업완료": "#34d399", "수정중": "#f87171" };
 const AVATAR_COLORS = ["#6366f1", "#ec4899", "#fb923c", "#34d399", "#38bdf8", "#c084fc", "#f87171"];
 const ALL_TABS = [
-  { id: "calendar", label: "📅 영상 캘린더" }, { id: "adCalendar", label: "🗓️ 마케팅 캘린더" }, { id: "designCalendar", label: "🎨 디자인 캘린더" }, { id: "board", label: "🎞️ 제작 보드" },
+  { id: "unified", label: "🗂️ 통합 캘린더" }, { id: "calendar", label: "📅 영상 캘린더" }, { id: "adCalendar", label: "🗓️ 마케팅 캘린더" }, { id: "designCalendar", label: "🎨 디자인 캘린더" }, { id: "board", label: "🎞️ 제작 보드" },
   { id: "ad", label: "📢 광고 관리" }, { id: "stats", label: "📊 통계" }, { id: "overtime", label: "⏰ 야근 기록" }, { id: "ai", label: "🤖 AI 분석" },
 ];
 const ADMIN_USER = { id: "admin", name: "admin", password: "admin1234", dept: "경영진", rank: "대표", position: "관리자", officePhone: "", mobile: "", role: "admin", approved: true };
@@ -1148,6 +1155,103 @@ function getAdBoardStatus(ad) {
   return "기획";
 }
 
+function CombinedCalendarView(props) {
+  const { t } = useTheme();
+  const { videoTasks, marketingTasks, designTasks, ads, onSelectVideo, onSelectMarketing, onSelectDesign, onSelectAd } = props;
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
+  const firstDay = new Date(year, month, 1).getDay();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const prevDays = new Date(year, month, 0).getDate();
+  const cells = [];
+  for (let i = firstDay - 1; i >= 0; i--) cells.push({ day: prevDays - i, cur: false });
+  for (let i = 1; i <= daysInMonth; i++) cells.push({ day: i, cur: true });
+  while (cells.length % 7 !== 0) cells.push({ day: cells.length - firstDay - daysInMonth + 1, cur: false });
+  const pad = function (n) { return String(n).padStart(2, "0"); };
+  const dateStr = function (d) { return year + "-" + pad(month + 1) + "-" + pad(d); };
+  const adItems = [];
+  for (let j = 0; j < (ads || []).length; j++) {
+    const ad = ads[j], label = ad.content || "광고";
+    if (ad.workDate) adItems.push({ id: "ad_work_" + ad.id, due: ad.workDate, title: label, kind: "adWork" });
+    if (ad.expectedDate) adItems.push({ id: "ad_exp_" + ad.id, due: ad.expectedDate, title: label, kind: "adExpected" });
+  }
+  const withKind = function (list, kind) { return list.map(function (tk) { return Object.assign({}, tk, { kind: kind }); }); };
+  const allItems = withKind(videoTasks, "video").concat(withKind(marketingTasks, "marketing")).concat(withKind(designTasks, "design")).concat(adItems);
+  const getDayItems = function (d) { const ds = dateStr(d); return allItems.filter(function (item) { return item.due === ds; }); };
+  const isToday = function (d) { return d === today.getDate() && month === today.getMonth() && year === today.getFullYear(); };
+  const goPrevMonth = function () { if (month === 0) { setMonth(11); setYear(year - 1); } else setMonth(month - 1); };
+  const goNextMonth = function () { if (month === 11) { setMonth(0); setYear(year + 1); } else setMonth(month + 1); };
+  const monthPrefix = year + "-" + pad(month + 1);
+  const monthItems = allItems.filter(function (item) { return item.due && item.due.indexOf(monthPrefix) === 0; }).slice().sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : 0; });
+  const handleItemClick = function (item) {
+    if (item.kind === "video") onSelectVideo(item);
+    else if (item.kind === "marketing") onSelectMarketing(item);
+    else if (item.kind === "design") onSelectDesign(item);
+    else if (onSelectAd) onSelectAd(item);
+  };
+  const weekdayColor = function (idx) { if (idx === 0) return "#f87171"; if (idx === 6) return "#818cf8"; return t.text4; };
+  const countByType = { video: 0, marketing: 0, design: 0, adWork: 0, adExpected: 0 };
+  monthItems.forEach(function (item) { countByType[item.kind] = (countByType[item.kind] || 0) + 1; });
+
+  return (
+    <div>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+        <button onClick={goPrevMonth} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 8, padding: "7px 14px", color: t.text3, cursor: "pointer", fontSize: 14 }}>‹</button>
+        <div style={{ textAlign: "center" }}><div style={{ fontSize: 20, fontWeight: 800, color: t.text }}>{year}년 {month + 1}월</div><div style={{ fontSize: 12, color: t.text4, marginTop: 2 }}>영상 {countByType.video} · 마케팅 {countByType.marketing} · 디자인 {countByType.design} · 광고 {countByType.adWork + countByType.adExpected}</div></div>
+        <button onClick={goNextMonth} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 8, padding: "7px 14px", color: t.text3, cursor: "pointer", fontSize: 14 }}>›</button>
+      </div>
+      <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
+        {["video", "marketing", "design", "adWork", "adExpected"].map(function (k) { return <div key={k} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 9, height: 9, borderRadius: 3, background: COMBINED_TYPE_INFO[k].color }} /><span style={{ fontSize: 11, color: t.text4 }}>{COMBINED_TYPE_INFO[k].icon} {COMBINED_TYPE_INFO[k].label}</span></div>; })}
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ fontSize: 11 }}>🎌</span><span style={{ fontSize: 11, color: t.text4 }}>공휴일</span></div>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", marginBottom: 4 }}>
+        {WEEKDAYS.map(function (w, i) { return <div key={w} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, padding: "6px 0", color: weekdayColor(i) }}>{w}</div>; })}
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", gap: 3 }}>
+        {cells.map(function (cell, i) {
+          const dayItems = cell.cur ? getDayItems(cell.day) : [];
+          const colIdx = i % 7;
+          const cellDateStr = cell.cur ? dateStr(cell.day) : null;
+          const holidayName = cellDateStr ? KOREAN_HOLIDAYS[cellDateStr] : null;
+          const isHoliday = !!holidayName;
+          return (
+            <div key={i} style={{ minHeight: 88, minWidth: 0, overflow: "hidden", background: cell.cur ? (isToday(cell.day) ? "#1e1b4b" : t.surface) : t.bg, borderRadius: 10, padding: "7px 7px 5px", border: "1px solid " + (isToday(cell.day) ? "#6366f1" : isHoliday ? "#f8717150" : t.border), boxSizing: "border-box" }}>
+              <div style={{ fontSize: 12, fontWeight: isToday(cell.day) || isHoliday ? 800 : 500, color: !cell.cur ? t.border2 : isToday(cell.day) ? "#818cf8" : isHoliday ? "#f87171" : weekdayColor(colIdx), marginBottom: isHoliday ? 1 : 4, display: "flex", justifyContent: "space-between" }}>
+                <span>{cell.day}</span>
+                {isToday(cell.day) ? <span style={{ fontSize: 9, background: "#6366f1", color: "#fff", borderRadius: 99, padding: "1px 5px", fontWeight: 700, flexShrink: 0 }}>오늘</span> : null}
+              </div>
+              {holidayName ? <div style={{ fontSize: 9, color: "#f87171", fontWeight: 600, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>🎌 {holidayName}</div> : null}
+              {dayItems.slice(0, 3).map(function (item) {
+                const info = COMBINED_TYPE_INFO[item.kind];
+                return <div key={item.kind + "_" + item.id} onClick={function () { handleItemClick(item); }} style={{ background: info.color + "25", border: "1px solid " + (info.color + "40"), borderRadius: 5, padding: "2px 5px", fontSize: 10, color: info.color, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 2, cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{info.icon} {item.title}</div>;
+              })}
+              {dayItems.length > 3 ? <div style={{ fontSize: 10, color: t.text4 }}>+{dayItems.length - 3}</div> : null}
+            </div>
+          );
+        })}
+      </div>
+      {monthItems.length > 0 ? (
+        <div style={{ marginTop: 18, background: t.surface, borderRadius: 14, border: "1px solid " + t.border, overflow: "hidden" }}>
+          <div style={{ padding: "11px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>{month + 1}월 전체 일정 ({monthItems.length})</div>
+          {monthItems.map(function (item, i) {
+            const isLast = i === monthItems.length - 1;
+            const info = COMBINED_TYPE_INFO[item.kind];
+            return (
+              <div key={item.kind + "_" + item.id} onClick={function () { handleItemClick(item); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", borderBottom: isLast ? "none" : "1px solid " + t.border, cursor: "pointer" }}>
+                <div style={{ width: 3, height: 30, borderRadius: 99, background: info.color, flexShrink: 0 }} />
+                <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0 }}>{info.icon} {info.label}</span>
+                <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</div>{item.assignee ? <div style={{ fontSize: 11, color: t.text4, marginTop: 1 }}>{item.assignee} · {item.status}</div> : null}</div>
+                <span style={{ fontSize: 11, color: t.text4, flexShrink: 0 }}>{item.due.slice(5)}</span>
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function BoardView(props) {
   const { t } = useTheme();
   const { tasks, onSelectTask, onMove, onDelete, users, ads, onSelectAd } = props;
@@ -1603,11 +1707,11 @@ function OvertimePanel(props) {
   const deleteEntry = function (id) { setEntries(entries.filter(function (e) { return e.id !== id; })); };
   const addUsage = function (data) { setUsage(usage.concat([{ id: "otu_" + Date.now(), user: myName, date: data.date, hours: data.hours, note: data.note, createdAt: Date.now() }])); };
   const deleteUsage = function (id) { setUsage(usage.filter(function (u) { return u.id !== id; })); };
-  const members = users.filter(function (u) { return u.approved; });
+  const members = users.filter(function (u) { return u.approved && u.role !== "viewer"; });
   const summaryByUser = members.map(function (u) {
     const ot = sumHours(entries.filter(function (e) { return e.user === u.name; }));
     const us = sumHours(usage.filter(function (x) { return x.user === u.name; }));
-    return { name: u.name, overtime: ot, used: us, remaining: ot - us };
+    return { name: u.name, rank: u.rank, position: u.position, overtime: ot, used: us, remaining: ot - us };
   }).sort(function (a, b) { return b.remaining - a.remaining; });
   const s = { background: t.surface, borderRadius: 13, border: "1px solid " + t.border, overflow: "hidden" };
   const viewBtn = function (v) { return { padding: "6px 16px", background: view === v ? "#6366f120" : "transparent", border: "1px solid " + (view === v ? "#6366f1" : t.border), borderRadius: 20, cursor: "pointer", fontSize: 12, fontWeight: view === v ? 700 : 500, color: view === v ? "#818cf8" : t.text4 }; };
@@ -1680,7 +1784,10 @@ function OvertimePanel(props) {
                 <div key={item.name} style={{ borderBottom: "1px solid " + t.border, background: isMe ? "#6366f110" : "transparent" }}>
                   <div onClick={function () { setExpandedUser(isOpen ? null : item.name); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", cursor: "pointer" }}>
                     <Avatar name={item.name} size={30} users={users} />
-                    <span style={{ fontSize: 13, fontWeight: 700, color: t.text, width: 90, flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>{item.name}{isMe ? <span style={{ fontSize: 10, background: "#6366f1", color: "#fff", borderRadius: 20, padding: "1px 7px", fontWeight: 700 }}>나</span> : null}</span>
+                    <div style={{ width: 110, flexShrink: 0 }}>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: t.text, display: "flex", alignItems: "center", gap: 6 }}>{item.name}{isMe ? <span style={{ fontSize: 10, background: "#6366f1", color: "#fff", borderRadius: 20, padding: "1px 7px", fontWeight: 700 }}>나</span> : null}</div>
+                      <div style={{ fontSize: 10, color: t.text4, marginTop: 1 }}>{item.rank}{item.rank && item.position ? " · " : ""}{item.position}</div>
+                    </div>
                     <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
                       <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#818cf8" }}>{fmt(item.overtime)}h</div><div style={{ fontSize: 10, color: t.text4 }}>누적</div></div>
                       <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#fb923c" }}>{fmt(item.used)}h</div><div style={{ fontSize: 10, color: t.text4 }}>사용</div></div>
@@ -1890,6 +1997,7 @@ export default function App() {
 
         <div style={{ maxWidth: 1300, margin: "0 auto", padding: "20px", minWidth: 0, boxSizing: "border-box" }}>
           {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} visibleTabs={vt} setVisibleTabs={function (v) { setVisibleTabsRaw(v); }} tasks={tasks} onUpdateTasks={setTasksRaw} /> : null}
+          {tab === "unified" ? <CombinedCalendarView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onSelectAd={function () { setTab("ad"); }} /> : null}
           {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} onSelectAd={function () { setTab("ad"); }} /> : null}
           {tab === "adCalendar" ? <CalendarView tasks={marketingTasks} onSelectTask={setSelectedMarketingTask} onAddTask={isViewer ? function () {} : openAddMarketing} ads={adsData} onMove={isViewer ? null : moveMarketingTask} onDelete={isViewer ? null : deleteMarketingTask} onSelectAd={function () { setTab("ad"); }} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} taskLabel="마케팅 업무" taskUnitLabel="업무" /> : null}
           {tab === "designCalendar" ? <CalendarView tasks={designTasks} onSelectTask={setSelectedDesignTask} onAddTask={isViewer ? function () {} : openAddDesign} ads={[]} onMove={isViewer ? null : moveDesignTask} onDelete={isViewer ? null : deleteDesignTask} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} taskLabel="디자인 업무" taskUnitLabel="업무" /> : null}
