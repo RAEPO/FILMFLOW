@@ -76,10 +76,12 @@ const LIGHT = { bg: "#f1f5f9", surface: "#ffffff", surface2: "#f8fafc", border: 
 
 const PRIORITIES = ["높음", "중간", "낮음"];
 const PRIORITY_COLOR = { "높음": "#f87171", "중간": "#fbbf24", "낮음": "#34d399" };
-const STAGES = ["기획", "촬영", "편집", "검토", "업로드 완료"];
-const STAGE_COLOR = { "기획": "#818cf8", "촬영": "#fb923c", "편집": "#38bdf8", "검토": "#c084fc", "업로드 완료": "#34d399" };
-const STAGE_ICON = { "기획": "💡", "촬영": "🎥", "편집": "✂️", "검토": "🔍", "업로드 완료": "🚀" };
+const STAGES = ["기획", "촬영", "편집", "검토", "업무 완료"];
+const STAGE_COLOR = { "기획": "#818cf8", "촬영": "#fb923c", "편집": "#38bdf8", "검토": "#c084fc", "업무 완료": "#34d399" };
+const STAGE_ICON = { "기획": "💡", "촬영": "🎥", "편집": "✂️", "검토": "🔍", "업무 완료": "🚀" };
 const TAGS = ["유튜브", "인스타그램", "틱톡", "쇼츠", "광고", "브이로그"];
+const TASK_CATEGORIES = ["기획", "촬영", "편집", "업로드", "미팅", "회의", "기타"];
+const VIDEO_WORK_CATEGORIES = ["기획", "촬영", "편집", "업로드"];
 const TAG_COLOR = { "유튜브": "#f87171", "인스타그램": "#c084fc", "틱톡": "#38bdf8", "쇼츠": "#fb923c", "광고": "#fbbf24", "브이로그": "#34d399" };
 const MARKETING_STAGES = ["기획", "진행중", "검토", "완료"];
 const MARKETING_STAGE_COLOR = { "기획": "#818cf8", "진행중": "#fb923c", "검토": "#c084fc", "완료": "#34d399" };
@@ -293,7 +295,7 @@ function AuthScreen(props) {
       <div style={{ width: 390, background: "#111827", borderRadius: 20, padding: "32px 32px 28px", border: "1px solid #1f2937", boxShadow: "0 24px 64px #000c" }}>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <div style={{ fontSize: 13, fontWeight: 900, color: "#818cf8", letterSpacing: "2px", marginBottom: 4 }}>TIMBEL</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#f9fafb" }}>영상 제작 스케줄러</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: "#f9fafb" }}>업무 스케줄러</div>
           <div style={{ fontSize: 11, color: "#34d399", marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399" }} />실시간 동기화
           </div>
@@ -559,7 +561,7 @@ function ReportModal(props) {
   const stageIconMap = props.stageIcon || STAGE_ICON;
   const tagList = props.tags || TAGS;
   const tagColorMap = props.tagColor || TAG_COLOR;
-  const doneStatus = props.doneStatus || "업로드 완료";
+  const doneStatus = props.doneStatus || "업무 완료";
   const sourceLabel = props.sourceLabel || "영상";
   const today = new Date();
   const pad = function (n) { return String(n).padStart(2, "0"); };
@@ -642,7 +644,7 @@ function ReportModal(props) {
               </table>
             </div>
           ) : null}
-          <div style={{ marginTop: 24, paddingTop: 14, borderTop: "1px solid #e2e8f0", fontSize: 11, color: "#94a3b8", textAlign: "center" }}>TIMBEL 영상 제작 스케줄러 자동 생성 | {reportDate}</div>
+          <div style={{ marginTop: 24, paddingTop: 14, borderTop: "1px solid #e2e8f0", fontSize: 11, color: "#94a3b8", textAlign: "center" }}>TIMBEL 업무 스케줄러 자동 생성 | {reportDate}</div>
         </div>
       </div>
     </div>
@@ -721,11 +723,12 @@ function LineChart(props) {
 function StatsPanel(props) {
   const { t } = useTheme();
   const currentUser = props.currentUser;
-  const videoTasks = props.videoTasks || [];
+  const isVideoWork = function (tk) { return !tk.category || VIDEO_WORK_CATEGORIES.indexOf(tk.category) !== -1; };
+  const videoTasks = (props.videoTasks || []).filter(isVideoWork);
   const marketingTasks = props.marketingTasks || [];
   const designTasks = props.designTasks || [];
   const SOURCES = {
-    video: { label: "영상", tasks: videoTasks, stages: STAGES, stageColor: STAGE_COLOR, stageIcon: STAGE_ICON, tags: TAGS, tagColor: TAG_COLOR, doneStatus: "업로드 완료", accent: "#818cf8" },
+    video: { label: "영상", tasks: videoTasks, stages: STAGES, stageColor: STAGE_COLOR, stageIcon: STAGE_ICON, tags: TAGS, tagColor: TAG_COLOR, doneStatus: "업무 완료", accent: "#818cf8" },
     marketing: { label: "마케팅", tasks: marketingTasks, stages: MARKETING_STAGES, stageColor: MARKETING_STAGE_COLOR, stageIcon: MARKETING_STAGE_ICON, tags: MARKETING_TAGS, tagColor: MARKETING_TAG_COLOR, doneStatus: "완료", accent: "#fbbf24" },
     design: { label: "디자인", tasks: designTasks, stages: DESIGN_STAGES, stageColor: DESIGN_STAGE_COLOR, stageIcon: DESIGN_STAGE_ICON, tags: DESIGN_TAGS, tagColor: DESIGN_TAG_COLOR, doneStatus: "완료", accent: "#f87171" },
   };
@@ -816,7 +819,7 @@ function StatsPanel(props) {
   const filteredVideo = dateFilter(videoTasks);
   const filteredMarketing = dateFilter(marketingTasks);
   const filteredDesign = dateFilter(designTasks);
-  const doneVideo = filteredVideo.filter(function (tk) { return tk.status === "업로드 완료"; }).length;
+  const doneVideo = filteredVideo.filter(function (tk) { return tk.status === "업무 완료"; }).length;
   const doneMarketing = filteredMarketing.filter(function (tk) { return tk.status === "완료"; }).length;
   const doneDesign = filteredDesign.filter(function (tk) { return tk.status === "완료"; }).length;
   const total = filteredVideo.length + filteredMarketing.length + filteredDesign.length;
@@ -836,7 +839,7 @@ function StatsPanel(props) {
     const md = filteredMarketing.filter(function (tk) { return tk.assignee === m; });
     const dd = filteredDesign.filter(function (tk) { return tk.assignee === m; });
     const tt = vd.length + md.length + dd.length;
-    const dn = vd.filter(function (tk) { return tk.status === "업로드 완료"; }).length + md.filter(function (tk) { return tk.status === "완료"; }).length + dd.filter(function (tk) { return tk.status === "완료"; }).length;
+    const dn = vd.filter(function (tk) { return tk.status === "업무 완료"; }).length + md.filter(function (tk) { return tk.status === "완료"; }).length + dd.filter(function (tk) { return tk.status === "완료"; }).length;
     return { name: m, total: tt, done: dn };
   });
   return (
@@ -880,10 +883,11 @@ function TaskDetailModal(props) {
   const stageIconMap = props.stageIcon || STAGE_ICON;
   const tagList = props.tags || TAGS;
   const categoryLabel = props.categoryLabel || "플랫폼";
+  const categories = props.categories || null;
   const editTitle = props.editTitle || "✏️ 영상 정보 수정";
   const [comment, setComment] = useState("");
   const [editMode, setEditMode] = useState(false);
-  const [editForm, setEditForm] = useState({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "" });
+  const [editForm, setEditForm] = useState({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") });
   const idx = stageList.indexOf(task.status);
   const memberNames = users.filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return u.name; });
   const setEF = function (k, v) { setEditForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
@@ -913,6 +917,7 @@ function TaskDetailModal(props) {
             <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>담당자</div><select value={editForm.assignee} onChange={function (e) { setEF("assignee", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{memberNames.map(function (m) { return <option key={m}>{m}</option>; })}</select></div>
             <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>우선순위</div><select value={editForm.priority} onChange={function (e) { setEF("priority", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{PRIORITIES.map(function (p) { return <option key={p}>{p}</option>; })}</select></div>
           </div>
+          {categories ? <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>업무 종류</div><select value={editForm.category} onChange={function (e) { setEF("category", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{categories.map(function (c) { return <option key={c}>{c}</option>; })}</select></div> : null}
           <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{categoryLabel}</div><select value={editForm.tag} onChange={function (e) { setEF("tag", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{tagList.map(function (tg) { return <option key={tg}>{tg}</option>; })}</select></div>
           <div style={{ marginBottom: 18 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 파일 링크</div><input value={editForm.fileUrl} onChange={function (e) { setEF("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
           <div style={{ display: "flex", gap: 8 }}>
@@ -933,6 +938,7 @@ function TaskDetailModal(props) {
               <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 11, color: stageColorMap[task.status], background: stageColorMap[task.status] + "18", padding: "2px 9px", borderRadius: 20, fontWeight: 700 }}>{stageIconMap[task.status]} {task.status}</span>
                 <span style={{ fontSize: 11, color: PRIORITY_COLOR[task.priority], background: PRIORITY_COLOR[task.priority] + "18", padding: "2px 9px", borderRadius: 20, fontWeight: 700 }}>{task.priority}</span>
+                {categories && task.category ? <span style={{ fontSize: 11, color: VIDEO_WORK_CATEGORIES.indexOf(task.category) !== -1 ? "#818cf8" : "#94a3b8", background: (VIDEO_WORK_CATEGORIES.indexOf(task.category) !== -1 ? "#818cf8" : "#94a3b8") + "18", padding: "2px 9px", borderRadius: 20, fontWeight: 700 }}>{task.category}</span> : null}
               </div>
               <div style={{ fontSize: 16, fontWeight: 800, color: t.text }}>{task.title}</div>
               <div style={{ fontSize: 12, color: t.text4, marginTop: 3 }}>{task.desc}</div>
@@ -945,7 +951,7 @@ function TaskDetailModal(props) {
             {onMove && idx > 0 ? <button onClick={function () { onMove(task.id, -1); onClose(); }} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 8, padding: "6px 0", fontSize: 11, cursor: "pointer", color: t.text4 }}>← {stageList[idx - 1]}</button> : null}
             {onMove && idx < stageList.length - 1 ? <button onClick={function () { onMove(task.id, 1); onClose(); }} style={{ flex: 1, background: "#6366f120", border: "1px solid #6366f140", borderRadius: 8, padding: "6px 0", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>{stageList[idx + 1]} →</button> : null}
             {onMove && task.status !== stageList[stageList.length - 1] ? <button onClick={function () { onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1] })); onClose(); }} style={{ background: "#34d39920", border: "1px solid #34d39940", borderRadius: 8, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700, flexShrink: 0 }}>✅ 업무 완료</button> : null}
-            {onMove ? <button onClick={function () { setEditForm({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "" }); setEditMode(true); }} style={{ background: t.surface2, border: "1px solid " + t.border2, borderRadius: 8, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: t.text4, flexShrink: 0 }}>✏️ 정보 수정</button> : null}
+            {onMove ? <button onClick={function () { setEditForm({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") }); setEditMode(true); }} style={{ background: t.surface2, border: "1px solid " + t.border2, borderRadius: 8, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: t.text4, flexShrink: 0 }}>✏️ 정보 수정</button> : null}
           </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px" }}>
@@ -985,8 +991,9 @@ function AddTaskModal(props) {
   const stageList = props.stages || STAGES;
   const modalTitle = props.title || "새 영상 추가";
   const categoryLabel = props.categoryLabel || "플랫폼";
+  const categories = props.categories || null;
   const memberNames = users.filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return u.name; });
-  const [form, setForm] = useState({ title: "", desc: "", assignee: memberNames[0] || "", priority: "중간", tag: tagList[0], due: defaultDate || "", status: stageList[0], fileUrl: "" });
+  const [form, setForm] = useState({ title: "", desc: "", assignee: memberNames[0] || "", priority: "중간", tag: tagList[0], due: defaultDate || "", status: stageList[0], fileUrl: "", category: categories ? categories[0] : "" });
   const set = function (k, v) { setForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
   const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "9px 12px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
   return (
@@ -994,7 +1001,7 @@ function AddTaskModal(props) {
       <div style={{ background: t.surface, borderRadius: 18, padding: "22px 26px", width: "min(92vw, 370px)", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
         <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, color: t.text }}>{modalTitle}</div>
         {[["제목", "title", "text"], ["설명", "desc", "text"], ["작업 시작일", "due", "date"]].map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><input type={item[2]} value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={inp} /></div>; })}
-        {[["담당자", "assignee", memberNames.length ? memberNames : ["미배정"]], ["우선순위", "priority", PRIORITIES], [categoryLabel, "tag", tagList], ["단계", "status", stageList]].map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><select value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{item[2].map(function (o) { return <option key={o}>{o}</option>; })}</select></div>; })}
+        {[["담당자", "assignee", memberNames.length ? memberNames : ["미배정"]], ["우선순위", "priority", PRIORITIES]].concat(categories ? [["업무 종류", "category", categories]] : []).concat([[categoryLabel, "tag", tagList], ["단계", "status", stageList]]).map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><select value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{item[2].map(function (o) { return <option key={o}>{o}</option>; })}</select></div>; })}
         <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 파일 링크 (웹 드라이브 등)</div><input value={form.fileUrl} onChange={function (e) { set("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
         <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
           <button onClick={onClose} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 9, padding: "10px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
@@ -1177,7 +1184,7 @@ function CalendarView(props) {
 }
 
 function getAdBoardStatus(ad) {
-  if (ad.insta === "완료" || ad.youtube === "완료") return "업로드 완료";
+  if (ad.insta === "완료" || ad.youtube === "완료") return "업무 완료";
   if (ad.finalConfirm === "컨펌완료" || ad.workStatus === "작업완료") return "검토";
   if (ad.workStatus === "작업중" || ad.workStatus === "수정중") return "편집";
   if (ad.workStatus === "기획중") return "기획";
@@ -1185,7 +1192,7 @@ function getAdBoardStatus(ad) {
 }
 
 function getDesignBoardStatus(dt) {
-  if (dt.status === "완료") return "업로드 완료";
+  if (dt.status === "완료") return "업무 완료";
   if (dt.status === "피드백") return "검토";
   if (dt.status === "시안 작업") return "편집";
   return "기획";
@@ -1335,7 +1342,7 @@ function BoardView(props) {
   const isOverdueVideo = function (tk) { return tk.due && tk.due < todayStr && tk.status === STAGES[0]; };
   const isOverdueDesign = function (dt) { return dt.due && dt.due < todayStr && dt.status === DESIGN_STAGES[0]; };
   const totalItems = filtered.length + filteredAds.length + filteredDesign.length;
-  const doneItems = filtered.filter(function (tk) { return tk.status === "업로드 완료"; }).length + filteredAds.filter(function (ad) { return getAdBoardStatus(ad) === "업로드 완료"; }).length + filteredDesign.filter(function (dt) { return dt.status === "완료"; }).length;
+  const doneItems = filtered.filter(function (tk) { return tk.status === "업무 완료"; }).length + filteredAds.filter(function (ad) { return getAdBoardStatus(ad) === "업무 완료"; }).length + filteredDesign.filter(function (dt) { return dt.status === "완료"; }).length;
   const doneRate = totalItems ? Math.round(doneItems / totalItems * 100) : 0;
 
   return (
@@ -1601,7 +1608,7 @@ function AIPanel(props) {
   const [mainTab, setMainTab] = useState("ai");
   const [report, setReport] = useState(""), [insight, setInsight] = useState("");
   const [lR, setLR] = useState(false), [lI, setLI] = useState(false);
-  const [messages, setMessages] = useState([{ role: "assistant", content: "안녕하세요! TIMBEL 영상 제작 스케줄러 AI 어시스턴트입니다. 무엇이든 물어보세요 😊" }]);
+  const [messages, setMessages] = useState([{ role: "assistant", content: "안녕하세요! TIMBEL 업무 스케줄러 AI 어시스턴트입니다. 무엇이든 물어보세요 😊" }]);
   const [input, setInput] = useState(""), [chatLoading, setChatLoading] = useState(false);
   const summary = tasks.map(function (tk) { return "[" + tk.status + "] " + tk.title + " (담당: " + tk.assignee + ", 플랫폼: " + tk.tag + ", 우선순위: " + tk.priority + ", 마감: " + tk.due + ")"; }).join("\n");
   const callAI = async function (prompt, set, setL) {
@@ -1617,7 +1624,7 @@ function AIPanel(props) {
     try { const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: "당신은 TIMBEL 영상 제작 팀의 AI 어시스턴트입니다. 스케줄 데이터 참고해서 한국어로 친절하게 답변하세요.\n\n현재 스케줄:\n" + summary, messages: newMessages.map(function (m) { return { role: m.role, content: m.content }; }) }) }); const data = await res.json(); setMessages(function (prev) { return prev.concat([{ role: "assistant", content: data.content.map(function (c) { return c.text || ""; }).join("\n") }]); }); } catch (e) { setMessages(function (prev) { return prev.concat([{ role: "assistant", content: "오류가 발생했습니다." }]); }); }
     setChatLoading(false);
   };
-  const suggestions = ["현재 마감 임박한 영상 알려줘", "편집 단계 영상 몇 개야?", "이번 달 업로드 완료 영상은?", "제작 효율 개선 방법 알려줘"];
+  const suggestions = ["현재 마감 임박한 영상 알려줘", "편집 단계 영상 몇 개야?", "이번 달 완료된 영상은?", "제작 효율 개선 방법 알려줘"];
   const s = { background: t.surface, borderRadius: 13, padding: "17px 19px", border: "1px solid " + t.border, marginBottom: 12 };
   const btn = function (l, bg) { return { width: "100%", padding: "10px 0", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: l ? "not-allowed" : "pointer", background: l ? t.surface2 : bg, color: l ? t.text4 : "#fff", marginTop: 12 }; };
   const firstUser = users.filter(function (u) { return u.role !== "admin"; })[0];
@@ -1635,7 +1642,7 @@ function AIPanel(props) {
             <div style={{ padding: "14px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg,#6366f1,#ec4899)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🤖</div>
               <div><div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>AI 어시스턴트</div><div style={{ fontSize: 11, color: "#34d399", display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399" }} /> 온라인</div></div>
-              <button onClick={function () { setMessages([{ role: "assistant", content: "안녕하세요! TIMBEL 영상 제작 스케줄러 AI 어시스턴트입니다. 무엇이든 물어보세요 😊" }]); }} style={{ marginLeft: "auto", background: t.surface2, border: "1px solid " + t.border, borderRadius: 7, padding: "4px 10px", fontSize: 11, color: t.text4, cursor: "pointer" }}>초기화</button>
+              <button onClick={function () { setMessages([{ role: "assistant", content: "안녕하세요! TIMBEL 업무 스케줄러 AI 어시스턴트입니다. 무엇이든 물어보세요 😊" }]); }} style={{ marginLeft: "auto", background: t.surface2, border: "1px solid " + t.border, borderRadius: 7, padding: "4px 10px", fontSize: 11, color: t.text4, cursor: "pointer" }}>초기화</button>
             </div>
             <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
               {messages.map(function (m, i) { return <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", gap: 8, alignItems: "flex-end" }}>{m.role === "assistant" ? <div style={{ width: 26, height: 26, borderRadius: 8, background: "linear-gradient(135deg,#6366f1,#ec4899)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>🤖</div> : null}<div style={{ maxWidth: "78%", padding: "10px 13px", borderRadius: m.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: m.role === "user" ? "#6366f1" : t.surface2, color: m.role === "user" ? "#fff" : t.text, fontSize: 13, lineHeight: 1.65, whiteSpace: "pre-wrap", border: m.role === "user" ? "none" : "1px solid " + t.border }}>{m.content}</div>{m.role === "user" ? <Avatar name={firstUser ? firstUser.name : "나"} size={26} users={users} /> : null}</div>; })}
@@ -2085,14 +2092,14 @@ export default function App() {
   }, [usersReady]);
   useEffect(function () {
     if (!noticesReady || notices.length > 0) return;
-    setNoticesRaw([{ id: "notice_1", title: "시스템 오픈 안내", content: "TIMBEL 영상 제작 스케줄러가 오픈되었습니다!", active: true }]);
+    setNoticesRaw([{ id: "notice_1", title: "시스템 오픈 안내", content: "TIMBEL 업무 스케줄러가 오픈되었습니다!", active: true }]);
   }, [noticesReady]);
   useEffect(function () {
     if (!tasksReady || tasks.length > 0) return;
     setTasksRaw([
       { id: "task_1", title: "6월 메인 브이로그", desc: "월간 하이라이트 영상", assignee: "박래성", priority: "높음", tag: "유튜브", due: "2026-06-30", status: "편집", comments: [] },
       { id: "task_2", title: "신제품 리뷰 영상", desc: "스마트폰 언박싱 & 리뷰", assignee: "이한희", priority: "높음", tag: "유튜브", due: "2026-06-28", status: "촬영", comments: [] },
-      { id: "task_3", title: "여름 쇼츠 #1", desc: "15초 숏폼 콘텐츠", assignee: "박래성", priority: "중간", tag: "쇼츠", due: "2026-06-27", status: "업로드 완료", comments: [] },
+      { id: "task_3", title: "여름 쇼츠 #1", desc: "15초 숏폼 콘텐츠", assignee: "박래성", priority: "중간", tag: "쇼츠", due: "2026-06-27", status: "업무 완료", comments: [] },
     ]);
   }, [tasksReady]);
 
@@ -2177,7 +2184,7 @@ export default function App() {
     return (
       <div style={{ minHeight: "100vh", background: "#0d1117", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "-apple-system,sans-serif", gap: 16 }}>
         <div style={{ fontSize: 30 }}>🎬</div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#f9fafb" }}>TIMBEL 영상 제작 스케줄러</div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: "#f9fafb" }}>TIMBEL 업무 스케줄러</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#fbbf24", fontSize: 13 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fbbf24" }} />Firebase 연결 중...</div>
       </div>
     );
@@ -2193,8 +2200,8 @@ export default function App() {
   return (
     <ThemeCtx.Provider value={{ t: t, isDark: isDark }}>
       <div style={{ minHeight: "100vh", background: t.bg, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", color: t.text }}>
-        {showAdd ? <AddTaskModal onAdd={addTask} onClose={function () { setShowAdd(false); }} defaultDate={addDate} users={users} /> : null}
-        {selectedTask ? <TaskDetailModal task={selectedTask} onClose={function () { setSelectedTask(null); }} onUpdate={updateTask} onMove={isViewer ? null : function (id, dir) { moveTask(id, dir); setSelectedTask(function (prev) { return Object.assign({}, prev, { status: STAGES[STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} /> : null}
+        {showAdd ? <AddTaskModal onAdd={addTask} onClose={function () { setShowAdd(false); }} defaultDate={addDate} users={users} title="업무 추가" categories={TASK_CATEGORIES} /> : null}
+        {selectedTask ? <TaskDetailModal task={selectedTask} onClose={function () { setSelectedTask(null); }} onUpdate={updateTask} onMove={isViewer ? null : function (id, dir) { moveTask(id, dir); setSelectedTask(function (prev) { return Object.assign({}, prev, { status: STAGES[STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} editTitle="✏️ 업무 정보 수정" categories={TASK_CATEGORIES} /> : null}
         {showAddMarketing ? <AddTaskModal onAdd={addMarketingTask} onClose={function () { setShowAddMarketing(false); }} defaultDate={addMarketingDate} users={users} stages={MARKETING_STAGES} tags={MARKETING_TAGS} title="새 마케팅 업무 추가" categoryLabel="카테고리" /> : null}
         {selectedMarketingTask ? <TaskDetailModal task={selectedMarketingTask} onClose={function () { setSelectedMarketingTask(null); }} onUpdate={updateMarketingTask} onMove={isViewer ? null : function (id, dir) { moveMarketingTask(id, dir); setSelectedMarketingTask(function (prev) { return Object.assign({}, prev, { status: MARKETING_STAGES[MARKETING_STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} tags={MARKETING_TAGS} categoryLabel="카테고리" editTitle="✏️ 마케팅 업무 수정" /> : null}
         {showAddDesign ? <AddTaskModal onAdd={addDesignTask} onClose={function () { setShowAddDesign(false); }} defaultDate={addDesignDate} users={users} stages={DESIGN_STAGES} tags={DESIGN_TAGS} title="새 디자인 업무 추가" categoryLabel="카테고리" /> : null}
@@ -2203,7 +2210,7 @@ export default function App() {
 
         <div style={{ borderBottom: "1px solid " + t.border, padding: "10px clamp(10px,4vw,24px)", display: "flex", flexWrap: "wrap", rowGap: 8, justifyContent: "space-between", alignItems: "center", background: t.headerBg, position: "sticky", top: 0, zIndex: 50 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", rowGap: 6 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 15, fontWeight: 900, color: "#818cf8", letterSpacing: "2px" }}>TIMBEL</span><span style={{ fontSize: 13, fontWeight: 600, color: t.text3 }}>영상 제작 스케줄러</span></div>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 15, fontWeight: 900, color: "#818cf8", letterSpacing: "2px" }}>TIMBEL</span><span style={{ fontSize: 13, fontWeight: 600, color: t.text3 }}>업무 스케줄러</span></div>
             {isAdmin ? <span style={{ fontSize: 10, background: "#f8717120", color: "#f87171", border: "1px solid #f8717140", borderRadius: 20, padding: "2px 9px", fontWeight: 700 }}>🛡️ 관리자</span> : null}
             <span style={{ fontSize: 11, color: t.text4, background: t.surface2, padding: "2px 9px", borderRadius: 20, border: "1px solid " + t.border }}>{tasks.length}개</span>
             <SyncBadge synced={synced} />
