@@ -1588,6 +1588,7 @@ function OvertimePanel(props) {
   const [entries, setEntries] = useFirebaseData("overtimeEntries", []);
   const [usage, setUsage] = useFirebaseData("overtimeUsage", []);
   const [view, setView] = useState("mine");
+  const [expandedUser, setExpandedUser] = useState(null);
   const [showAddEntry, setShowAddEntry] = useState(false);
   const [showAddUsage, setShowAddUsage] = useState(false);
   const myName = currentUser.name;
@@ -1614,12 +1615,10 @@ function OvertimePanel(props) {
     <div style={{ maxWidth: 760, margin: "0 auto" }}>
       {showAddEntry ? <OvertimeEntryModal kind="entry" onAdd={addEntry} onClose={function () { setShowAddEntry(false); }} /> : null}
       {showAddUsage ? <OvertimeEntryModal kind="usage" onAdd={addUsage} onClose={function () { setShowAddUsage(false); }} /> : null}
-      {isAdmin ? (
-        <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
-          <button style={viewBtn("mine")} onClick={function () { setView("mine"); }}>내 기록</button>
-          <button style={viewBtn("all")} onClick={function () { setView("all"); }}>👥 전체 현황</button>
-        </div>
-      ) : null}
+      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+        <button style={viewBtn("mine")} onClick={function () { setView("mine"); }}>내 기록</button>
+        <button style={viewBtn("all")} onClick={function () { setView("all"); setExpandedUser(null); }}>👥 팀 전체 현황</button>
+      </div>
       {view === "mine" ? (
         <div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
@@ -1663,22 +1662,52 @@ function OvertimePanel(props) {
           </div>
         </div>
       ) : (
-        <div style={s}>
-          <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 직원 야근 현황 ({summaryByUser.length}명)</div>
-          {summaryByUser.length === 0 ? <div style={{ padding: "24px", textAlign: "center", color: t.text5, fontSize: 13 }}>등록된 직원이 없습니다</div> : null}
-          {summaryByUser.map(function (item) {
-            return (
-              <div key={item.name} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", borderBottom: "1px solid " + t.border }}>
-                <Avatar name={item.name} size={30} users={users} />
-                <span style={{ fontSize: 13, fontWeight: 700, color: t.text, width: 90, flexShrink: 0 }}>{item.name}</span>
-                <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
-                  <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#818cf8" }}>{fmt(item.overtime)}h</div><div style={{ fontSize: 10, color: t.text4 }}>누적</div></div>
-                  <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#fb923c" }}>{fmt(item.used)}h</div><div style={{ fontSize: 10, color: t.text4 }}>사용</div></div>
-                  <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: item.remaining >= 0 ? "#34d399" : "#f87171" }}>{fmt(item.remaining)}h</div><div style={{ fontSize: 10, color: t.text4 }}>잔여</div></div>
+        <div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 16 }}>
+            <div style={Object.assign({}, s, { padding: "14px 0", textAlign: "center" })}><div style={{ fontSize: 22, fontWeight: 900, color: "#818cf8" }}>{fmt(sumHours(entries))}h</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>팀 전체 누적 야근시간</div></div>
+            <div style={Object.assign({}, s, { padding: "14px 0", textAlign: "center" })}><div style={{ fontSize: 22, fontWeight: 900, color: "#fb923c" }}>{fmt(sumHours(usage))}h</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>팀 전체 사용시간</div></div>
+            <div style={Object.assign({}, s, { padding: "14px 0", textAlign: "center" })}><div style={{ fontSize: 22, fontWeight: 900, color: "#34d399" }}>{fmt(sumHours(entries) - sumHours(usage))}h</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>팀 전체 잔여 시간</div></div>
+          </div>
+          <div style={s}>
+            <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>팀원별 현황 ({summaryByUser.length}명) · 이름을 클릭하면 상세 기록이 열려요</div>
+            {summaryByUser.length === 0 ? <div style={{ padding: "24px", textAlign: "center", color: t.text5, fontSize: 13 }}>등록된 직원이 없습니다</div> : null}
+            {summaryByUser.map(function (item) {
+              const isMe = item.name === myName;
+              const isOpen = expandedUser === item.name;
+              const personEntries = entries.filter(function (e) { return e.user === item.name; }).slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+              const personUsage = usage.filter(function (u) { return u.user === item.name; }).slice().sort(function (a, b) { return a.date < b.date ? 1 : -1; });
+              return (
+                <div key={item.name} style={{ borderBottom: "1px solid " + t.border, background: isMe ? "#6366f110" : "transparent" }}>
+                  <div onClick={function () { setExpandedUser(isOpen ? null : item.name); }} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 16px", cursor: "pointer" }}>
+                    <Avatar name={item.name} size={30} users={users} />
+                    <span style={{ fontSize: 13, fontWeight: 700, color: t.text, width: 90, flexShrink: 0, display: "flex", alignItems: "center", gap: 6 }}>{item.name}{isMe ? <span style={{ fontSize: 10, background: "#6366f1", color: "#fff", borderRadius: 20, padding: "1px 7px", fontWeight: 700 }}>나</span> : null}</span>
+                    <div style={{ flex: 1, display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>
+                      <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#818cf8" }}>{fmt(item.overtime)}h</div><div style={{ fontSize: 10, color: t.text4 }}>누적</div></div>
+                      <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: "#fb923c" }}>{fmt(item.used)}h</div><div style={{ fontSize: 10, color: t.text4 }}>사용</div></div>
+                      <div style={{ textAlign: "center" }}><div style={{ fontSize: 14, fontWeight: 800, color: item.remaining >= 0 ? "#34d399" : "#f87171" }}>{fmt(item.remaining)}h</div><div style={{ fontSize: 10, color: t.text4 }}>잔여</div></div>
+                    </div>
+                    <span style={{ fontSize: 12, color: t.text5, flexShrink: 0 }}>{isOpen ? "▲" : "▼"}</span>
+                  </div>
+                  {isOpen ? (
+                    <div style={{ padding: "0 16px 14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                      <div style={{ background: t.bg, borderRadius: 9, border: "1px solid " + t.border, overflow: "hidden" }}>
+                        <div style={{ padding: "8px 12px", borderBottom: "1px solid " + t.border, fontSize: 11, fontWeight: 700, color: t.text4 }}>⏰ 야근 기록 ({personEntries.length})</div>
+                        {personEntries.length === 0 ? <div style={{ padding: "14px", textAlign: "center", color: t.text5, fontSize: 12 }}>기록 없음</div> : personEntries.map(function (e) {
+                          return <div key={e.id} style={{ display: "flex", gap: 8, padding: "8px 12px", borderBottom: "1px solid " + t.border, fontSize: 12 }}><span style={{ color: t.text4, width: 76, flexShrink: 0 }}>{e.date}</span><span style={{ color: "#818cf8", fontWeight: 700, width: 40, flexShrink: 0 }}>{fmt(e.hours)}h</span><span style={{ color: t.text3, flex: 1 }}>{e.reason || "-"}</span></div>;
+                        })}
+                      </div>
+                      <div style={{ background: t.bg, borderRadius: 9, border: "1px solid " + t.border, overflow: "hidden" }}>
+                        <div style={{ padding: "8px 12px", borderBottom: "1px solid " + t.border, fontSize: 11, fontWeight: 700, color: t.text4 }}>🏖️ 대체휴가 사용 ({personUsage.length})</div>
+                        {personUsage.length === 0 ? <div style={{ padding: "14px", textAlign: "center", color: t.text5, fontSize: 12 }}>기록 없음</div> : personUsage.map(function (u) {
+                          return <div key={u.id} style={{ display: "flex", gap: 8, padding: "8px 12px", borderBottom: "1px solid " + t.border, fontSize: 12 }}><span style={{ color: t.text4, width: 76, flexShrink: 0 }}>{u.date}</span><span style={{ color: "#fb923c", fontWeight: 700, width: 40, flexShrink: 0 }}>{fmt(u.hours)}h</span><span style={{ color: t.text3, flex: 1 }}>{u.note || "-"}</span></div>;
+                        })}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
-              </div>
-            );
-          })}
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
@@ -1740,7 +1769,7 @@ export default function App() {
 
   const isAdmin = currentUser && currentUser.role === "admin";
   const isViewer = currentUser && currentUser.role === "viewer";
-  const VIEWER_BLOCKED_TABS = ["ad", "ai"];
+  const VIEWER_BLOCKED_TABS = ["ad", "ai", "overtime"];
 
   const setCurrentUser = function (user) {
     setCurrentUserRaw(user);
