@@ -1575,7 +1575,7 @@ function BoardView(props) {
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         {memberNames.map(function (m) { return <button key={m} onClick={function () { setFilterMember(m); }} style={filterBtnStyle(filterMember === m)}>{m}</button>; })}
       </div>
-      <div style={{ overflowX: "auto", WebkitOverflowScrolling: "touch", paddingBottom: 4, margin: "0 -2px" }}>
+      <div style={{ overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 4, margin: "0 -2px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(200px,1fr))", gap: 12, minWidth: 900 }}>
         {STAGES.map(function (col) {
           const colTasks = filtered.filter(function (tk) { return tk.status === col; });
@@ -2648,7 +2648,7 @@ export default function App() {
 
         <NoticeBanner notices={notices} />
 
-        <div style={{ borderBottom: "1px solid " + t.border, padding: "0 clamp(6px,3vw,24px)", background: t.headerBg, overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+        <div style={{ borderBottom: "1px solid " + t.border, padding: "0 clamp(6px,3vw,24px)", background: t.headerBg, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
           <div style={{ maxWidth: 1300, margin: "0 auto", display: "flex", gap: 2, justifyContent: "center", width: "max-content", minWidth: "100%" }}>
             {isAdmin ? <button onClick={function () { setTab("admin"); }} style={{ flexShrink: 0, padding: "10px 16px", background: "none", border: "none", borderBottom: tab === "admin" ? "2px solid #f87171" : "2px solid transparent", cursor: "pointer", fontWeight: tab === "admin" ? 700 : 500, fontSize: 13, color: tab === "admin" ? "#f87171" : t.text4, marginBottom: -1, whiteSpace: "nowrap" }}>🛡️ 관리자</button> : null}
             {displayTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={{ position: "relative", flexShrink: 0, padding: "10px 16px", background: "none", border: "none", borderBottom: tab === tp.id ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: tab === tp.id ? 700 : 500, fontSize: 13, color: tab === tp.id ? "#818cf8" : t.text4, marginBottom: -1, whiteSpace: "nowrap" }}>{tp.label}{tp.id === "messages" && myUnreadMessages > 0 ? <span style={{ position: "absolute", top: 4, right: 4, background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 99, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}</button>; })}
