@@ -1,4 +1,4 @@
-import { useState, useEffect, createContext, useContext } from "react";
+import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set as dbSet } from "firebase/database";
 
@@ -2445,6 +2445,8 @@ export default function App() {
   }, []);
   const [isDark, setIsDarkRaw] = useState(function () { const saved = getCookie("timbel_theme"); return saved === "light" ? false : true; });
   const [calendarMenuOpen, setCalendarMenuOpen] = useState(false);
+  const [calendarMenuPos, setCalendarMenuPos] = useState({ top: 0, left: 0 });
+  const calendarBtnRef = useRef(null);
   const setIsDark = function (v) { setIsDarkRaw(v); setCookie("timbel_theme", v ? "dark" : "light", 365); };
   const t = isDark ? DARK : LIGHT;
   useEffect(function () { document.body.style.background = t.bg; document.documentElement.style.background = t.bg; }, [t.bg]);
@@ -2663,10 +2665,16 @@ export default function App() {
                 {otherTabs.filter(function (tp) { return tp.id === "home"; }).map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}>{tp.label}</button>; })}
                 {calendarTabs.length > 0 ? (
                   <div style={{ position: "relative" }}>
-                    <button onClick={function () { setCalendarMenuOpen(!calendarMenuOpen); }} style={tabBtnStyle(calendarActive)}>📅 {activeCalendarTab ? activeCalendarTab.label.replace(/^\S+\s/, "") : "캘린더"} ▾</button>
+                    <button ref={calendarBtnRef} onClick={function () {
+                      if (!calendarMenuOpen && calendarBtnRef.current) {
+                        const rect = calendarBtnRef.current.getBoundingClientRect();
+                        setCalendarMenuPos({ top: rect.bottom + 4, left: rect.left });
+                      }
+                      setCalendarMenuOpen(!calendarMenuOpen);
+                    }} style={tabBtnStyle(calendarActive)}>📅 {activeCalendarTab ? activeCalendarTab.label.replace(/^\S+\s/, "") : "캘린더"} ▾</button>
                     {calendarMenuOpen ? <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={function () { setCalendarMenuOpen(false); }} /> : null}
                     {calendarMenuOpen ? (
-                      <div style={{ position: "absolute", top: 44, left: 0, minWidth: 180, background: t.surface, border: "1px solid " + t.border, borderRadius: 10, boxShadow: "0 12px 32px #000a", overflow: "hidden", zIndex: 95 }}>
+                      <div style={{ position: "fixed", top: calendarMenuPos.top, left: calendarMenuPos.left, minWidth: 180, background: t.surface, border: "1px solid " + t.border, borderRadius: 10, boxShadow: "0 12px 32px #000a", overflow: "hidden", zIndex: 95 }}>
                         {calendarTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); setCalendarMenuOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text3, whiteSpace: "nowrap" }}>{tp.label}</button>; })}
                       </div>
                     ) : null}
