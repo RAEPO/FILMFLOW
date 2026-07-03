@@ -2444,7 +2444,7 @@ export default function App() {
     document.documentElement.style.margin = "0"; document.documentElement.style.padding = "0";
   }, []);
   const [isDark, setIsDarkRaw] = useState(function () { const saved = getCookie("timbel_theme"); return saved === "light" ? false : true; });
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [calendarMenuOpen, setCalendarMenuOpen] = useState(false);
   const setIsDark = function (v) { setIsDarkRaw(v); setCookie("timbel_theme", v ? "dark" : "light", 365); };
   const t = isDark ? DARK : LIGHT;
   useEffect(function () { document.body.style.background = t.bg; document.documentElement.style.background = t.bg; }, [t.bg]);
@@ -2649,39 +2649,50 @@ export default function App() {
 
         <NoticeBanner notices={notices} />
 
-        <div style={{ display: "flex", alignItems: "flex-start" }}>
-          {sidebarOpen ? (
-            <div style={{ width: "clamp(150px, 20vw, 210px)", flexShrink: 0, background: t.headerBg, boxSizing: "border-box", padding: "10px 0" }}>
-              <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 10px 8px" }}>
-                <button onClick={function () { setSidebarOpen(false); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, color: t.text4, padding: "4px 6px", display: "flex", alignItems: "center" }} title="탭 메뉴 접기">◀</button>
+        {(function () {
+          const CALENDAR_TAB_IDS = ["unified", "calendar", "adCalendar", "designCalendar"];
+          const calendarTabs = displayTabs.filter(function (tp) { return CALENDAR_TAB_IDS.indexOf(tp.id) !== -1; });
+          const otherTabs = displayTabs.filter(function (tp) { return CALENDAR_TAB_IDS.indexOf(tp.id) === -1; });
+          const calendarActive = CALENDAR_TAB_IDS.indexOf(tab) !== -1;
+          const activeCalendarTab = calendarTabs.find(function (tp) { return tp.id === tab; });
+          const tabBtnStyle = function (active, color) { return { position: "relative", flexShrink: 0, padding: "10px 16px", background: "none", border: "none", borderBottom: "2px solid " + (active ? (color || "#6366f1") : "transparent"), cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: 13, color: active ? (color || "#818cf8") : t.text4, marginBottom: -1, whiteSpace: "nowrap" }; };
+          return (
+            <div style={{ borderBottom: "1px solid " + t.border, padding: "0 clamp(6px,3vw,24px)", background: t.headerBg, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
+              <div style={{ maxWidth: 1300, margin: "0 auto", display: "flex", gap: 2, justifyContent: "center", width: "max-content", minWidth: "100%" }}>
+                {isAdmin ? <button onClick={function () { setTab("admin"); }} style={tabBtnStyle(tab === "admin", "#f87171")}>🛡️ 관리자</button> : null}
+                {otherTabs.filter(function (tp) { return tp.id === "home"; }).map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}>{tp.label}</button>; })}
+                {calendarTabs.length > 0 ? (
+                  <div style={{ position: "relative" }}>
+                    <button onClick={function () { setCalendarMenuOpen(!calendarMenuOpen); }} style={tabBtnStyle(calendarActive)}>📅 {activeCalendarTab ? activeCalendarTab.label.replace(/^\S+\s/, "") : "캘린더"} ▾</button>
+                    {calendarMenuOpen ? (
+                      <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={function () { setCalendarMenuOpen(false); }}>
+                        <div onClick={function (e) { e.stopPropagation(); }} style={{ position: "absolute", top: 44, left: 0, minWidth: 180, background: t.surface, border: "1px solid " + t.border, borderRadius: 10, boxShadow: "0 12px 32px #000a", overflow: "hidden", zIndex: 95 }}>
+                          {calendarTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); setCalendarMenuOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text3, whiteSpace: "nowrap" }}>{tp.label}</button>; })}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                {otherTabs.filter(function (tp) { return tp.id !== "home"; }).map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}>{tp.label}{tp.id === "messages" && myUnreadMessages > 0 ? <span style={{ position: "absolute", top: 4, right: 4, background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 99, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}</button>; })}
               </div>
-              {isAdmin ? <button onClick={function () { setTab("admin"); }} style={{ display: "flex", alignItems: "center", width: "100%", boxSizing: "border-box", padding: "10px 16px", background: tab === "admin" ? "#f8717118" : "none", border: "none", borderLeft: "3px solid " + (tab === "admin" ? "#f87171" : "transparent"), cursor: "pointer", fontWeight: tab === "admin" ? 700 : 500, fontSize: 13, color: tab === "admin" ? "#f87171" : t.text4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>🛡️ 관리자</button> : null}
-              {displayTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={{ position: "relative", display: "flex", alignItems: "center", width: "100%", boxSizing: "border-box", padding: "10px 16px", background: tab === tp.id ? "#6366f118" : "none", border: "none", borderLeft: "3px solid " + (tab === tp.id ? "#6366f1" : "transparent"), cursor: "pointer", fontWeight: tab === tp.id ? 700 : 500, fontSize: 13, color: tab === tp.id ? "#818cf8" : t.text4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{tp.label}{tp.id === "messages" && myUnreadMessages > 0 ? <span style={{ marginLeft: "auto", flexShrink: 0, background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 99, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}</button>; })}
             </div>
-          ) : (
-            <div style={{ width: 44, flexShrink: 0, background: t.headerBg, boxSizing: "border-box", padding: "10px 0", display: "flex", flexDirection: "column", alignItems: "center" }}>
-              <button onClick={function () { setSidebarOpen(true); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: t.text3, padding: "6px" }} title="탭 메뉴 펼치기">☰</button>
-              {tab === "messages" && myUnreadMessages > 0 ? <span style={{ marginTop: 4, background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 99, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}
-            </div>
-          )}
+          );
+        })()}
 
-          <div style={{ flex: 1, minWidth: 0, padding: "clamp(10px,4vw,20px)", boxSizing: "border-box" }}>
-            <div style={{ maxWidth: 1300, margin: "0 auto" }}>
-              {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} visibleTabs={vt} setVisibleTabs={function (v) { setVisibleTabsRaw(v); }} tasks={tasks} onUpdateTasks={setTasksRaw} /> : null}
-              {tab === "home" ? <HomePanel currentUser={currentUser} users={users} videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} /> : null}
-              {tab === "unified" ? <CombinedCalendarView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onSelectAd={function () { setTab("ad"); }} /> : null}
-              {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} onSelectAd={function () { setTab("ad"); }} onBulkDelete={isViewer ? null : bulkDeleteTasks} onBulkAssign={isViewer ? null : bulkAssignTasks} users={users} /> : null}
-              {tab === "adCalendar" ? <CalendarView tasks={marketingTasks} onSelectTask={setSelectedMarketingTask} onAddTask={isViewer ? function () {} : openAddMarketing} ads={adsData} onMove={isViewer ? null : moveMarketingTask} onDelete={isViewer ? null : deleteMarketingTask} onSelectAd={function () { setTab("ad"); }} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} taskLabel="마케팅 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssign={isViewer ? null : bulkAssignMarketingTasks} users={users} /> : null}
-              {tab === "designCalendar" ? <CalendarView tasks={designTasks} onSelectTask={setSelectedDesignTask} onAddTask={isViewer ? function () {} : openAddDesign} ads={[]} onMove={isViewer ? null : moveDesignTask} onDelete={isViewer ? null : deleteDesignTask} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} taskLabel="디자인 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteDesignTasks} onBulkAssign={isViewer ? null : bulkAssignDesignTasks} users={users} /> : null}
-              {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} ads={adsData} onSelectAd={function () { setTab("ad"); }} designTasks={designTasks} onSelectDesign={setSelectedDesignTask} marketingTasks={marketingTasks} onSelectMarketing={setSelectedMarketingTask} onBulkDeleteTasks={isViewer ? null : bulkDeleteTasks} onBulkAssignTasks={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} /> : null}
-              {tab === "ad" ? <AdPanel onAdsChange={setAdsData} onNewAd={sendAdNotification} currentUser={currentUser} /> : null}
-              {tab === "stats" ? <div style={{ maxWidth: 760, margin: "0 auto" }}><StatsPanel videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} currentUser={currentUser} /></div> : null}
-              {tab === "overtime" ? <OvertimePanel currentUser={currentUser} users={users} isAdmin={isAdmin} /> : null}
-              {tab === "messages" ? <MessagesPanel currentUser={currentUser} users={users} isAdmin={isAdmin} messages={directMessages} setMessages={setDirectMessagesRaw} /> : null}
-              {tab === "ai" ? <AIPanel tasks={tasks} users={users} /> : null}
-              {tab === "activity" ? <ActivityLogPanel log={activityLog} onRestore={restoreDeletedItem} /> : null}
-            </div>
-          </div>
+        <div style={{ maxWidth: 1300, margin: "0 auto", padding: "clamp(10px,4vw,20px)", minWidth: 0, boxSizing: "border-box" }}>
+          {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} visibleTabs={vt} setVisibleTabs={function (v) { setVisibleTabsRaw(v); }} tasks={tasks} onUpdateTasks={setTasksRaw} /> : null}
+          {tab === "home" ? <HomePanel currentUser={currentUser} users={users} videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} /> : null}
+          {tab === "unified" ? <CombinedCalendarView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onSelectAd={function () { setTab("ad"); }} /> : null}
+          {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} onSelectAd={function () { setTab("ad"); }} onBulkDelete={isViewer ? null : bulkDeleteTasks} onBulkAssign={isViewer ? null : bulkAssignTasks} users={users} /> : null}
+          {tab === "adCalendar" ? <CalendarView tasks={marketingTasks} onSelectTask={setSelectedMarketingTask} onAddTask={isViewer ? function () {} : openAddMarketing} ads={adsData} onMove={isViewer ? null : moveMarketingTask} onDelete={isViewer ? null : deleteMarketingTask} onSelectAd={function () { setTab("ad"); }} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} taskLabel="마케팅 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssign={isViewer ? null : bulkAssignMarketingTasks} users={users} /> : null}
+          {tab === "designCalendar" ? <CalendarView tasks={designTasks} onSelectTask={setSelectedDesignTask} onAddTask={isViewer ? function () {} : openAddDesign} ads={[]} onMove={isViewer ? null : moveDesignTask} onDelete={isViewer ? null : deleteDesignTask} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} taskLabel="디자인 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteDesignTasks} onBulkAssign={isViewer ? null : bulkAssignDesignTasks} users={users} /> : null}
+          {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} ads={adsData} onSelectAd={function () { setTab("ad"); }} designTasks={designTasks} onSelectDesign={setSelectedDesignTask} marketingTasks={marketingTasks} onSelectMarketing={setSelectedMarketingTask} onBulkDeleteTasks={isViewer ? null : bulkDeleteTasks} onBulkAssignTasks={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} /> : null}
+          {tab === "ad" ? <AdPanel onAdsChange={setAdsData} onNewAd={sendAdNotification} currentUser={currentUser} /> : null}
+          {tab === "stats" ? <div style={{ maxWidth: 760, margin: "0 auto" }}><StatsPanel videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} currentUser={currentUser} /></div> : null}
+          {tab === "overtime" ? <OvertimePanel currentUser={currentUser} users={users} isAdmin={isAdmin} /> : null}
+          {tab === "messages" ? <MessagesPanel currentUser={currentUser} users={users} isAdmin={isAdmin} messages={directMessages} setMessages={setDirectMessagesRaw} /> : null}
+          {tab === "ai" ? <AIPanel tasks={tasks} users={users} /> : null}
+          {tab === "activity" ? <ActivityLogPanel log={activityLog} onRestore={restoreDeletedItem} /> : null}
         </div>
       </div>
     </ThemeCtx.Provider>
