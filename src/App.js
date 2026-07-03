@@ -2363,6 +2363,103 @@ function HomePanel(props) {
   );
 }
 
+function FloatingChatWidget(props) {
+  const { t } = useTheme();
+  const { tasks, marketingTasks, designTasks } = props;
+  const [isOpen, setIsOpen] = useState(false);
+  const [pos, setPos] = useState(null);
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef({ active: false, startX: 0, startY: 0, origX: 0, origY: 0, moved: false });
+  const btnRef = useRef(null);
+  const [messages, setMessages] = useState([{ role: "assistant", content: "안녕하세요! 무엇을 도와드릴까요? 😊" }]);
+  const [input, setInput] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  useEffect(function () {
+    const handleMove = function (e) {
+      if (!dragRef.current.active) return;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const dx = clientX - dragRef.current.startX;
+      const dy = clientY - dragRef.current.startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragRef.current.moved = true;
+      const w = isOpen ? 320 : 58, h = isOpen ? 440 : 58;
+      let newX = dragRef.current.origX + dx;
+      let newY = dragRef.current.origY + dy;
+      newX = Math.max(6, Math.min(window.innerWidth - w - 6, newX));
+      newY = Math.max(6, Math.min(window.innerHeight - h - 6, newY));
+      setPos({ x: newX, y: newY });
+    };
+    const handleUp = function () { dragRef.current.active = false; setDragging(false); };
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    window.addEventListener("touchmove", handleMove, { passive: false });
+    window.addEventListener("touchend", handleUp);
+    return function () {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+      window.removeEventListener("touchmove", handleMove);
+      window.removeEventListener("touchend", handleUp);
+    };
+  }, [isOpen]);
+
+  const startDrag = function (e) {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const rect = btnRef.current.getBoundingClientRect();
+    dragRef.current = { active: true, startX: clientX, startY: clientY, origX: rect.left, origY: rect.top, moved: false };
+    setDragging(true);
+  };
+  const handleToggle = function () {
+    if (dragRef.current.moved) { dragRef.current.moved = false; return; }
+    setIsOpen(!isOpen);
+  };
+
+  const summary = tasks.concat(marketingTasks).concat(designTasks).slice(0, 40).map(function (tk) { return "[" + tk.status + "] " + tk.title + " (담당:" + tk.assignee + ", 마감:" + tk.due + ")"; }).join("\n");
+
+  const send = async function () {
+    if (!input.trim() || loading) return;
+    const userMsg = input.trim(); setInput("");
+    const newMessages = messages.concat([{ role: "user", content: userMsg }]);
+    setMessages(newMessages); setLoading(true);
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 800, system: "당신은 TIMBEL 업무 스케줄러의 AI 어시스턴트입니다. 친절하고 간결하게 한국어로 답변하세요.\n\n현재 업무 현황:\n" + summary, messages: newMessages.map(function (m) { return { role: m.role, content: m.content }; }) }) });
+      const data = await res.json();
+      setMessages(function (prev) { return prev.concat([{ role: "assistant", content: data.content.map(function (c) { return c.text || ""; }).join("\n") }]); });
+    } catch (e) {
+      setMessages(function (prev) { return prev.concat([{ role: "assistant", content: "오류가 발생했습니다." }]); });
+    }
+    setLoading(false);
+  };
+
+  const posStyle = pos ? { left: pos.x, top: pos.y, right: "auto", bottom: "auto" } : { right: 24, bottom: 24 };
+
+  return (
+    <div>
+      <style dangerouslySetInnerHTML={{ __html: "@keyframes tbFloatBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }" }} />
+      {!isOpen ? (
+        <button ref={btnRef} onMouseDown={startDrag} onTouchStart={startDrag} onClick={handleToggle} style={Object.assign({ position: "fixed", width: 58, height: 58, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", cursor: dragging ? "grabbing" : "grab", boxShadow: "0 8px 24px #00000060", fontSize: 26, zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", animation: dragging ? "none" : "tbFloatBounce 3s ease-in-out infinite" }, posStyle)} title="AI 어시스턴트">🤖</button>
+      ) : (
+        <div ref={btnRef} style={Object.assign({ position: "fixed", width: "min(90vw, 320px)", height: 440, background: t.surface, borderRadius: 16, border: "1px solid " + t.border, boxShadow: "0 16px 48px #000a", zIndex: 500, display: "flex", flexDirection: "column", overflow: "hidden" }, posStyle)}>
+          <div onMouseDown={startDrag} onTouchStart={startDrag} style={{ padding: "12px 14px", background: "linear-gradient(135deg,#6366f1,#ec4899)", display: "flex", alignItems: "center", gap: 8, cursor: dragging ? "grabbing" : "grab", flexShrink: 0 }}>
+            <span style={{ fontSize: 18 }}>🤖</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", flex: 1 }}>AI 어시스턴트</span>
+            <button onClick={function () { setIsOpen(false); }} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
+          </div>
+          <div style={{ flex: 1, overflowY: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+            {messages.map(function (m, i) { return <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}><div style={{ maxWidth: "80%", padding: "8px 12px", borderRadius: m.role === "user" ? "12px 12px 3px 12px" : "12px 12px 12px 3px", background: m.role === "user" ? "#6366f1" : t.surface2, color: m.role === "user" ? "#fff" : t.text, fontSize: 12.5, lineHeight: 1.5, whiteSpace: "pre-wrap", border: m.role === "user" ? "none" : "1px solid " + t.border }}>{m.content}</div></div>; })}
+            {loading ? <div style={{ fontSize: 11, color: t.text4 }}>입력 중...</div> : null}
+          </div>
+          <div style={{ padding: 10, borderTop: "1px solid " + t.border, display: "flex", gap: 6, flexShrink: 0 }}>
+            <input value={input} onChange={function (e) { setInput(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") send(); }} placeholder="메시지 입력..." style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 8, padding: "8px 10px", fontSize: 12.5, color: t.text, outline: "none", minWidth: 0 }} />
+            <button onClick={send} style={{ background: "#6366f1", border: "none", borderRadius: 8, padding: "0 12px", color: "#fff", cursor: "pointer", fontSize: 13, flexShrink: 0 }}>➤</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ActivityLogPanel(props) {
   const { t } = useTheme();
   const { onRestore } = props;
@@ -2616,6 +2713,7 @@ export default function App() {
   return (
     <ThemeCtx.Provider value={{ t: t, isDark: isDark }}>
       <div style={{ minHeight: "100vh", background: t.bg, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", color: t.text }}>
+        <FloatingChatWidget tasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} />
         {showAdd ? <AddTaskModal onAdd={addTask} onClose={function () { setShowAdd(false); }} defaultDate={addDate} users={users} title="업무 추가" categories={TASK_CATEGORIES} /> : null}
         {selectedTask ? <TaskDetailModal task={selectedTask} onClose={function () { setSelectedTask(null); }} onUpdate={updateTask} onMove={isViewer ? null : function (id, dir) { moveTask(id, dir); setSelectedTask(function (prev) { return Object.assign({}, prev, { status: STAGES[STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} editTitle="✏️ 업무 정보 수정" categories={TASK_CATEGORIES} allTasks={tasks} onUpdateSeries={isViewer ? null : updateTaskSeries} /> : null}
         {showAddMarketing ? <AddTaskModal onAdd={addMarketingTask} onClose={function () { setShowAddMarketing(false); }} defaultDate={addMarketingDate} users={users} stages={MARKETING_STAGES} tags={MARKETING_TAGS} title="새 마케팅 업무 추가" categoryLabel="카테고리" /> : null}
