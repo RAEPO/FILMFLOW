@@ -2651,15 +2651,15 @@ export default function App() {
 
         <div style={{ display: "flex", alignItems: "flex-start" }}>
           {sidebarOpen ? (
-            <div style={{ width: "clamp(150px, 20vw, 210px)", flexShrink: 0, borderRight: "1px solid " + t.border, background: t.headerBg, boxSizing: "border-box", padding: "10px 0" }}>
+            <div style={{ width: "clamp(150px, 20vw, 210px)", flexShrink: 0, background: t.headerBg, boxSizing: "border-box", padding: "10px 0" }}>
               <div style={{ display: "flex", justifyContent: "flex-end", padding: "0 10px 8px" }}>
-                <button onClick={function () { setSidebarOpen(false); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: t.text4, padding: "4px 6px" }} title="탭 메뉴 접기">◀ 접기</button>
+                <button onClick={function () { setSidebarOpen(false); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 15, color: t.text4, padding: "4px 6px", display: "flex", alignItems: "center" }} title="탭 메뉴 접기">◀</button>
               </div>
               {isAdmin ? <button onClick={function () { setTab("admin"); }} style={{ display: "flex", alignItems: "center", width: "100%", boxSizing: "border-box", padding: "10px 16px", background: tab === "admin" ? "#f8717118" : "none", border: "none", borderLeft: "3px solid " + (tab === "admin" ? "#f87171" : "transparent"), cursor: "pointer", fontWeight: tab === "admin" ? 700 : 500, fontSize: 13, color: tab === "admin" ? "#f87171" : t.text4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>🛡️ 관리자</button> : null}
               {displayTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={{ position: "relative", display: "flex", alignItems: "center", width: "100%", boxSizing: "border-box", padding: "10px 16px", background: tab === tp.id ? "#6366f118" : "none", border: "none", borderLeft: "3px solid " + (tab === tp.id ? "#6366f1" : "transparent"), cursor: "pointer", fontWeight: tab === tp.id ? 700 : 500, fontSize: 13, color: tab === tp.id ? "#818cf8" : t.text4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", textAlign: "left" }}>{tp.label}{tp.id === "messages" && myUnreadMessages > 0 ? <span style={{ marginLeft: "auto", flexShrink: 0, background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 99, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}</button>; })}
             </div>
           ) : (
-            <div style={{ width: 44, flexShrink: 0, borderRight: "1px solid " + t.border, background: t.headerBg, boxSizing: "border-box", padding: "10px 0", display: "flex", flexDirection: "column", alignItems: "center" }}>
+            <div style={{ width: 44, flexShrink: 0, background: t.headerBg, boxSizing: "border-box", padding: "10px 0", display: "flex", flexDirection: "column", alignItems: "center" }}>
               <button onClick={function () { setSidebarOpen(true); }} style={{ background: "none", border: "none", cursor: "pointer", fontSize: 18, color: t.text3, padding: "6px" }} title="탭 메뉴 펼치기">☰</button>
               {tab === "messages" && myUnreadMessages > 0 ? <span style={{ marginTop: 4, background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 99, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}
             </div>
