@@ -2664,11 +2664,10 @@ export default function App() {
                 {calendarTabs.length > 0 ? (
                   <div style={{ position: "relative" }}>
                     <button onClick={function () { setCalendarMenuOpen(!calendarMenuOpen); }} style={tabBtnStyle(calendarActive)}>📅 {activeCalendarTab ? activeCalendarTab.label.replace(/^\S+\s/, "") : "캘린더"} ▾</button>
+                    {calendarMenuOpen ? <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={function () { setCalendarMenuOpen(false); }} /> : null}
                     {calendarMenuOpen ? (
-                      <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={function () { setCalendarMenuOpen(false); }}>
-                        <div onClick={function (e) { e.stopPropagation(); }} style={{ position: "absolute", top: 44, left: 0, minWidth: 180, background: t.surface, border: "1px solid " + t.border, borderRadius: 10, boxShadow: "0 12px 32px #000a", overflow: "hidden", zIndex: 95 }}>
-                          {calendarTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); setCalendarMenuOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text3, whiteSpace: "nowrap" }}>{tp.label}</button>; })}
-                        </div>
+                      <div style={{ position: "absolute", top: 44, left: 0, minWidth: 180, background: t.surface, border: "1px solid " + t.border, borderRadius: 10, boxShadow: "0 12px 32px #000a", overflow: "hidden", zIndex: 95 }}>
+                        {calendarTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); setCalendarMenuOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text3, whiteSpace: "nowrap" }}>{tp.label}</button>; })}
                       </div>
                     ) : null}
                   </div>
