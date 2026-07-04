@@ -2590,6 +2590,9 @@ export default function App() {
   const [calendarMenuOpen, setCalendarMenuOpen] = useState(false);
   const [calendarMenuPos, setCalendarMenuPos] = useState({ top: 0, left: 0 });
   const calendarBtnRef = useRef(null);
+  const [opsMenuOpen, setOpsMenuOpen] = useState(false);
+  const [opsMenuPos, setOpsMenuPos] = useState({ top: 0, left: 0 });
+  const opsBtnRef = useRef(null);
   const setIsDark = function (v) { setIsDarkRaw(v); setCookie("timbel_theme", v ? "dark" : "light", 365); };
   const t = isDark ? DARK : LIGHT;
   useEffect(function () { document.body.style.background = t.bg; document.documentElement.style.background = t.bg; }, [t.bg]);
@@ -2777,7 +2780,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", rowGap: 6 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 15, fontWeight: 900, color: "#818cf8", letterSpacing: "2px" }}>TIMBEL</span><span style={{ fontSize: 13, fontWeight: 600, color: t.text3 }}>업무 스케줄러</span></div>
             {isAdmin ? <span style={{ fontSize: 10, background: "#f8717120", color: "#f87171", border: "1px solid #f8717140", borderRadius: 20, padding: "2px 9px", fontWeight: 700 }}>🛡️ 관리자</span> : null}
-            <span style={{ fontSize: 11, color: t.text4, background: t.surface2, padding: "2px 9px", borderRadius: 20, border: "1px solid " + t.border }}>{tasks.length}개</span>
+            <span title={"영상 " + tasks.length + " · 마케팅 " + marketingTasks.length + " · 디자인 " + designTasks.length} style={{ fontSize: 11, color: t.text4, background: t.surface2, padding: "2px 9px", borderRadius: 20, border: "1px solid " + t.border, cursor: "default" }}>{tasks.length + marketingTasks.length + designTasks.length}개</span>
             <SyncBadge synced={synced} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", rowGap: 6 }}>
@@ -2801,10 +2804,14 @@ export default function App() {
 
         {(function () {
           const CALENDAR_TAB_IDS = ["unified", "calendar", "adCalendar", "designCalendar"];
+          const OPS_TAB_IDS = ["overtime", "activity"];
           const calendarTabs = displayTabs.filter(function (tp) { return CALENDAR_TAB_IDS.indexOf(tp.id) !== -1; });
-          const otherTabs = displayTabs.filter(function (tp) { return CALENDAR_TAB_IDS.indexOf(tp.id) === -1; });
+          const opsTabs = displayTabs.filter(function (tp) { return OPS_TAB_IDS.indexOf(tp.id) !== -1; });
+          const otherTabs = displayTabs.filter(function (tp) { return CALENDAR_TAB_IDS.indexOf(tp.id) === -1 && OPS_TAB_IDS.indexOf(tp.id) === -1; });
           const calendarActive = CALENDAR_TAB_IDS.indexOf(tab) !== -1;
+          const opsActive = OPS_TAB_IDS.indexOf(tab) !== -1;
           const activeCalendarTab = calendarTabs.find(function (tp) { return tp.id === tab; });
+          const activeOpsTab = opsTabs.find(function (tp) { return tp.id === tab; });
           const tabBtnStyle = function (active, color) { return { position: "relative", flexShrink: 0, padding: "10px 16px", background: "none", border: "none", borderBottom: "2px solid " + (active ? (color || "#6366f1") : "transparent"), cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: 13, color: active ? (color || "#818cf8") : t.text4, marginBottom: -1, whiteSpace: "nowrap" }; };
           return (
             <div style={{ borderBottom: "1px solid " + t.border, padding: "0 clamp(6px,3vw,24px)", background: t.headerBg, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
@@ -2829,6 +2836,23 @@ export default function App() {
                   </div>
                 ) : null}
                 {otherTabs.filter(function (tp) { return tp.id !== "home"; }).map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}>{tp.label}{tp.id === "messages" && myUnreadMessages > 0 ? <span style={{ position: "absolute", top: 4, right: 4, background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 99, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}</button>; })}
+                {opsTabs.length > 0 ? (
+                  <div style={{ position: "relative" }}>
+                    <button ref={opsBtnRef} onClick={function () {
+                      if (!opsMenuOpen && opsBtnRef.current) {
+                        const rect = opsBtnRef.current.getBoundingClientRect();
+                        setOpsMenuPos({ top: rect.bottom + 4, left: rect.left });
+                      }
+                      setOpsMenuOpen(!opsMenuOpen);
+                    }} style={tabBtnStyle(opsActive)}>⚙️ {activeOpsTab ? activeOpsTab.label.replace(/^\S+\s/, "") : "관리 도구"} ▾</button>
+                    {opsMenuOpen ? <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={function () { setOpsMenuOpen(false); }} /> : null}
+                    {opsMenuOpen ? (
+                      <div style={{ position: "fixed", top: opsMenuPos.top, left: opsMenuPos.left, minWidth: 180, background: t.surface, border: "1px solid " + t.border, borderRadius: 10, boxShadow: "0 12px 32px #000a", overflow: "hidden", zIndex: 95 }}>
+                        {opsTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); setOpsMenuOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text3, whiteSpace: "nowrap" }}>{tp.label}</button>; })}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             </div>
           );
