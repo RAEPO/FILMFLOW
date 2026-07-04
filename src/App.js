@@ -214,6 +214,23 @@ function UrlCell(props) {
   if (!props.url) return <span style={{ color: "#6b7280", fontSize: 12 }}>-</span>;
   return <a href={props.url} target="_blank" rel="noreferrer" onClick={function (e) { e.stopPropagation(); }} style={{ color: "#818cf8", fontSize: 11, textDecoration: "none", background: "#818cf820", padding: "2px 8px", borderRadius: 6 }}>링크 ↗</a>;
 }
+function MediaPreview(props) {
+  const { t } = useTheme();
+  const url = props.url;
+  if (!url) return null;
+  const frameWrap = function (embedUrl, ratio, allow) {
+    return <div style={{ position: "relative", paddingBottom: ratio, height: 0, borderRadius: 10, overflow: "hidden", background: "#000", border: "1px solid " + t.border }}><iframe src={embedUrl} style={{ position: "absolute", top: 0, left: 0, width: "100%", height: "100%", border: "none" }} allow={allow} allowFullScreen title="결과물 미리보기" /></div>;
+  };
+  const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return frameWrap("https://www.youtube.com/embed/" + ytMatch[1], "56.25%", "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture");
+  const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
+  if (vimeoMatch) return frameWrap("https://player.vimeo.com/video/" + vimeoMatch[1], "56.25%", "autoplay; fullscreen; picture-in-picture");
+  const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveMatch) return frameWrap("https://drive.google.com/file/d/" + driveMatch[1] + "/preview", "75%", "autoplay");
+  if (/\.(jpe?g|png|gif|webp|svg)(\?.*)?$/i.test(url)) return <img src={url} alt="결과물 미리보기" style={{ width: "100%", borderRadius: 10, display: "block", border: "1px solid " + t.border }} />;
+  if (/\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(url)) return <video src={url} controls style={{ width: "100%", borderRadius: 10, display: "block", background: "#000" }} />;
+  return null;
+}
 function Inp(props) {
   const { t } = useTheme();
   const { label, val, onChange, required } = props;
@@ -1008,7 +1025,7 @@ function TaskDetailModal(props) {
           </div>
           {categories ? <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>업무 종류</div><select value={editForm.category} onChange={function (e) { setEF("category", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{categories.map(function (c) { return <option key={c}>{c}</option>; })}</select></div> : null}
           <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{categoryLabel}</div><select value={editForm.tag} onChange={function (e) { setEF("tag", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{tagList.map(function (tg) { return <option key={tg}>{tg}</option>; })}</select></div>
-          <div style={{ marginBottom: 18 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 파일 링크</div><input value={editForm.fileUrl} onChange={function (e) { setEF("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
+          <div style={{ marginBottom: 18 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 결과물 링크 (유튜브·구글드라이브·이미지·동영상은 자동 미리보기)</div><input value={editForm.fileUrl} onChange={function (e) { setEF("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
           {seriesCount > 1 && onUpdateSeries ? (
             <label style={{ display: "flex", alignItems: "flex-start", gap: 7, cursor: "pointer", fontSize: 12, color: t.text3, marginBottom: 18, background: t.bg, borderRadius: 8, padding: "9px 11px" }}>
               <input type="checkbox" checked={applyToSeries} onChange={function (e) { setApplyToSeries(e.target.checked); }} style={{ marginTop: 2, width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer", flexShrink: 0 }} />
@@ -1038,7 +1055,7 @@ function TaskDetailModal(props) {
               <div style={{ fontSize: 16, fontWeight: 800, color: t.text }}>{task.title}</div>
               <div style={{ fontSize: 12, color: t.text4, marginTop: 3 }}>{task.desc}</div>
               <div style={{ display: "flex", gap: 14, marginTop: 10 }}><div style={{ display: "flex", alignItems: "center", gap: 6 }}><Avatar name={task.assignee} size={18} users={users} /><span style={{ fontSize: 12, color: t.text3 }}>{task.assignee}</span></div><span style={{ fontSize: 12, color: t.text4 }}>📅 {task.due}</span></div>
-              {task.fileUrl ? <a href={task.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 10, fontSize: 12, color: "#818cf8", background: "#818cf818", border: "1px solid #818cf830", borderRadius: 8, padding: "5px 10px", textDecoration: "none" }}>📎 파일 열기 ↗</a> : null}
+              {task.fileUrl ? <div style={{ marginTop: 12 }}><MediaPreview url={task.fileUrl} /><a href={task.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 12, color: "#818cf8", background: "#818cf818", border: "1px solid #818cf830", borderRadius: 8, padding: "5px 10px", textDecoration: "none" }}>📎 원본 링크에서 열기 ↗</a></div> : null}
             </div>
             <button onClick={onClose} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20, padding: 0, marginLeft: 12 }}>×</button>
           </div>
@@ -1128,7 +1145,7 @@ function AddTaskModal(props) {
           {form.repeat !== "없음" ? <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>반복 횟수 (최대 24)</div><input type="number" min="1" max="24" value={form.repeatCount} onChange={function (e) { set("repeatCount", e.target.value); }} style={inp} /></div> : null}
         </div>
         {form.repeat !== "없음" ? <div style={{ fontSize: 11, color: t.text4, marginBottom: 11, background: t.bg, borderRadius: 8, padding: "7px 10px" }}>작업 시작일부터 {form.repeat}으로 {form.repeatCount || 1}개 일정이 한 번에 등록돼요.</div> : null}
-        <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 파일 링크 (웹 드라이브 등)</div><input value={form.fileUrl} onChange={function (e) { set("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
+        <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 결과물 링크 (유튜브·구글드라이브·이미지·동영상은 자동 미리보기)</div><input value={form.fileUrl} onChange={function (e) { set("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
         <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
           <button onClick={onClose} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 9, padding: "10px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
           <button onClick={submit} style={{ flex: 1, background: "#6366f1", border: "none", borderRadius: 9, padding: "10px 0", cursor: "pointer", color: "#fff", fontWeight: 700 }}>추가</button>
