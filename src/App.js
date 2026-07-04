@@ -169,6 +169,34 @@ function downloadCSV(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
+function downloadICS(filename, events) {
+  if (!events || events.length === 0) { alert("내보낼 일정이 없습니다."); return; }
+  const escapeText = function (s) { return String(s || "").replace(/[\n\r]/g, " ").replace(/([,;])/g, "\\$1"); };
+  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//TIMBEL//Scheduler//KO", "CALSCALE:GREGORIAN"];
+  events.forEach(function (ev, i) {
+    const d = (ev.date || "").replace(/-/g, "");
+    if (!d) return;
+    lines.push("BEGIN:VEVENT");
+    lines.push("UID:" + i + "-" + Date.now() + "@timbel-scheduler");
+    lines.push("DTSTAMP:" + new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z");
+    lines.push("DTSTART;VALUE=DATE:" + d);
+    lines.push("DTEND;VALUE=DATE:" + d);
+    lines.push("SUMMARY:" + escapeText(ev.title));
+    if (ev.description) lines.push("DESCRIPTION:" + escapeText(ev.description));
+    lines.push("END:VEVENT");
+  });
+  lines.push("END:VCALENDAR");
+  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 function useFirebaseData(path, defaultVal) {
   const [data, setData] = useState(defaultVal);
   const [ready, setReady] = useState(false);
@@ -227,8 +255,26 @@ function MediaPreview(props) {
   if (vimeoMatch) return frameWrap("https://player.vimeo.com/video/" + vimeoMatch[1], "56.25%", "autoplay; fullscreen; picture-in-picture");
   const driveMatch = url.match(/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/);
   if (driveMatch) return frameWrap("https://drive.google.com/file/d/" + driveMatch[1] + "/preview", "75%", "autoplay");
+  if (/figma\.com\/(file|proto|design)\//.test(url)) return frameWrap("https://www.figma.com/embed?embed_host=share&url=" + encodeURIComponent(url), "62%", "fullscreen");
+  if (/\.pdf(\?.*)?$/i.test(url)) return frameWrap("https://docs.google.com/viewer?url=" + encodeURIComponent(url) + "&embedded=true", "120%", "");
+  if (/\.(mp3|wav|m4a|ogg|aac)(\?.*)?$/i.test(url)) return <audio src={url} controls style={{ width: "100%", display: "block" }} />;
   if (/\.(jpe?g|png|gif|webp|svg)(\?.*)?$/i.test(url)) return <img src={url} alt="결과물 미리보기" style={{ width: "100%", borderRadius: 10, display: "block", border: "1px solid " + t.border }} />;
   if (/\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(url)) return <video src={url} controls style={{ width: "100%", borderRadius: 10, display: "block", background: "#000" }} />;
+  return null;
+}
+function MentionText(props) {
+  const names = (props.users || []).map(function (u) { return u.name; });
+  const parts = String(props.text || "").split(/(@\S+)/g);
+  return <span>{parts.map(function (part, i) {
+    if (part.charAt(0) === "@" && names.indexOf(part.slice(1)) !== -1) return <span key={i} style={{ color: "#818cf8", fontWeight: 700 }}>{part}</span>;
+    return <span key={i}>{part}</span>;
+  })}</span>;
+}
+function getThumbnailUrl(url) {
+  if (!url) return null;
+  const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  if (ytMatch) return "https://img.youtube.com/vi/" + ytMatch[1] + "/mqdefault.jpg";
+  if (/\.(jpe?g|png|gif|webp)(\?.*)?$/i.test(url)) return url;
   return null;
 }
 function Inp(props) {
@@ -994,6 +1040,16 @@ function TaskDetailModal(props) {
     const comments = task.comments || [];
     onUpdate(Object.assign({}, task, { comments: comments.concat([{ id: "c_" + Date.now(), author: currentUser.name, text: trimmed, time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }]) }));
     if (onNotify && task.assignee && task.assignee !== currentUser.name) onNotify(task.assignee, currentUser.name, task.title, trimmed);
+    if (onNotify) {
+      const mentionMatches = trimmed.match(/@\S+/g) || [];
+      const mentionedNames = mentionMatches.map(function (m) { return m.slice(1); });
+      const notifiedAlready = { [currentUser.name]: true };
+      if (task.assignee) notifiedAlready[task.assignee] = true;
+      mentionedNames.forEach(function (name) {
+        const match = users.find(function (u) { return u.name === name; });
+        if (match && !notifiedAlready[match.name]) { onNotify(match.name, currentUser.name, task.title, "@멘션: " + trimmed); notifiedAlready[match.name] = true; }
+      });
+    }
     setComment("");
   };
   const saveEdit = function () {
@@ -1025,7 +1081,7 @@ function TaskDetailModal(props) {
           </div>
           {categories ? <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>업무 종류</div><select value={editForm.category} onChange={function (e) { setEF("category", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{categories.map(function (c) { return <option key={c}>{c}</option>; })}</select></div> : null}
           <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{categoryLabel}</div><select value={editForm.tag} onChange={function (e) { setEF("tag", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{tagList.map(function (tg) { return <option key={tg}>{tg}</option>; })}</select></div>
-          <div style={{ marginBottom: 18 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 결과물 링크 (유튜브·구글드라이브·이미지·동영상은 자동 미리보기)</div><input value={editForm.fileUrl} onChange={function (e) { setEF("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
+          <div style={{ marginBottom: 18 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 결과물 링크 (유튜브·피그마·구글드라이브·PDF·이미지·동영상·오디오 자동 미리보기)</div><input value={editForm.fileUrl} onChange={function (e) { setEF("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
           {seriesCount > 1 && onUpdateSeries ? (
             <label style={{ display: "flex", alignItems: "flex-start", gap: 7, cursor: "pointer", fontSize: 12, color: t.text3, marginBottom: 18, background: t.bg, borderRadius: 8, padding: "9px 11px" }}>
               <input type="checkbox" checked={applyToSeries} onChange={function (e) { setApplyToSeries(e.target.checked); }} style={{ marginTop: 2, width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer", flexShrink: 0 }} />
@@ -1065,6 +1121,19 @@ function TaskDetailModal(props) {
             {onMove && task.status !== stageList[stageList.length - 1] ? <button onClick={function () { onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1] })); onClose(); }} style={{ background: "#34d39920", border: "1px solid #34d39940", borderRadius: 8, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700, flexShrink: 0 }}>✅ 업무 완료</button> : null}
             {onMove ? <button onClick={function () { setEditForm({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") }); setEditMode(true); }} style={{ background: t.surface2, border: "1px solid " + t.border2, borderRadius: 8, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: t.text4, flexShrink: 0 }}>✏️ 정보 수정</button> : null}
           </div>
+          {onMove && currentUser && (currentUser.role === "admin" || currentUser.role === "manager") && task.status === stageList[stageList.length - 2] ? (
+            <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
+              <button onClick={function () { onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1] })); onClose(); }} style={{ flex: 1, background: "#34d39920", border: "1px solid #34d39940", borderRadius: 8, padding: "7px 0", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700 }}>✅ 승인 (완료 처리)</button>
+              <button onClick={function () {
+                const reason = window.prompt("수정 요청 사유를 입력해주세요");
+                if (!reason) return;
+                const newComments = (task.comments || []).concat([{ id: "c_" + Date.now(), author: currentUser.name, text: "🔴 수정 요청: " + reason, time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }]);
+                const backStageIdx = Math.max(0, stageList.length - 3);
+                onUpdate(Object.assign({}, task, { status: stageList[backStageIdx], comments: newComments }));
+                if (onNotify && task.assignee && task.assignee !== currentUser.name) onNotify(task.assignee, currentUser.name, task.title, "수정 요청: " + reason);
+              }} style={{ flex: 1, background: "#f8717120", border: "1px solid #f8717140", borderRadius: 8, padding: "7px 0", fontSize: 11, cursor: "pointer", color: "#f87171", fontWeight: 700 }}>↩️ 수정 요청</button>
+            </div>
+          ) : null}
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 12, textTransform: "uppercase", letterSpacing: ".5px" }}>코멘트 {(task.comments || []).length > 0 ? "· " + (task.comments || []).length : ""}</div>
@@ -1078,7 +1147,7 @@ function TaskDetailModal(props) {
                     <span style={{ fontSize: 12, fontWeight: 700, color: t.text2 }}>{c.author}</span>
                     <div style={{ display: "flex", gap: 8, alignItems: "center" }}><span style={{ fontSize: 10, color: t.text5 }}>{c.time}</span>{(c.author === currentUser.name || currentUser.role === "admin" || currentUser.role === "manager") ? <button onClick={function () { onUpdate(Object.assign({}, task, { comments: (task.comments || []).filter(function (x) { return x.id !== c.id; }) })); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 13, padding: 0 }}>×</button> : null}</div>
                   </div>
-                  <div style={{ background: t.surface2, borderRadius: 9, padding: "9px 12px", fontSize: 13, color: t.text2, lineHeight: 1.6 }}>{c.text}</div>
+                  <div style={{ background: t.surface2, borderRadius: 9, padding: "9px 12px", fontSize: 13, color: t.text2, lineHeight: 1.6 }}><MentionText text={c.text} users={users} /></div>
                 </div>
               </div>
             );
@@ -1087,7 +1156,7 @@ function TaskDetailModal(props) {
         <div style={{ padding: "12px 22px 18px", borderTop: "1px solid " + t.border }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}><Avatar name={currentUser.name} size={18} users={users} /><span style={{ fontSize: 12, color: t.text3, fontWeight: 600 }}>{currentUser.name} 으로 작성 중</span></div>
           <div style={{ display: "flex", gap: 7 }}>
-            <input value={comment} onChange={function (e) { setComment(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") addComment(); }} placeholder="코멘트 입력..." style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "9px 13px", fontSize: 13, color: t.text, outline: "none" }} />
+            <input value={comment} onChange={function (e) { setComment(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") addComment(); }} placeholder="코멘트 입력... (@이름 으로 멘션 알림 가능)" style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "9px 13px", fontSize: 13, color: t.text, outline: "none" }} />
             <button onClick={addComment} style={{ background: "#6366f1", border: "none", borderRadius: 9, padding: "0 15px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>전송</button>
           </div>
         </div>
@@ -1145,7 +1214,7 @@ function AddTaskModal(props) {
           {form.repeat !== "없음" ? <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>반복 횟수 (최대 24)</div><input type="number" min="1" max="24" value={form.repeatCount} onChange={function (e) { set("repeatCount", e.target.value); }} style={inp} /></div> : null}
         </div>
         {form.repeat !== "없음" ? <div style={{ fontSize: 11, color: t.text4, marginBottom: 11, background: t.bg, borderRadius: 8, padding: "7px 10px" }}>작업 시작일부터 {form.repeat}으로 {form.repeatCount || 1}개 일정이 한 번에 등록돼요.</div> : null}
-        <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 결과물 링크 (유튜브·구글드라이브·이미지·동영상은 자동 미리보기)</div><input value={form.fileUrl} onChange={function (e) { set("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
+        <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 결과물 링크 (유튜브·피그마·구글드라이브·PDF·이미지·동영상·오디오 자동 미리보기)</div><input value={form.fileUrl} onChange={function (e) { set("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
         <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
           <button onClick={onClose} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 9, padding: "10px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
           <button onClick={submit} style={{ flex: 1, background: "#6366f1", border: "none", borderRadius: 9, padding: "10px 0", cursor: "pointer", color: "#fff", fontWeight: 700 }}>추가</button>
@@ -1291,6 +1360,7 @@ function CalendarView(props) {
                 <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
                   {onMove && (onBulkDelete || onBulkAssign) ? <input type="checkbox" checked={checked} onChange={function () { setSelectedIds(checked ? selectedIds.filter(function (id) { return id !== tk.id; }) : selectedIds.concat([tk.id])); }} style={{ width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer", flexShrink: 0 }} /> : null}
                   <div onClick={function (e) { handleEditClick(e, tk); }} style={{ width: 3, height: 30, borderRadius: 99, background: stageColorMap[tk.status], flexShrink: 0, cursor: "pointer" }} />
+                  {getThumbnailUrl(tk.fileUrl) ? <img src={getThumbnailUrl(tk.fileUrl)} alt="" onClick={function (e) { handleEditClick(e, tk); }} style={{ width: 44, height: 30, objectFit: "cover", borderRadius: 6, flexShrink: 0, cursor: "pointer" }} /> : null}
                   <div onClick={function (e) { handleEditClick(e, tk); }} style={{ flex: 1, minWidth: 100, cursor: "pointer" }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{tk.title}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 1 }}>{stageIconMap[tk.status]} {tk.status} · {tk.tag}</div></div>
                   <span style={{ fontSize: 11, color: overdue ? "#f87171" : t.text4, fontWeight: overdue ? 700 : 400, flexShrink: 0 }}>{tk.due.slice(5)}</span>
                   <span style={{ fontSize: 10, color: PRIORITY_COLOR[tk.priority], background: PRIORITY_COLOR[tk.priority] + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>{tk.priority}</span>
@@ -1663,6 +1733,7 @@ function BoardView(props) {
                     <div style={{ width: 4, background: "#818cf8", flexShrink: 0 }} />
                     {selectMode ? <div style={{ display: "flex", alignItems: "center", padding: "0 0 0 10px" }}><input type="checkbox" checked={checked} onChange={function () { toggleSelect(tk.id, "video"); }} onClick={function (e) { e.stopPropagation(); }} style={{ width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer" }} /></div> : null}
                     <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
+                      {getThumbnailUrl(tk.fileUrl) ? <img src={getThumbnailUrl(tk.fileUrl)} alt="" style={{ width: "100%", height: 72, objectFit: "cover", borderRadius: 7, marginBottom: 7, display: "block" }} /> : null}
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                         <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>{tk.title}</span>
                         {onDelete && !selectMode ? <button onClick={function (e) { e.stopPropagation(); onDelete(tk.id); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 14, padding: 0 }}>×</button> : null}
@@ -1713,6 +1784,7 @@ function BoardView(props) {
                     <div style={{ width: 4, background: "#f87171", flexShrink: 0 }} />
                     {selectMode ? <div style={{ display: "flex", alignItems: "center", padding: "0 0 0 10px" }}><input type="checkbox" checked={checked} onChange={function () { toggleSelect(dt.id, "design"); }} onClick={function (e) { e.stopPropagation(); }} style={{ width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer" }} /></div> : null}
                     <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
+                      {getThumbnailUrl(dt.fileUrl) ? <img src={getThumbnailUrl(dt.fileUrl)} alt="" style={{ width: "100%", height: 72, objectFit: "cover", borderRadius: 7, marginBottom: 7, display: "block" }} /> : null}
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                         <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>🎨 {dt.title}</span>
                       </div>
@@ -1736,6 +1808,7 @@ function BoardView(props) {
                     <div style={{ width: 4, background: "#fb923c", flexShrink: 0 }} />
                     {selectMode ? <div style={{ display: "flex", alignItems: "center", padding: "0 0 0 10px" }}><input type="checkbox" checked={checked} onChange={function () { toggleSelect(mt.id, "marketing"); }} onClick={function (e) { e.stopPropagation(); }} style={{ width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer" }} /></div> : null}
                     <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
+                      {getThumbnailUrl(mt.fileUrl) ? <img src={getThumbnailUrl(mt.fileUrl)} alt="" style={{ width: "100%", height: 72, objectFit: "cover", borderRadius: 7, marginBottom: 7, display: "block" }} /> : null}
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
                         <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>🗓️ {mt.title}</span>
                       </div>
@@ -2345,9 +2418,14 @@ function HomePanel(props) {
   const s = { background: t.surface, borderRadius: 13, padding: "15px 17px", border: "1px solid " + t.border };
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ background: "linear-gradient(135deg,#6366f1,#818cf8)", borderRadius: 14, padding: "18px 22px" }}>
-        <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>안녕하세요, {currentUser.name}님 👋</div>
-        <div style={{ fontSize: 12, color: "#ffffffcc", marginTop: 3 }}>{today.getFullYear()}년 {today.getMonth() + 1}월 {today.getDate()}일 오늘의 업무 현황이에요</div>
+      <div style={{ background: "linear-gradient(135deg,#6366f1,#818cf8)", borderRadius: 14, padding: "18px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
+        <div>
+          <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>안녕하세요, {currentUser.name}님 👋</div>
+          <div style={{ fontSize: 12, color: "#ffffffcc", marginTop: 3 }}>{today.getFullYear()}년 {today.getMonth() + 1}월 {today.getDate()}일 오늘의 업무 현황이에요</div>
+        </div>
+        <button onClick={function () {
+          downloadICS("내_업무_일정.ics", myActive.map(function (item) { return { title: "[" + TYPE_INFO[item.kind].label + "] " + item.title, date: item.due, description: (item.desc || "") + " (담당: " + item.assignee + ", 단계: " + item.status + ")" }; }));
+        }} style={{ background: "#ffffff25", border: "1px solid #ffffff40", borderRadius: 9, padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer", whiteSpace: "nowrap" }}>📅 내 캘린더로 내보내기 (.ics)</button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
         <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#818cf8" }}>{myActive.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>내 진행중 업무</div></div>
