@@ -2406,11 +2406,11 @@ function FloatingChatWidget(props) {
     <div>
       <style dangerouslySetInnerHTML={{ __html: "@keyframes tbFloatBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }" }} />
       {!isOpen ? (
-        <button ref={btnRef} onMouseDown={startDrag} onTouchStart={startDrag} onClick={handleToggle} style={Object.assign({ position: "fixed", width: 58, height: 58, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", cursor: dragging ? "grabbing" : "grab", boxShadow: "0 8px 24px #00000060", fontSize: 26, zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", animation: dragging ? "none" : "tbFloatBounce 3s ease-in-out infinite" }, posStyle)} title="AI 어시스턴트">🤖</button>
+        <button ref={btnRef} onMouseDown={startDrag} onTouchStart={startDrag} onClick={handleToggle} style={Object.assign({ position: "fixed", width: 58, height: 58, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", cursor: dragging ? "grabbing" : "grab", boxShadow: "0 8px 24px #00000060", fontSize: 26, zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", animation: dragging ? "none" : "tbFloatBounce 3s ease-in-out infinite" }, posStyle)} title="AI 어시스턴트">✨</button>
       ) : (
         <div ref={btnRef} style={Object.assign({ position: "fixed", width: "min(90vw, 320px)", height: 440, background: t.surface, borderRadius: 16, border: "1px solid " + t.border, boxShadow: "0 16px 48px #000a", zIndex: 500, display: "flex", flexDirection: "column", overflow: "hidden" }, posStyle)}>
           <div onMouseDown={startDrag} onTouchStart={startDrag} style={{ padding: "12px 14px", background: "linear-gradient(135deg,#6366f1,#ec4899)", display: "flex", alignItems: "center", gap: 8, cursor: dragging ? "grabbing" : "grab", flexShrink: 0 }}>
-            <span style={{ fontSize: 18 }}>🤖</span>
+            <span style={{ fontSize: 18 }}>✨</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", flex: 1 }}>AI 어시스턴트</span>
             <button onClick={function () { setIsOpen(false); }} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
           </div>
