@@ -141,6 +141,11 @@ const KOREAN_HOLIDAYS = {
   "2027-10-09": "한글날", "2027-10-11": "한글날 대체공휴일", "2027-12-25": "성탄절",
 };
 
+function trimArray(arr, maxLen) {
+  if (!arr || arr.length <= maxLen) return arr || [];
+  return arr.slice(arr.length - maxLen);
+}
+
 function downloadCSV(filename, rows) {
   if (!rows || rows.length === 0) { alert("내보낼 데이터가 없습니다."); return; }
   const headers = Object.keys(rows[0]);
@@ -1343,11 +1348,23 @@ function getMarketingBoardStatus(mt) {
 
 function CombinedCalendarView(props) {
   const { t } = useTheme();
-  const { videoTasks, marketingTasks, designTasks, ads, onSelectVideo, onSelectMarketing, onSelectDesign, onSelectAd } = props;
+  const { videoTasks, marketingTasks, designTasks, ads, onSelectVideo, onSelectMarketing, onSelectDesign, onSelectAd, users, onBulkDeleteVideo, onBulkAssignVideo, onBulkDeleteMarketing, onBulkAssignMarketing, onBulkDeleteDesign, onBulkAssignDesign } = props;
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
   const [dayDetail, setDayDetail] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedItems, setSelectedItems] = useState([]);
+  const [bulkAssignee, setBulkAssignee] = useState("");
+  const toggleSelect = function (id, kind) {
+    setSelectedItems(function (prev) {
+      const exists = prev.find(function (x) { return x.id === id && x.kind === kind; });
+      if (exists) return prev.filter(function (x) { return !(x.id === id && x.kind === kind); });
+      return prev.concat([{ id: id, kind: kind }]);
+    });
+  };
+  const isSelected = function (id, kind) { return selectedItems.some(function (x) { return x.id === id && x.kind === kind; }); };
+  const canBulk = !!(onBulkDeleteVideo || onBulkAssignVideo);
   const firstDay = new Date(year, month, 1).getDay();
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const prevDays = new Date(year, month, 0).getDate();
@@ -1420,12 +1437,42 @@ function CombinedCalendarView(props) {
       </div>
       {monthItems.length > 0 ? (
         <div style={{ marginTop: 18, background: t.surface, borderRadius: 14, border: "1px solid " + t.border, overflow: "hidden" }}>
-          <div style={{ padding: "11px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>{month + 1}월 전체 일정 ({monthItems.length})</div>
+          <div style={{ padding: "11px 18px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
+            <span style={{ fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>{month + 1}월 전체 일정 ({monthItems.length})</span>
+            {canBulk ? <button onClick={function () { setSelectMode(!selectMode); setSelectedItems([]); }} style={{ background: selectMode ? "#6366f1" : t.surface2, border: "1px solid " + (selectMode ? "#6366f1" : t.border), borderRadius: 8, padding: "6px 12px", fontWeight: 700, fontSize: 11, color: selectMode ? "#fff" : t.text3, cursor: "pointer" }}>{selectMode ? "선택 모드 종료" : "✅ 선택 모드"}</button> : null}
+          </div>
+          {selectMode && selectedItems.length > 0 ? (
+            <div style={{ padding: "10px 18px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", background: "#6366f110" }}>
+              <span style={{ fontSize: 12, color: "#818cf8", fontWeight: 700 }}>{selectedItems.length}개 선택됨</span>
+              <select value={bulkAssignee} onChange={function (e) { setBulkAssignee(e.target.value); }} style={{ background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 8, padding: "6px 10px", fontSize: 12, color: t.text, outline: "none" }}><option value="">담당자 선택</option>{(users || []).filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return <option key={u.name} value={u.name}>{u.name}</option>; })}</select>
+              <button onClick={function () {
+                if (!bulkAssignee) return;
+                const byKind = { video: [], marketing: [], design: [] };
+                selectedItems.forEach(function (x) { if (byKind[x.kind]) byKind[x.kind].push(x.id); });
+                if (byKind.video.length && onBulkAssignVideo) onBulkAssignVideo(byKind.video, bulkAssignee);
+                if (byKind.marketing.length && onBulkAssignMarketing) onBulkAssignMarketing(byKind.marketing, bulkAssignee);
+                if (byKind.design.length && onBulkAssignDesign) onBulkAssignDesign(byKind.design, bulkAssignee);
+                setSelectedItems([]); setBulkAssignee("");
+              }} style={{ background: "#6366f118", border: "1px solid #6366f130", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>일괄 담당자 변경</button>
+              <button onClick={function () {
+                if (!window.confirm(selectedItems.length + "개 항목을 삭제하시겠습니까?")) return;
+                const byKind = { video: [], marketing: [], design: [] };
+                selectedItems.forEach(function (x) { if (byKind[x.kind]) byKind[x.kind].push(x.id); });
+                if (byKind.video.length && onBulkDeleteVideo) onBulkDeleteVideo(byKind.video);
+                if (byKind.marketing.length && onBulkDeleteMarketing) onBulkDeleteMarketing(byKind.marketing);
+                if (byKind.design.length && onBulkDeleteDesign) onBulkDeleteDesign(byKind.design);
+                setSelectedItems([]);
+              }} style={{ background: "#f8717118", border: "1px solid #f8717130", borderRadius: 8, padding: "6px 12px", fontSize: 12, cursor: "pointer", color: "#f87171", fontWeight: 700 }}>일괄 삭제</button>
+            </div>
+          ) : null}
           {monthItems.map(function (item, i) {
             const isLast = i === monthItems.length - 1;
             const info = COMBINED_TYPE_INFO[item.kind];
+            const selectable = selectMode && (item.kind === "video" || item.kind === "marketing" || item.kind === "design");
+            const checked = selectable && isSelected(item.id, item.kind);
             return (
-              <div key={item.kind + "_" + item.id} onClick={function () { handleItemClick(item); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", borderBottom: isLast ? "none" : "1px solid " + t.border, cursor: "pointer" }}>
+              <div key={item.kind + "_" + item.id} onClick={function () { if (selectable) toggleSelect(item.id, item.kind); else handleItemClick(item); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", borderBottom: isLast ? "none" : "1px solid " + t.border, cursor: "pointer", background: checked ? "#6366f118" : "transparent" }}>
+                {selectMode ? (selectable ? <input type="checkbox" checked={checked} onChange={function () { toggleSelect(item.id, item.kind); }} onClick={function (e) { e.stopPropagation(); }} style={{ width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer", flexShrink: 0 }} /> : <span style={{ width: 15, flexShrink: 0 }} />) : null}
                 <div style={{ width: 3, height: 30, borderRadius: 99, background: info.color, flexShrink: 0 }} />
                 <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0 }}>{info.icon} {info.label}</span>
                 <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</div>{item.assignee ? <div style={{ fontSize: 11, color: t.text4, marginTop: 1 }}>{item.assignee} · {item.status}</div> : null}</div>
@@ -2335,7 +2382,12 @@ function FloatingChatWidget(props) {
   const { t } = useTheme();
   const { tasks, marketingTasks, designTasks } = props;
   const [isOpen, setIsOpen] = useState(false);
-  const [pos, setPos] = useState(null);
+  const [pos, setPos] = useState(function () {
+    const saved = getCookie("timbel_chat_pos");
+    if (!saved) return null;
+    try { const parsed = JSON.parse(saved); if (typeof parsed.x === "number" && typeof parsed.y === "number") return parsed; } catch (e) {}
+    return null;
+  });
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef({ active: false, startX: 0, startY: 0, origX: 0, origY: 0, moved: false });
   const btnRef = useRef(null);
@@ -2358,7 +2410,13 @@ function FloatingChatWidget(props) {
       newY = Math.max(6, Math.min(window.innerHeight - h - 6, newY));
       setPos({ x: newX, y: newY });
     };
-    const handleUp = function () { dragRef.current.active = false; setDragging(false); };
+    const handleUp = function () {
+      if (dragRef.current.active) {
+        setPos(function (p) { if (p) setCookie("timbel_chat_pos", JSON.stringify(p), 365); return p; });
+      }
+      dragRef.current.active = false;
+      setDragging(false);
+    };
     window.addEventListener("mousemove", handleMove);
     window.addEventListener("mouseup", handleUp);
     window.addEventListener("touchmove", handleMove, { passive: false });
@@ -2406,9 +2464,9 @@ function FloatingChatWidget(props) {
     <div>
       <style dangerouslySetInnerHTML={{ __html: "@keyframes tbFloatBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }" }} />
       {!isOpen ? (
-        <button ref={btnRef} onMouseDown={startDrag} onTouchStart={startDrag} onClick={handleToggle} style={Object.assign({ position: "fixed", width: 58, height: 58, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", cursor: dragging ? "grabbing" : "grab", boxShadow: "0 8px 24px #00000060", fontSize: 26, zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", animation: dragging ? "none" : "tbFloatBounce 3s ease-in-out infinite" }, posStyle)} title="AI 어시스턴트">✨</button>
+        <button ref={btnRef} onMouseDown={startDrag} onTouchStart={startDrag} onClick={handleToggle} style={Object.assign({ position: "fixed", width: 58, height: 58, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", cursor: dragging ? "grabbing" : "grab", boxShadow: "0 8px 24px #00000060", fontSize: 26, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", animation: dragging ? "none" : "tbFloatBounce 3s ease-in-out infinite" }, posStyle)} title="AI 어시스턴트">✨</button>
       ) : (
-        <div ref={btnRef} style={Object.assign({ position: "fixed", width: "min(90vw, 320px)", height: 440, background: t.surface, borderRadius: 16, border: "1px solid " + t.border, boxShadow: "0 16px 48px #000a", zIndex: 500, display: "flex", flexDirection: "column", overflow: "hidden" }, posStyle)}>
+        <div ref={btnRef} style={Object.assign({ position: "fixed", width: "min(90vw, 320px)", height: 440, background: t.surface, borderRadius: 16, border: "1px solid " + t.border, boxShadow: "0 16px 48px #000a", zIndex: 9999, display: "flex", flexDirection: "column", overflow: "hidden" }, posStyle)}>
           <div onMouseDown={startDrag} onTouchStart={startDrag} style={{ padding: "12px 14px", background: "linear-gradient(135deg,#6366f1,#ec4899)", display: "flex", alignItems: "center", gap: 8, cursor: dragging ? "grabbing" : "grab", flexShrink: 0 }}>
             <span style={{ fontSize: 18 }}>✨</span>
             <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", flex: 1 }}>AI 어시스턴트</span>
@@ -2430,14 +2488,31 @@ function FloatingChatWidget(props) {
 
 function ActivityLogPanel(props) {
   const { t } = useTheme();
-  const { onRestore } = props;
+  const { onRestore, onCleanup, isAdmin } = props;
   const log = (props.log || []).slice().sort(function (a, b) { return b.createdAt - a.createdAt; });
   const ACTION_COLOR = { "생성": "#34d399", "삭제": "#f87171", "단계 변경": "#818cf8", "일괄 삭제": "#f87171", "일괄 변경": "#fbbf24", "복구": "#38bdf8" };
   const [restoredIds, setRestoredIds] = useState({});
+  const exportLog = function () {
+    downloadCSV("활동로그_전체.csv", log.map(function (entry) { return { 시간: entry.time, 실행자: entry.actor, 동작: entry.action, 내용: entry.detail }; }));
+  };
+  const cleanupOld = function () {
+    if (!onCleanup) return;
+    const days = window.prompt("몇 일 이전 기록을 삭제할까요? (예: 180) — 먼저 CSV로 백업하시는 걸 추천드려요.", "180");
+    if (!days || isNaN(Number(days))) return;
+    const cutoff = Date.now() - Number(days) * 24 * 60 * 60 * 1000;
+    const removeCount = log.filter(function (e) { return e.createdAt < cutoff; }).length;
+    if (removeCount === 0) { alert("삭제할 오래된 기록이 없습니다."); return; }
+    if (!window.confirm(removeCount + "개의 기록(그 이전은 영구 삭제)을 정리하시겠습니까? 이 작업은 되돌릴 수 없어요.")) return;
+    onCleanup(cutoff);
+  };
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <button onClick={exportLog} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 9, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: t.text3, cursor: "pointer" }}>📤 전체 CSV로 내보내기</button>
+        {isAdmin && onCleanup ? <button onClick={cleanupOld} style={{ background: "#f8717118", border: "1px solid #f8717130", borderRadius: 9, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: "#f87171", cursor: "pointer" }}>🗑️ 오래된 기록 정리</button> : null}
+      </div>
       <div style={{ background: t.surface, borderRadius: 14, border: "1px solid " + t.border, overflow: "hidden" }}>
-        <div style={{ padding: "12px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>최근 활동 ({log.length}) · 삭제 항목은 복구할 수 있어요</div>
+        <div style={{ padding: "12px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 활동 ({log.length}) · 자동 삭제 없이 모두 보존돼요 · 최근 200개만 표시</div>
         {log.length === 0 ? <div style={{ padding: "30px", textAlign: "center", color: t.text5, fontSize: 13 }}>활동 기록이 없습니다</div> : null}
         {log.slice(0, 200).map(function (entry) {
           const canRestore = entry.action === "삭제" && entry.snapshot && entry.restoreType && onRestore;
@@ -2617,6 +2692,10 @@ export default function App() {
     const label = entry.restoreType === "video" ? "영상" : entry.restoreType === "marketing" ? "마케팅" : "디자인";
     logActivity("복구", label + " 업무 \"" + entry.snapshot.title + "\" 복구");
   };
+  const cleanupActivityLog = function (cutoffTimestamp) {
+    const kept = (activityLog || []).filter(function (e) { return e.createdAt >= cutoffTimestamp; });
+    setActivityLogRaw(kept);
+  };
   const openAddDesign = function (date) { setAddDesignDate(date || ""); setShowAddDesign(true); };
   const bulkDeleteTasks = function (ids) { setTasksRaw(tasks.filter(function (tk) { return ids.indexOf(tk.id) === -1; })); logActivity("일괄 삭제", "영상 업무 " + ids.length + "건 일괄 삭제"); };
   const bulkAssignTasks = function (ids, assignee) { setTasksRaw(tasks.map(function (tk) { return ids.indexOf(tk.id) !== -1 ? Object.assign({}, tk, { assignee: assignee }) : tk; })); logActivity("일괄 변경", "영상 업무 " + ids.length + "건 담당자를 " + assignee + "(으)로 일괄 변경"); };
@@ -2755,7 +2834,7 @@ export default function App() {
         <div style={{ maxWidth: 1300, margin: "0 auto", padding: "clamp(10px,4vw,20px)", minWidth: 0, boxSizing: "border-box" }}>
           {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} visibleTabs={vt} setVisibleTabs={function (v) { setVisibleTabsRaw(v); }} tasks={tasks} onUpdateTasks={setTasksRaw} /> : null}
           {tab === "home" ? <HomePanel currentUser={currentUser} users={users} videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} /> : null}
-          {tab === "unified" ? <CombinedCalendarView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onSelectAd={function () { setTab("ad"); }} /> : null}
+          {tab === "unified" ? <CombinedCalendarView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onSelectAd={function () { setTab("ad"); }} users={users} onBulkDeleteVideo={isViewer ? null : bulkDeleteTasks} onBulkAssignVideo={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} /> : null}
           {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} onSelectAd={function () { setTab("ad"); }} onBulkDelete={isViewer ? null : bulkDeleteTasks} onBulkAssign={isViewer ? null : bulkAssignTasks} users={users} /> : null}
           {tab === "adCalendar" ? <CalendarView tasks={marketingTasks} onSelectTask={setSelectedMarketingTask} onAddTask={isViewer ? function () {} : openAddMarketing} ads={adsData} onMove={isViewer ? null : moveMarketingTask} onDelete={isViewer ? null : deleteMarketingTask} onSelectAd={function () { setTab("ad"); }} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} taskLabel="마케팅 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssign={isViewer ? null : bulkAssignMarketingTasks} users={users} /> : null}
           {tab === "designCalendar" ? <CalendarView tasks={designTasks} onSelectTask={setSelectedDesignTask} onAddTask={isViewer ? function () {} : openAddDesign} ads={[]} onMove={isViewer ? null : moveDesignTask} onDelete={isViewer ? null : deleteDesignTask} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} taskLabel="디자인 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteDesignTasks} onBulkAssign={isViewer ? null : bulkAssignDesignTasks} users={users} /> : null}
@@ -2765,7 +2844,7 @@ export default function App() {
           {tab === "overtime" ? <OvertimePanel currentUser={currentUser} users={users} isAdmin={isAdmin} /> : null}
           {tab === "messages" ? <MessagesPanel currentUser={currentUser} users={users} isAdmin={isAdmin} messages={directMessages} setMessages={setDirectMessagesRaw} /> : null}
           {tab === "ai" ? <AIPanel tasks={tasks} users={users} /> : null}
-          {tab === "activity" ? <ActivityLogPanel log={activityLog} onRestore={restoreDeletedItem} /> : null}
+          {tab === "activity" ? <ActivityLogPanel log={activityLog} onRestore={restoreDeletedItem} onCleanup={cleanupActivityLog} isAdmin={isAdmin} /> : null}
         </div>
       </div>
     </ThemeCtx.Provider>
