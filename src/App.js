@@ -1829,55 +1829,23 @@ function AIPanel(props) {
   const [mainTab, setMainTab] = useState("ai");
   const [report, setReport] = useState(""), [insight, setInsight] = useState("");
   const [lR, setLR] = useState(false), [lI, setLI] = useState(false);
-  const [messages, setMessages] = useState([{ role: "assistant", content: "안녕하세요! TIMBEL 업무 스케줄러 AI 어시스턴트입니다. 무엇이든 물어보세요 😊" }]);
-  const [input, setInput] = useState(""), [chatLoading, setChatLoading] = useState(false);
   const summary = tasks.map(function (tk) { return "[" + tk.status + "] " + tk.title + " (담당: " + tk.assignee + ", 플랫폼: " + tk.tag + ", 우선순위: " + tk.priority + ", 마감: " + tk.due + ")"; }).join("\n");
   const callAI = async function (prompt, set, setL) {
     setL(true); set("");
     try { const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: "당신은 영상 크리에이터 팀의 전문 매니저입니다. 한국어로 명확하게 답변하세요.", messages: [{ role: "user", content: prompt }] }) }); const data = await res.json(); set(data.content.map(function (c) { return c.text || ""; }).join("\n")); } catch (e) { set("오류가 발생했습니다."); }
     setL(false);
   };
-  const sendChat = async function () {
-    if (!input.trim() || chatLoading) return;
-    const userMsg = input.trim(); setInput("");
-    const newMessages = messages.concat([{ role: "user", content: userMsg }]);
-    setMessages(newMessages); setChatLoading(true);
-    try { const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1000, system: "당신은 TIMBEL 영상 제작 팀의 AI 어시스턴트입니다. 스케줄 데이터 참고해서 한국어로 친절하게 답변하세요.\n\n현재 스케줄:\n" + summary, messages: newMessages.map(function (m) { return { role: m.role, content: m.content }; }) }) }); const data = await res.json(); setMessages(function (prev) { return prev.concat([{ role: "assistant", content: data.content.map(function (c) { return c.text || ""; }).join("\n") }]); }); } catch (e) { setMessages(function (prev) { return prev.concat([{ role: "assistant", content: "오류가 발생했습니다." }]); }); }
-    setChatLoading(false);
-  };
-  const suggestions = ["현재 마감 임박한 영상 알려줘", "편집 단계 영상 몇 개야?", "이번 달 완료된 영상은?", "제작 효율 개선 방법 알려줘"];
   const s = { background: t.surface, borderRadius: 13, padding: "17px 19px", border: "1px solid " + t.border, marginBottom: 12 };
   const btn = function (l, bg) { return { width: "100%", padding: "10px 0", border: "none", borderRadius: 8, fontWeight: 700, fontSize: 13, cursor: l ? "not-allowed" : "pointer", background: l ? t.surface2 : bg, color: l ? t.text4 : "#fff", marginTop: 12 }; };
-  const firstUser = users.filter(function (u) { return u.role !== "admin"; })[0];
   const mainTabBtn = function (v, l) { return <button key={v} onClick={function () { setMainTab(v); }} style={{ padding: "8px 18px", background: "none", border: "none", borderBottom: mainTab === v ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: mainTab === v ? 700 : 500, fontSize: 13, color: mainTab === v ? "#818cf8" : t.text4, marginBottom: -1 }}>{l}</button>; };
   return (
     <div>
       <div style={{ display: "flex", gap: 2, marginBottom: 18, borderBottom: "1px solid " + t.border }}>{mainTabBtn("ai", "🤖 AI 분석")}{mainTabBtn("video", "🔍 영상 분석")}</div>
       {mainTab === "ai" ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: 16, alignItems: "start" }}>
-          <div>
-            <div style={s}><div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 3 }}>📄 제작 현황 요약</div><div style={{ fontSize: 12, color: t.text4 }}>현재 영상 제작 현황을 AI가 요약합니다</div><button disabled={lR} style={btn(lR, "#6366f1")} onClick={function () { callAI("다음 영상 제작 현황을 요약 리포트로 작성해주세요.\n\n" + summary, setReport, setLR); }}>{lR ? "생성 중..." : "리포트 생성"}</button>{report ? <div style={{ marginTop: 12, background: t.bg, borderRadius: 9, padding: "12px 14px", fontSize: 12, color: t.text2, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{report}</div> : null}</div>
-            <div style={s}><div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 3 }}>💡 생산성 인사이트</div><div style={{ fontSize: 12, color: t.text4 }}>병목 지점과 개선 방향을 분석합니다</div><button disabled={lI} style={btn(lI, "#ec4899")} onClick={function () { callAI("다음 영상 제작 데이터를 분석해서 인사이트와 개선 제안 3가지 제공해주세요.\n\n" + summary, setInsight, setLI); }}>{lI ? "분석 중..." : "인사이트 분석"}</button>{insight ? <div style={{ marginTop: 12, background: t.bg, borderRadius: 9, padding: "12px 14px", fontSize: 12, color: t.text2, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{insight}</div> : null}</div>
-          </div>
-          <div style={{ background: t.surface, borderRadius: 13, border: "1px solid " + t.border, display: "flex", flexDirection: "column", height: 600 }}>
-            <div style={{ padding: "14px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 10, background: "linear-gradient(135deg,#6366f1,#ec4899)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>🤖</div>
-              <div><div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>AI 어시스턴트</div><div style={{ fontSize: 11, color: "#34d399", display: "flex", alignItems: "center", gap: 4 }}><div style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399" }} /> 온라인</div></div>
-              <button onClick={function () { setMessages([{ role: "assistant", content: "안녕하세요! TIMBEL 업무 스케줄러 AI 어시스턴트입니다. 무엇이든 물어보세요 😊" }]); }} style={{ marginLeft: "auto", background: t.surface2, border: "1px solid " + t.border, borderRadius: 7, padding: "4px 10px", fontSize: 11, color: t.text4, cursor: "pointer" }}>초기화</button>
-            </div>
-            <div style={{ flex: 1, overflowY: "auto", padding: "14px 14px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
-              {messages.map(function (m, i) { return <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start", gap: 8, alignItems: "flex-end" }}>{m.role === "assistant" ? <div style={{ width: 26, height: 26, borderRadius: 8, background: "linear-gradient(135deg,#6366f1,#ec4899)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>🤖</div> : null}<div style={{ maxWidth: "78%", padding: "10px 13px", borderRadius: m.role === "user" ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: m.role === "user" ? "#6366f1" : t.surface2, color: m.role === "user" ? "#fff" : t.text, fontSize: 13, lineHeight: 1.65, whiteSpace: "pre-wrap", border: m.role === "user" ? "none" : "1px solid " + t.border }}>{m.content}</div>{m.role === "user" ? <Avatar name={firstUser ? firstUser.name : "나"} size={26} users={users} /> : null}</div>; })}
-              {chatLoading ? <div style={{ display: "flex", gap: 8, alignItems: "flex-end" }}><div style={{ width: 26, height: 26, borderRadius: 8, background: "linear-gradient(135deg,#6366f1,#ec4899)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13 }}>🤖</div><div style={{ padding: "10px 14px", borderRadius: "14px 14px 14px 4px", background: t.surface2, border: "1px solid " + t.border, display: "flex", gap: 4, alignItems: "center" }}>{[0, 1, 2].map(function (i) { return <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: t.text5 }} />; })}</div></div> : null}
-              <div ref={function (el) { if (el) el.scrollIntoView({ behavior: "smooth" }); }} />
-            </div>
-            {messages.length <= 1 ? <div style={{ padding: "0 12px 8px", display: "flex", flexWrap: "wrap", gap: 5 }}>{suggestions.map(function (sg) { return <button key={sg} onClick={function () { setInput(sg); }} style={{ background: t.bg, border: "1px solid " + t.border, borderRadius: 20, padding: "4px 10px", fontSize: 11, color: t.text4, cursor: "pointer" }}>{sg}</button>; })}</div> : null}
-            <div style={{ padding: "10px 12px 12px", borderTop: "1px solid " + t.border }}>
-              <div style={{ display: "flex", gap: 8 }}>
-                <input value={input} onChange={function (e) { setInput(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter" && !e.shiftKey) sendChat(); }} placeholder="메시지를 입력하세요..." style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 10, padding: "9px 13px", fontSize: 13, color: t.text, outline: "none" }} />
-                <button onClick={sendChat} disabled={chatLoading || !input.trim()} style={{ background: input.trim() && !chatLoading ? "#6366f1" : t.surface2, border: "none", borderRadius: 10, width: 40, height: 40, display: "flex", alignItems: "center", justifyContent: "center", cursor: input.trim() && !chatLoading ? "pointer" : "not-allowed", fontSize: 16 }}>➤</button>
-              </div>
-            </div>
-          </div>
+        <div style={{ maxWidth: 560, margin: "0 auto" }}>
+          <div style={s}><div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 3 }}>📄 제작 현황 요약</div><div style={{ fontSize: 12, color: t.text4 }}>현재 영상 제작 현황을 AI가 요약합니다</div><button disabled={lR} style={btn(lR, "#6366f1")} onClick={function () { callAI("다음 영상 제작 현황을 요약 리포트로 작성해주세요.\n\n" + summary, setReport, setLR); }}>{lR ? "생성 중..." : "리포트 생성"}</button>{report ? <div style={{ marginTop: 12, background: t.bg, borderRadius: 9, padding: "12px 14px", fontSize: 12, color: t.text2, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{report}</div> : null}</div>
+          <div style={s}><div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 3 }}>💡 생산성 인사이트</div><div style={{ fontSize: 12, color: t.text4 }}>병목 지점과 개선 방향을 분석합니다</div><button disabled={lI} style={btn(lI, "#ec4899")} onClick={function () { callAI("다음 영상 제작 데이터를 분석해서 인사이트와 개선 제안 3가지 제공해주세요.\n\n" + summary, setInsight, setLI); }}>{lI ? "분석 중..." : "인사이트 분석"}</button>{insight ? <div style={{ marginTop: 12, background: t.bg, borderRadius: 9, padding: "12px 14px", fontSize: 12, color: t.text2, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{insight}</div> : null}</div>
+          <div style={{ fontSize: 11, color: t.text4, textAlign: "center" }}>💬 자유롭게 대화하며 물어보고 싶으신 건 화면 우측 하단의 AI 챗봇을 이용해주세요</div>
         </div>
       ) : null}
       {mainTab === "video" ? <VideoAnalysisPanel tasks={tasks} /> : null}
