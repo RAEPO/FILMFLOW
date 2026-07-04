@@ -2458,7 +2458,10 @@ function FloatingChatWidget(props) {
     setLoading(false);
   };
 
-  const posStyle = pos ? { left: pos.x, top: pos.y, right: "auto", bottom: "auto" } : { right: 24, bottom: 24 };
+  const panelW = isOpen ? Math.min(320, window.innerWidth * 0.9) : 58;
+  const panelH = isOpen ? 440 : 58;
+  const clampedPos = pos ? { x: Math.max(6, Math.min(window.innerWidth - panelW - 6, pos.x)), y: Math.max(6, Math.min(window.innerHeight - panelH - 6, pos.y)) } : null;
+  const posStyle = clampedPos ? { left: clampedPos.x, top: clampedPos.y, right: "auto", bottom: "auto" } : { right: 24, bottom: 24 };
 
   return (
     <div>
