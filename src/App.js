@@ -262,6 +262,10 @@ function MediaPreview(props) {
   if (/\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(url)) return <video src={url} controls style={{ width: "100%", borderRadius: 12, display: "block", background: "#000" }} />;
   return null;
 }
+function EmptyState(props) {
+  const { t } = useTheme();
+  return <div style={{ textAlign: "center", padding: props.compact ? "20px 0" : "30px 0" }}><div style={{ fontSize: 26, marginBottom: 8, opacity: 0.45 }}>{props.icon || "📭"}</div><div style={{ color: t.text5, fontSize: 13 }}>{props.text}</div></div>;
+}
 function MentionText(props) {
   const names = (props.users || []).map(function (u) { return u.name; }).filter(Boolean).sort(function (a, b) { return b.length - a.length; });
   if (names.length === 0) return <span>{props.text}</span>;
@@ -324,7 +328,7 @@ function NotificationBell(props) {
               {myNotifs.some(function (n) { return !isRead(n); }) ? <button onClick={function () { onMarkAllRead(); }} style={{ background: "none", border: "none", color: "#818cf8", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>모두 읽음</button> : null}
             </div>
             <div style={{ overflowY: "auto", flex: 1 }}>
-              {myNotifs.length === 0 && overdueList.length === 0 ? <div style={{ padding: "30px 16px", textAlign: "center", color: t.text5, fontSize: 12 }}>알림이 없습니다</div> : null}
+              {myNotifs.length === 0 && overdueList.length === 0 ? <EmptyState icon="🔔" text="알림이 없습니다" compact /> : null}
               {overdueList.map(function (item) {
                 return (
                   <div key={item.id} onClick={function () { onClickOverdue(item); setOpen(false); }} style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, cursor: "pointer", background: "#f8717112" }}>
@@ -479,7 +483,7 @@ function ProfileModal(props) {
   };
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-      <div style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 420px)", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c", overflow: "hidden" }}>
+      <div style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 420px)", boxShadow: "0 24px 64px #000c", overflow: "hidden" }}>
         <div style={{ background: "linear-gradient(135deg,#6366f1,#ec4899)", padding: "22px 24px 18px", position: "relative" }}>
           <button onClick={onClose} style={{ position: "absolute", top: 14, right: 16, background: "none", border: "none", color: "#ffffff88", cursor: "pointer", fontSize: 20 }}>×</button>
           <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
@@ -582,7 +586,7 @@ function AdminPanel(props) {
           ) : null}
           <div style={s}>
             <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 회원 ({members.length})</div>
-            {members.length === 0 ? <div style={{ padding: "24px", textAlign: "center", color: t.text5, fontSize: 13 }}>등록된 회원이 없습니다</div> : null}
+            {members.length === 0 ? <EmptyState icon="👥" text="등록된 회원이 없습니다" /> : null}
             {members.map(function (u) {
               return (
                 <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid " + t.border }}>
@@ -625,7 +629,7 @@ function AdminPanel(props) {
           </div>
           <div style={s}>
             <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>등록된 공지 ({notices.length})</div>
-            {notices.length === 0 ? <div style={{ padding: "24px", textAlign: "center", color: t.text5, fontSize: 13 }}>등록된 공지가 없습니다</div> : null}
+            {notices.length === 0 ? <EmptyState icon="📢" text="등록된 공지가 없습니다" /> : null}
             {notices.map(function (n) {
               return (
                 <div key={n.id} style={{ padding: "12px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -667,7 +671,7 @@ function AdminPanel(props) {
       {aTab === "schedule" ? (
         <div style={s}>
           <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 스케줄 조율 ({tasks.length}개)</div>
-          {tasks.length === 0 ? <div style={{ padding: "24px", textAlign: "center", color: t.text5, fontSize: 13 }}>등록된 스케줄이 없습니다</div> : null}
+          {tasks.length === 0 ? <EmptyState icon="📅" text="등록된 스케줄이 없습니다" /> : null}
           {tasks.map(function (tk) {
             return (
               <div key={tk.id} style={{ padding: "12px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", gap: 12 }}>
@@ -1075,7 +1079,7 @@ function TaskDetailModal(props) {
   if (editMode) {
     return (
       <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-        <div style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 400px)", maxHeight: "85vh", overflowY: "auto", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c", padding: "22px 24px" }}>
+        <div style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 400px)", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 24px 64px #000c", padding: "22px 24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
             <div style={{ fontSize: 15, fontWeight: 800, color: t.text }}>{editTitle}</div>
             <button onClick={function () { setEditMode(false); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20 }}>×</button>
@@ -1107,7 +1111,7 @@ function TaskDetailModal(props) {
 
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-      <div style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 460px)", maxHeight: "85vh", display: "flex", flexDirection: "column", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+      <div style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 460px)", maxHeight: "85vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px #000c" }}>
         <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid " + t.border }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div style={{ flex: 1 }}>
@@ -1145,7 +1149,7 @@ function TaskDetailModal(props) {
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 12, textTransform: "uppercase", letterSpacing: ".5px" }}>코멘트 {(task.comments || []).length > 0 ? "· " + (task.comments || []).length : ""}</div>
-          {(task.comments || []).length === 0 ? <div style={{ textAlign: "center", padding: "20px 0", color: t.text5, fontSize: 13 }}>아직 코멘트가 없습니다</div> : null}
+          {(task.comments || []).length === 0 ? <EmptyState icon="💬" text="아직 코멘트가 없습니다" compact /> : null}
           {(task.comments || []).map(function (c) {
             return (
               <div key={c.id} style={{ display: "flex", gap: 10, marginBottom: 12 }}>
@@ -1242,7 +1246,7 @@ function AddTaskModal(props) {
   };
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-      <div style={{ background: t.surface, borderRadius: 20, padding: "22px 26px", width: "min(92vw, 370px)", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+      <div style={{ background: t.surface, borderRadius: 20, padding: "22px 26px", width: "min(92vw, 370px)", boxShadow: "0 24px 64px #000c" }}>
         <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, color: t.text }}>{modalTitle}</div>
         {[["제목", "title", "text"], ["설명", "desc", "text"], ["작업 시작일", "due", "date"]].map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><input type={item[2]} value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={inp} /></div>; })}
         {[["담당자", "assignee", memberNames.length ? memberNames : ["미배정"]], ["우선순위", "priority", PRIORITIES]].concat(categories ? [["업무 종류", "category", categories]] : []).concat([[categoryLabel, "tag", tagList], ["단계", "status", stageList]]).map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><select value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{item[2].map(function (o) { return <option key={o}>{o}</option>; })}</select></div>; })}
@@ -1425,7 +1429,7 @@ function CalendarView(props) {
       ) : null}
       {dayDetail ? (
         <div onClick={function () { setDayDetail(null); }} style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 250, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-          <div onClick={function (e) { e.stopPropagation(); }} style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 420px)", maxHeight: "80vh", display: "flex", flexDirection: "column", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+          <div onClick={function (e) { e.stopPropagation(); }} style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 420px)", maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px #000c" }}>
             <div style={{ padding: "16px 20px", borderBottom: "1px solid " + t.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: t.text }}>{dayDetail.date} 일정 ({dayDetail.items.length})</div>
               <button onClick={function () { setDayDetail(null); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20 }}>×</button>
@@ -1608,7 +1612,7 @@ function CombinedCalendarView(props) {
       ) : null}
       {dayDetail ? (
         <div onClick={function () { setDayDetail(null); }} style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 250, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-          <div onClick={function (e) { e.stopPropagation(); }} style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 420px)", maxHeight: "80vh", display: "flex", flexDirection: "column", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+          <div onClick={function (e) { e.stopPropagation(); }} style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 420px)", maxHeight: "80vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px #000c" }}>
             <div style={{ padding: "16px 20px", borderBottom: "1px solid " + t.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: 15, fontWeight: 800, color: t.text }}>{dayDetail.date} 일정 ({dayDetail.items.length})</div>
               <button onClick={function () { setDayDetail(null); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20 }}>×</button>
@@ -1684,7 +1688,7 @@ function BoardView(props) {
       </div>
       <div style={{ background: t.surface, border: "1px solid " + t.border, borderRadius: 14, padding: "12px 16px", marginBottom: 12 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 7 }}>
-          <span style={{ fontSize: 11, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 완료율</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 완료율</span>
           <span style={{ fontSize: 13, fontWeight: 800, color: "#34d399" }}>{doneRate}% ({doneItems}/{totalItems})</span>
         </div>
         <div style={{ background: t.bg, borderRadius: 99, height: 7 }}><div style={{ width: doneRate + "%", background: "linear-gradient(90deg,#6366f1,#34d399)", height: "100%", borderRadius: 99, transition: "width .3s" }} /></div>
@@ -1954,7 +1958,7 @@ function VideoAnalysisPanel(props) {
           {mode === "list" ? (
             <div>
               <div style={{ fontSize: 12, color: t.text4, marginBottom: 10 }}>스케줄러에 등록된 영상을 선택해서 분석받으세요</div>
-              {tasks.length === 0 ? <div style={{ textAlign: "center", padding: "24px", color: t.text5, fontSize: 13 }}>등록된 영상이 없습니다</div> : (
+              {tasks.length === 0 ? <EmptyState icon="🎬" text="등록된 영상이 없습니다" /> : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 7, maxHeight: 260, overflowY: "auto", marginBottom: 14 }}>
                   {tasks.map(function (tk) { return <div key={tk.id} onClick={function () { setSelTask(tk); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 11, border: "1px solid " + (selTask && selTask.id === tk.id ? "#6366f1" : t.border), background: selTask && selTask.id === tk.id ? "#6366f115" : t.bg, cursor: "pointer" }}><span>{STAGE_ICON[tk.status]}</span><div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{tk.title}</div><div style={{ fontSize: 11, color: t.text4 }}>{tk.tag} · {tk.assignee} · {tk.status}</div></div><span style={{ fontSize: 10, color: TAG_COLOR[tk.tag] || "#818cf8", background: (TAG_COLOR[tk.tag] || "#818cf8") + "18", padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>{tk.tag}</span></div>; })}
                 </div>
@@ -2040,7 +2044,7 @@ function AdDetailModal(props) {
   const fields = type === "ai" ? aiF : intF;
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 400, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-      <div style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 520px)", maxHeight: "88vh", display: "flex", flexDirection: "column", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+      <div style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 520px)", maxHeight: "88vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px #000c" }}>
         <div style={{ padding: "18px 22px 14px", borderBottom: "1px solid " + t.border, display: "flex", justifyContent: "space-between", alignItems: "center" }}><div style={{ fontSize: 15, fontWeight: 800, color: t.text }}>{form.content || "광고 상세"}</div><button onClick={onClose} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20 }}>×</button></div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           <div style={{ gridColumn: "1/-1", display: "flex", gap: 7, flexWrap: "wrap" }}>
@@ -2160,7 +2164,7 @@ function OvertimeEntryModal(props) {
   };
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-      <div style={{ background: t.surface, borderRadius: 20, padding: "22px 26px", width: "min(92vw, 340px)", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+      <div style={{ background: t.surface, borderRadius: 20, padding: "22px 26px", width: "min(92vw, 340px)", boxShadow: "0 24px 64px #000c" }}>
         <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, color: t.text }}>{isEntry ? "⏰ 야근 기록 추가" : "🏖️ 대체휴가 사용 추가"}</div>
         <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>날짜</div><input type="date" value={form.date} onChange={function (e) { set("date", e.target.value); }} style={inp} /></div>
         <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{isEntry ? "야근 시간 (시간 단위, 예: 2.5)" : "사용 시간 (시간 단위, 예: 4)"}</div><input type="number" step="0.5" min="0" value={form.hours} onChange={function (e) { set("hours", e.target.value); }} placeholder="예: 2.5" style={inp} /></div>
@@ -2223,7 +2227,7 @@ function OvertimePanel(props) {
               <span style={{ fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>⏰ 야근 기록 ({myEntries.length})</span>
               <button onClick={function () { setShowAddEntry(true); }} style={{ background: "#6366f1", border: "none", borderRadius: 10, padding: "6px 12px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>+ 추가</button>
             </div>
-            {myEntries.length === 0 ? <div style={{ padding: "24px", textAlign: "center", color: t.text5, fontSize: 13 }}>기록된 야근이 없습니다</div> : null}
+            {myEntries.length === 0 ? <EmptyState icon="⏰" text="기록된 야근이 없습니다" /> : null}
             {myEntries.map(function (e) {
               return (
                 <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", borderBottom: "1px solid " + t.border }}>
@@ -2240,7 +2244,7 @@ function OvertimePanel(props) {
               <span style={{ fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>🏖️ 대체휴가 사용 기록 ({myUsage.length})</span>
               <button onClick={function () { setShowAddUsage(true); }} style={{ background: "#fb923c", border: "none", borderRadius: 10, padding: "6px 12px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>+ 추가</button>
             </div>
-            {myUsage.length === 0 ? <div style={{ padding: "24px", textAlign: "center", color: t.text5, fontSize: 13 }}>사용 기록이 없습니다</div> : null}
+            {myUsage.length === 0 ? <EmptyState icon="🏖️" text="사용 기록이 없습니다" /> : null}
             {myUsage.map(function (u) {
               return (
                 <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", borderBottom: "1px solid " + t.border }}>
@@ -2262,7 +2266,7 @@ function OvertimePanel(props) {
           </div>
           <div style={s}>
             <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>팀원별 현황 ({summaryByUser.length}명) · 이름을 클릭하면 상세 기록이 열려요</div>
-            {summaryByUser.length === 0 ? <div style={{ padding: "24px", textAlign: "center", color: t.text5, fontSize: 13 }}>등록된 직원이 없습니다</div> : null}
+            {summaryByUser.length === 0 ? <EmptyState icon="👥" text="등록된 직원이 없습니다" /> : null}
             {summaryByUser.map(function (item) {
               const isMe = item.name === myName;
               const isOpen = expandedUser === item.name;
@@ -2368,7 +2372,7 @@ function MessagesPanel(props) {
             {totalUnread > 0 ? <span style={{ fontSize: 10, background: "#f87171", color: "#fff", borderRadius: 99, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", fontWeight: 700 }}>{totalUnread > 9 ? "9+" : totalUnread}</span> : null}
           </div>
           <div style={{ flex: 1, overflowY: "auto" }}>
-            {partnersSorted.length === 0 ? <div style={{ padding: "24px 16px", textAlign: "center", color: t.text5, fontSize: 12 }}>대화 가능한 팀원이 없습니다</div> : null}
+            {partnersSorted.length === 0 ? <EmptyState icon="👋" text="대화 가능한 팀원이 없습니다" compact /> : null}
             {partnersSorted.map(function (p) {
               const last = lastMessageWith(p.name);
               const unread = unreadFrom(p.name);
@@ -2398,7 +2402,7 @@ function MessagesPanel(props) {
                 <div><div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{selectedPartner}</div><div style={{ fontSize: 11, color: t.text4 }}>{partnerInfo ? [partnerInfo.rank, partnerInfo.position].filter(Boolean).join(" · ") : ""}</div></div>
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
-                {conv.length === 0 ? <div style={{ textAlign: "center", padding: "30px 0", color: t.text5, fontSize: 12 }}>아직 메시지가 없습니다. 첫 메시지를 보내보세요!</div> : null}
+                {conv.length === 0 ? <EmptyState icon="💌" text="아직 메시지가 없습니다. 첫 메시지를 보내보세요!" /> : null}
                 {conv.map(function (m) {
                   const mine = m.from === myName;
                   return (
@@ -2481,7 +2485,7 @@ function HomePanel(props) {
       ) : null}
       <div style={s}>
         <div style={{ fontSize: 12, fontWeight: 700, color: t.text4, marginBottom: 10, textTransform: "uppercase", letterSpacing: ".5px" }}>📅 다가오는 일정 (7일 이내)</div>
-        {upcoming.length === 0 ? <div style={{ textAlign: "center", padding: "20px 0", color: t.text5, fontSize: 13 }}>예정된 일정이 없습니다</div> : null}
+        {upcoming.length === 0 ? <EmptyState icon="📅" text="예정된 일정이 없습니다" compact /> : null}
         {upcoming.slice(0, 10).map(function (item) {
           const info = TYPE_INFO[item.kind];
           return (
@@ -2496,7 +2500,7 @@ function HomePanel(props) {
       </div>
       <div style={s}>
         <div style={{ fontSize: 12, fontWeight: 700, color: t.text4, marginBottom: 12, textTransform: "uppercase", letterSpacing: ".5px" }}>👥 담당자별 업무량 (진행중 기준)</div>
-        {workload.length === 0 ? <div style={{ textAlign: "center", padding: "20px 0", color: t.text5, fontSize: 13 }}>데이터가 없습니다</div> : null}
+        {workload.length === 0 ? <EmptyState icon="📊" text="데이터가 없습니다" compact /> : null}
         {workload.map(function (w) {
           return (
             <div key={w.name} style={{ marginBottom: 9 }}>
@@ -2648,7 +2652,7 @@ function ActivityLogPanel(props) {
       </div>
       <div style={{ background: t.surface, borderRadius: 16, border: "1px solid " + t.border, overflow: "hidden" }}>
         <div style={{ padding: "12px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 활동 ({log.length}) · 자동 삭제 없이 모두 보존돼요 · 최근 200개만 표시</div>
-        {log.length === 0 ? <div style={{ padding: "30px", textAlign: "center", color: t.text5, fontSize: 13 }}>활동 기록이 없습니다</div> : null}
+        {log.length === 0 ? <EmptyState icon="🗂️" text="활동 기록이 없습니다" /> : null}
         {log.slice(0, 200).map(function (entry) {
           const canRestore = entry.action === "삭제" && entry.snapshot && entry.restoreType && onRestore;
           const alreadyRestored = restoredIds[entry.id];
@@ -2688,13 +2692,13 @@ function SearchModal(props) {
   };
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 400, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "10vh", backdropFilter: "blur(4px)" }}>
-      <div onClick={function (e) { e.stopPropagation(); }} style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 560px)", maxHeight: "70vh", display: "flex", flexDirection: "column", border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c" }}>
+      <div onClick={function (e) { e.stopPropagation(); }} style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 560px)", maxHeight: "70vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px #000c" }}>
         <div style={{ padding: "16px 18px", borderBottom: "1px solid " + t.border }}>
           <input autoFocus value={query} onChange={function (e) { setQuery(e.target.value); }} placeholder="🔍 제목, 담당자, 코멘트로 검색... (영상·마케팅·디자인 전체)" style={{ width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 12, padding: "10px 14px", fontSize: 14, color: t.text, outline: "none", boxSizing: "border-box" }} />
         </div>
         <div style={{ overflowY: "auto", padding: "6px 8px" }}>
-          {!q ? <div style={{ padding: "30px", textAlign: "center", color: t.text5, fontSize: 13 }}>검색어를 입력하세요</div> : null}
-          {q && results.length === 0 ? <div style={{ padding: "30px", textAlign: "center", color: t.text5, fontSize: 13 }}>검색 결과가 없습니다</div> : null}
+          {!q ? <EmptyState icon="🔍" text="검색어를 입력하세요" /> : null}
+          {q && results.length === 0 ? <EmptyState icon="😕" text="검색 결과가 없습니다" /> : null}
           {results.map(function (item) {
             const info = TYPE_INFO[item.kind];
             return (
@@ -2898,6 +2902,7 @@ export default function App() {
   return (
     <ThemeCtx.Provider value={{ t: t, isDark: isDark }}>
       <div style={{ minHeight: "100vh", background: t.bg, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", color: t.text }}>
+        <style dangerouslySetInnerHTML={{ __html: "button:not(:disabled){transition:opacity .15s ease,transform .1s ease,box-shadow .15s ease;} button:not(:disabled):hover{opacity:.85;} button:not(:disabled):active{transform:scale(0.97);} input,select,textarea{transition:border-color .15s ease,box-shadow .15s ease;} input:focus,select:focus,textarea:focus{outline:none;border-color:#6366f1 !important;box-shadow:0 0 0 3px rgba(99,102,241,0.16);}" }} />
         <FloatingChatWidget tasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} />
         {showAdd ? <AddTaskModal onAdd={addTask} onClose={function () { setShowAdd(false); }} defaultDate={addDate} users={users} title="업무 추가" categories={TASK_CATEGORIES} /> : null}
         {selectedTask ? <TaskDetailModal task={selectedTask} onClose={function () { setSelectedTask(null); }} onUpdate={updateTask} onMove={isViewer ? null : function (id, dir) { moveTask(id, dir); setSelectedTask(function (prev) { return Object.assign({}, prev, { status: STAGES[STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} editTitle="✏️ 업무 정보 수정" categories={TASK_CATEGORIES} allTasks={tasks} onUpdateSeries={isViewer ? null : updateTaskSeries} /> : null}
