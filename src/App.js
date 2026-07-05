@@ -1029,6 +1029,7 @@ function TaskDetailModal(props) {
   const categories = props.categories || null;
   const editTitle = props.editTitle || "✏️ 영상 정보 수정";
   const [comment, setComment] = useState("");
+  const [mentionQuery, setMentionQuery] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [applyToSeries, setApplyToSeries] = useState(false);
   const [editForm, setEditForm] = useState({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") });
@@ -1162,9 +1163,38 @@ function TaskDetailModal(props) {
         </div>
         <div style={{ padding: "12px 22px 18px", borderTop: "1px solid " + t.border }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}><Avatar name={currentUser.name} size={18} users={users} /><span style={{ fontSize: 12, color: t.text3, fontWeight: 600 }}>{currentUser.name} 으로 작성 중</span></div>
-          <div style={{ display: "flex", gap: 7 }}>
-            <input value={comment} onChange={function (e) { setComment(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") addComment(); }} placeholder="코멘트 입력... (@이름 으로 멘션 알림 가능)" style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "9px 13px", fontSize: 13, color: t.text, outline: "none" }} />
-            <button onClick={addComment} style={{ background: "#6366f1", border: "none", borderRadius: 9, padding: "0 15px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>전송</button>
+          <div style={{ position: "relative", display: "flex", gap: 7 }}>
+            {mentionQuery !== null ? (function () {
+              const q = mentionQuery.toLowerCase();
+              const suggestions = users.filter(function (u) { return u.approved && u.name !== currentUser.name && u.name.toLowerCase().indexOf(q) !== -1; }).slice(0, 6);
+              if (suggestions.length === 0) return null;
+              return (
+                <div style={{ position: "absolute", bottom: "100%", left: 0, marginBottom: 6, background: t.surface, border: "1px solid " + t.border, borderRadius: 10, boxShadow: "0 10px 28px #000a", overflow: "hidden", zIndex: 60, minWidth: 180 }}>
+                  {suggestions.map(function (u) {
+                    return (
+                      <div key={u.name} onMouseDown={function (e) { e.preventDefault(); }} onClick={function () {
+                        const atIndex = comment.lastIndexOf("@");
+                        const newComment = comment.slice(0, atIndex) + "@" + u.name + " ";
+                        setComment(newComment);
+                        setMentionQuery(null);
+                      }} style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", cursor: "pointer" }}>
+                        <Avatar name={u.name} size={20} users={users} />
+                        <span style={{ fontSize: 13, color: t.text2 }}>{u.name}</span>
+                        <span style={{ fontSize: 10, color: t.text5, marginLeft: "auto" }}>{u.rank}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })() : null}
+            <input value={comment} onChange={function (e) {
+              const val = e.target.value;
+              setComment(val);
+              const atIndex = val.lastIndexOf("@");
+              if (atIndex !== -1 && !/\s/.test(val.slice(atIndex + 1))) setMentionQuery(val.slice(atIndex + 1));
+              else setMentionQuery(null);
+            }} onKeyDown={function (e) { if (e.key === "Enter") { addComment(); setMentionQuery(null); } if (e.key === "Escape") setMentionQuery(null); }} placeholder="코멘트 입력... (@이름 입력하면 대상이 목록으로 떠요)" style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "9px 13px", fontSize: 13, color: t.text, outline: "none" }} />
+            <button onClick={function () { addComment(); setMentionQuery(null); }} style={{ background: "#6366f1", border: "none", borderRadius: 9, padding: "0 15px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>전송</button>
           </div>
         </div>
       </div>
