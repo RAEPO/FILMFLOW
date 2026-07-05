@@ -2013,9 +2013,163 @@ function VideoAnalysisPanel(props) {
   );
 }
 
+function AdAnalysisPanel(props) {
+  const { t } = useTheme();
+  const ads = props.ads || [];
+  const [mode, setMode] = useState(ads.length > 0 ? "list" : "manual");
+  const [selAd, setSelAd] = useState(null);
+  const [form, setFormState] = useState({ content: "", channel: "유튜브", target: "", goal: "" });
+  const setF = function (k, v) { setFormState(function (f) { return Object.assign({}, f, { [k]: v }); }); };
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const CHANNELS = ["유튜브", "인스타그램", "페이스북", "틱톡", "기타"];
+  const analyze = async function () {
+    let info;
+    if (mode === "list" && selAd) info = { content: selAd.content || "광고", channel: "미입력", target: "미입력", goal: selAd.workStatus || "미입력" };
+    else if (mode === "manual") info = Object.assign({}, form);
+    else return;
+    setLoading(true); setResult(null);
+    const prompt = "다음 광고 정보를 분석해주세요:\n\n광고 문구/내용: " + info.content + "\n채널: " + (info.channel || "미입력") + "\n타겟 고객: " + (info.target || "미입력") + "\n목표: " + (info.goal || "미입력") + "\n\n아래 JSON 형식으로만 응답하세요:\n{\"score\":숫자,\"scoreComment\":\"한줄코멘트\",\"copyImprovements\":[\"제안1\",\"제안2\",\"제안3\"],\"targetingIdeas\":[\"아이디어1\",\"아이디어2\"],\"channelRecommendation\":\"채널추천설명\",\"abtestIdeas\":[\"테스트안1\",\"테스트안2\"]}";
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1400, system: "당신은 디지털 광고 마케팅 전문가입니다. JSON 형식으로만 응답하세요.", messages: [{ role: "user", content: prompt }] }) });
+      const data = await res.json();
+      const text = data.content.map(function (c) { return c.text || ""; }).join("");
+      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      setResult(Object.assign({}, parsed, { info: info }));
+    } catch (e) { setResult({ error: "분석 중 오류가 발생했습니다." }); }
+    setLoading(false);
+  };
+  const reset = function () { setResult(null); setSelAd(null); setFormState({ content: "", channel: "유튜브", target: "", goal: "" }); };
+  const s = { background: t.surface, borderRadius: 15, padding: "16px 18px", border: "1px solid " + t.border };
+  const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "8px 12px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ background: "linear-gradient(135deg,#fbbf24,#f59e0b)", borderRadius: 16, padding: "16px 22px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
+        <Megaphone size={24} strokeWidth={1.75} color="#fff" />
+        <div><div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>광고 분석</div><div style={{ fontSize: 12, color: "#ffffff88", marginTop: 2 }}>광고 카피 · 타겟팅 · 채널 AI 인사이트</div></div>
+      </div>
+      {!result ? (
+        <div style={Object.assign({}, s, { marginBottom: 16 })}>
+          <div style={{ display: "flex", gap: 4, background: t.bg, borderRadius: 11, padding: 3, marginBottom: 18, border: "1px solid " + t.border, width: "fit-content" }}>
+            {[["list", ClipboardList, "광고 목록에서 선택"], ["manual", Pencil, "직접 입력"]].map(function (item) { const ModeIcon = item[1]; return <button key={item[0]} onClick={function () { setMode(item[0]); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 15px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: mode === item[0] ? 700 : 500, fontSize: 12, background: mode === item[0] ? "#f59e0b" : "transparent", color: mode === item[0] ? "#fff" : t.text4 }}><ModeIcon size={13} strokeWidth={2} /> {item[2]}</button>; })}
+          </div>
+          {mode === "list" ? (
+            ads.length === 0 ? <EmptyState icon={Megaphone} text="등록된 광고가 없습니다" compact /> : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 280, overflowY: "auto", marginBottom: 12 }}>
+                {ads.map(function (ad) { return <div key={ad.id} onClick={function () { setSelAd(ad); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 11, border: "1px solid " + (selAd && selAd.id === ad.id ? "#f59e0b" : t.border), background: selAd && selAd.id === ad.id ? "#f59e0b15" : t.bg, cursor: "pointer" }}><Megaphone size={14} strokeWidth={2} style={{ flexShrink: 0, color: t.text3 }} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ad.content || "광고"}</div><div style={{ fontSize: 11, color: t.text4 }}>{ad.requester} · {ad.workStatus}</div></div></div>; })}
+              </div>
+            )
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 4 }}>
+              <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>광고 문구/내용</div><textarea value={form.content} onChange={function (e) { setF("content", e.target.value); }} rows={3} style={Object.assign({}, inp, { resize: "vertical", fontFamily: "inherit" })} placeholder="광고 카피, 핵심 메시지 등을 입력하세요" /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>채널</div><select value={form.channel} onChange={function (e) { setF("channel", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{CHANNELS.map(function (c) { return <option key={c}>{c}</option>; })}</select></div>
+                <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>목표</div><input value={form.goal} onChange={function (e) { setF("goal", e.target.value); }} placeholder="예: 신규 유입 확대" style={inp} /></div>
+              </div>
+              <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>타겟 고객</div><input value={form.target} onChange={function (e) { setF("target", e.target.value); }} placeholder="예: 20대 여성, 자취생 등" style={inp} /></div>
+            </div>
+          )}
+          <button onClick={analyze} disabled={loading || (mode === "list" ? !selAd : !form.content.trim())} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 16, background: loading || (mode === "list" ? !selAd : !form.content.trim()) ? t.surface2 : "linear-gradient(135deg,#fbbf24,#f59e0b)", border: "none", borderRadius: 12, padding: "12px 0", color: loading || (mode === "list" ? !selAd : !form.content.trim()) ? t.text4 : "#fff", fontWeight: 700, fontSize: 14, cursor: loading || (mode === "list" ? !selAd : !form.content.trim()) ? "not-allowed" : "pointer" }}>{loading ? <RefreshCw size={15} strokeWidth={2} /> : <Megaphone size={15} strokeWidth={2} />}{loading ? "AI 분석 중..." : "AI 분석 시작"}</button>
+        </div>
+      ) : null}
+      {loading ? <div style={Object.assign({}, s, { textAlign: "center", padding: "40px" })}><div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}><RefreshCw size={32} strokeWidth={1.5} color={t.text3} /></div><div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>AI가 분석하고 있어요...</div></div> : null}
+      {result && result.error ? <div style={Object.assign({}, s, { textAlign: "center", padding: "30px" })}><div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}><AlertTriangle size={22} strokeWidth={1.75} color="#f87171" /></div><div style={{ fontSize: 13, color: "#f87171" }}>{result.error}</div><button onClick={reset} style={{ marginTop: 12, background: "#f8717120", border: "1px solid #f8717140", borderRadius: 11, padding: "8px 20px", color: "#f87171", cursor: "pointer", fontSize: 12 }}>다시 시도</button></div> : null}
+      {result && !result.error ? (
+        <div>
+          <div style={Object.assign({}, s, { display: "flex", alignItems: "center", gap: 16, marginBottom: 14 })}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "conic-gradient(#f59e0b " + (result.score || 0) * 3.6 + "deg, " + t.bg + " 0deg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><div style={{ width: 46, height: 46, borderRadius: "50%", background: t.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, color: t.text }}>{result.score}</div></div>
+            <div style={{ fontSize: 13, color: t.text2, lineHeight: 1.6 }}>{result.scoreComment}</div>
+          </div>
+          {result.copyImprovements ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Pencil size={13} strokeWidth={2} /> 카피 개선 제안</div>{result.copyImprovements.map(function (v, i) { return <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid " + t.border }}><span style={{ width: 22, height: 22, borderRadius: "50%", background: "#f59e0b", color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span><span style={{ fontSize: 13, color: t.text }}>{v}</span></div>; })}</div> : null}
+          {result.targetingIdeas ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Users size={13} strokeWidth={2} /> 타겟팅 아이디어</div>{result.targetingIdeas.map(function (v, i) { return <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid " + t.border }}><Users size={14} strokeWidth={2} style={{ flexShrink: 0, color: t.text4 }} /><span style={{ fontSize: 13, color: t.text, lineHeight: 1.6 }}>{v}</span></div>; })}</div> : null}
+          {result.channelRecommendation ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><Megaphone size={13} strokeWidth={2} /> 채널 추천</div><div style={{ fontSize: 13, color: t.text2, lineHeight: 1.8, background: t.bg, borderRadius: 11, padding: "12px 14px", border: "1px solid " + t.border }}>{result.channelRecommendation}</div></div> : null}
+          {result.abtestIdeas ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Zap size={13} strokeWidth={2} /> A/B 테스트 아이디어</div>{result.abtestIdeas.map(function (v, i) { return <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid #fbbf2440" }}><Zap size={14} strokeWidth={2} style={{ flexShrink: 0, color: "#fbbf24" }} /><span style={{ fontSize: 13, color: t.text, lineHeight: 1.6 }}>{v}</span></div>; })}</div> : null}
+          <button onClick={reset} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: t.surface2, border: "1px solid " + t.border, borderRadius: 12, padding: "11px 0", color: t.text3, fontWeight: 600, fontSize: 13, cursor: "pointer", marginBottom: 20 }}><RefreshCw size={13} strokeWidth={2} /> 새 광고 분석하기</button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function DesignAnalysisPanel(props) {
+  const { t } = useTheme();
+  const designTasks = props.designTasks || [];
+  const [mode, setMode] = useState(designTasks.length > 0 ? "list" : "manual");
+  const [selTask, setSelTask] = useState(null);
+  const [form, setFormState] = useState({ desc: "", category: "로고", tone: "" });
+  const setF = function (k, v) { setFormState(function (f) { return Object.assign({}, f, { [k]: v }); }); };
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const analyze = async function () {
+    let info;
+    if (mode === "list" && selTask) info = { desc: selTask.desc || selTask.title, category: selTask.tag, tone: "미입력" };
+    else if (mode === "manual") info = Object.assign({}, form);
+    else return;
+    setLoading(true); setResult(null);
+    const prompt = "다음 디자인 작업 정보를 분석해주세요:\n\n설명: " + info.desc + "\n카테고리: " + (info.category || "미입력") + "\n톤앤매너: " + (info.tone || "미입력") + "\n\n아래 JSON 형식으로만 응답하세요:\n{\"score\":숫자,\"scoreComment\":\"한줄코멘트\",\"styleSuggestions\":[\"제안1\",\"제안2\",\"제안3\"],\"colorPalette\":[\"색상조합1 설명\",\"색상조합2 설명\"],\"layoutTips\":[\"팁1\",\"팁2\"],\"trendAnalysis\":\"트렌드분석\"}";
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 1400, system: "당신은 그래픽 디자인 전문가입니다. JSON 형식으로만 응답하세요.", messages: [{ role: "user", content: prompt }] }) });
+      const data = await res.json();
+      const text = data.content.map(function (c) { return c.text || ""; }).join("");
+      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
+      setResult(Object.assign({}, parsed, { info: info }));
+    } catch (e) { setResult({ error: "분석 중 오류가 발생했습니다." }); }
+    setLoading(false);
+  };
+  const reset = function () { setResult(null); setSelTask(null); setFormState({ desc: "", category: "로고", tone: "" }); };
+  const s = { background: t.surface, borderRadius: 15, padding: "16px 18px", border: "1px solid " + t.border };
+  const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "8px 12px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
+  return (
+    <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ background: "linear-gradient(135deg,#f87171,#fb7185)", borderRadius: 16, padding: "16px 22px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
+        <Palette size={24} strokeWidth={1.75} color="#fff" />
+        <div><div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>디자인 분석</div><div style={{ fontSize: 12, color: "#ffffff88", marginTop: 2 }}>스타일 · 컬러 · 레이아웃 AI 인사이트</div></div>
+      </div>
+      {!result ? (
+        <div style={Object.assign({}, s, { marginBottom: 16 })}>
+          <div style={{ display: "flex", gap: 4, background: t.bg, borderRadius: 11, padding: 3, marginBottom: 18, border: "1px solid " + t.border, width: "fit-content" }}>
+            {[["list", ClipboardList, "디자인 목록에서 선택"], ["manual", Pencil, "직접 입력"]].map(function (item) { const ModeIcon = item[1]; return <button key={item[0]} onClick={function () { setMode(item[0]); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 15px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: mode === item[0] ? 700 : 500, fontSize: 12, background: mode === item[0] ? "#f87171" : "transparent", color: mode === item[0] ? "#fff" : t.text4 }}><ModeIcon size={13} strokeWidth={2} /> {item[2]}</button>; })}
+          </div>
+          {mode === "list" ? (
+            designTasks.length === 0 ? <EmptyState icon={Palette} text="등록된 디자인 업무가 없습니다" compact /> : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, maxHeight: 280, overflowY: "auto", marginBottom: 12 }}>
+                {designTasks.map(function (dt) { return <div key={dt.id} onClick={function () { setSelTask(dt); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 11, border: "1px solid " + (selTask && selTask.id === dt.id ? "#f87171" : t.border), background: selTask && selTask.id === dt.id ? "#f8717115" : t.bg, cursor: "pointer" }}><Palette size={14} strokeWidth={2} style={{ flexShrink: 0, color: t.text3 }} /><div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{dt.title}</div><div style={{ fontSize: 11, color: t.text4 }}>{dt.tag} · {dt.assignee} · {dt.status}</div></div></div>; })}
+              </div>
+            )
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 11, marginBottom: 4 }}>
+              <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>디자인 설명</div><textarea value={form.desc} onChange={function (e) { setF("desc", e.target.value); }} rows={3} style={Object.assign({}, inp, { resize: "vertical", fontFamily: "inherit" })} placeholder="어떤 디자인을 만들고 있는지 설명해주세요" /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>카테고리</div><select value={form.category} onChange={function (e) { setF("category", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{DESIGN_TAGS.map(function (c) { return <option key={c}>{c}</option>; })}</select></div>
+                <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>톤앤매너</div><input value={form.tone} onChange={function (e) { setF("tone", e.target.value); }} placeholder="예: 미니멀, 따뜻한 느낌" style={inp} /></div>
+              </div>
+            </div>
+          )}
+          <button onClick={analyze} disabled={loading || (mode === "list" ? !selTask : !form.desc.trim())} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 16, background: loading || (mode === "list" ? !selTask : !form.desc.trim()) ? t.surface2 : "linear-gradient(135deg,#f87171,#fb7185)", border: "none", borderRadius: 12, padding: "12px 0", color: loading || (mode === "list" ? !selTask : !form.desc.trim()) ? t.text4 : "#fff", fontWeight: 700, fontSize: 14, cursor: loading || (mode === "list" ? !selTask : !form.desc.trim()) ? "not-allowed" : "pointer" }}>{loading ? <RefreshCw size={15} strokeWidth={2} /> : <Palette size={15} strokeWidth={2} />}{loading ? "AI 분석 중..." : "AI 분석 시작"}</button>
+        </div>
+      ) : null}
+      {loading ? <div style={Object.assign({}, s, { textAlign: "center", padding: "40px" })}><div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}><RefreshCw size={32} strokeWidth={1.5} color={t.text3} /></div><div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>AI가 분석하고 있어요...</div></div> : null}
+      {result && result.error ? <div style={Object.assign({}, s, { textAlign: "center", padding: "30px" })}><div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}><AlertTriangle size={22} strokeWidth={1.75} color="#f87171" /></div><div style={{ fontSize: 13, color: "#f87171" }}>{result.error}</div><button onClick={reset} style={{ marginTop: 12, background: "#f8717120", border: "1px solid #f8717140", borderRadius: 11, padding: "8px 20px", color: "#f87171", cursor: "pointer", fontSize: 12 }}>다시 시도</button></div> : null}
+      {result && !result.error ? (
+        <div>
+          <div style={Object.assign({}, s, { display: "flex", alignItems: "center", gap: 16, marginBottom: 14 })}>
+            <div style={{ width: 56, height: 56, borderRadius: "50%", background: "conic-gradient(#f87171 " + (result.score || 0) * 3.6 + "deg, " + t.bg + " 0deg)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><div style={{ width: 46, height: 46, borderRadius: "50%", background: t.surface, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, fontWeight: 800, color: t.text }}>{result.score}</div></div>
+            <div style={{ fontSize: 13, color: t.text2, lineHeight: 1.6 }}>{result.scoreComment}</div>
+          </div>
+          {result.styleSuggestions ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Palette size={13} strokeWidth={2} /> 스타일 제안</div>{result.styleSuggestions.map(function (v, i) { return <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid " + t.border }}><span style={{ width: 22, height: 22, borderRadius: "50%", background: "#f87171", color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span><span style={{ fontSize: 13, color: t.text }}>{v}</span></div>; })}</div> : null}
+          {result.colorPalette ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><ImageIcon size={13} strokeWidth={2} /> 컬러 팔레트 제안</div>{result.colorPalette.map(function (v, i) { return <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid " + t.border }}><ImageIcon size={14} strokeWidth={2} style={{ flexShrink: 0, color: t.text4 }} /><span style={{ fontSize: 13, color: t.text, lineHeight: 1.6 }}>{v}</span></div>; })}</div> : null}
+          {result.layoutTips ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><LayoutGrid size={13} strokeWidth={2} /> 레이아웃 팁</div>{result.layoutTips.map(function (v, i) { return <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid " + t.border }}><LayoutGrid size={14} strokeWidth={2} style={{ flexShrink: 0, color: t.text4 }} /><span style={{ fontSize: 13, color: t.text, lineHeight: 1.6 }}>{v}</span></div>; })}</div> : null}
+          {result.trendAnalysis ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><TrendingUp size={13} strokeWidth={2} /> 트렌드 분석</div><div style={{ fontSize: 13, color: t.text2, lineHeight: 1.8, background: t.bg, borderRadius: 11, padding: "12px 14px", border: "1px solid " + t.border }}>{result.trendAnalysis}</div></div> : null}
+          <button onClick={reset} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: t.surface2, border: "1px solid " + t.border, borderRadius: 12, padding: "11px 0", color: t.text3, fontWeight: 600, fontSize: 13, cursor: "pointer", marginBottom: 20 }}><RefreshCw size={13} strokeWidth={2} /> 새 디자인 분석하기</button>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
 function AIPanel(props) {
   const { t } = useTheme();
-  const { tasks, users } = props;
+  const { tasks, users, ads, designTasks } = props;
   const [mainTab, setMainTab] = useState("ai");
   const [report, setReport] = useState(""), [insight, setInsight] = useState("");
   const [lR, setLR] = useState(false), [lI, setLI] = useState(false);
@@ -2030,7 +2184,7 @@ function AIPanel(props) {
   const mainTabBtn = function (v, l, Icon) { return <button key={v} onClick={function () { setMainTab(v); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 18px", background: "none", border: "none", borderBottom: mainTab === v ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: mainTab === v ? 700 : 500, fontSize: 13, color: mainTab === v ? "#818cf8" : t.text4, marginBottom: -1 }}><Icon size={14} strokeWidth={2} />{l}</button>; };
   return (
     <div>
-      <div style={{ display: "flex", gap: 2, marginBottom: 18, borderBottom: "1px solid " + t.border }}>{mainTabBtn("ai", "AI 분석", Bot)}{mainTabBtn("video", "영상 분석", Search)}</div>
+      <div style={{ display: "flex", gap: 2, marginBottom: 18, borderBottom: "1px solid " + t.border, flexWrap: "wrap" }}>{mainTabBtn("ai", "AI 분석", Bot)}{mainTabBtn("video", "영상 분석", Search)}{mainTabBtn("ad", "광고 분석", Megaphone)}{mainTabBtn("design", "디자인 분석", Palette)}</div>
       {mainTab === "ai" ? (
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
           <div style={s}><div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 3, display: "flex", alignItems: "center", gap: 6 }}><FileText size={14} strokeWidth={2} /> 제작 현황 요약</div><div style={{ fontSize: 12, color: t.text4 }}>현재 영상 제작 현황을 AI가 요약합니다</div><button disabled={lR} style={btn(lR, "#6366f1")} onClick={function () { callAI("다음 영상 제작 현황을 요약 리포트로 작성해주세요.\n\n" + summary, setReport, setLR); }}>{lR ? "생성 중..." : "리포트 생성"}</button>{report ? <div style={{ marginTop: 12, background: t.bg, borderRadius: 11, padding: "12px 14px", fontSize: 12, color: t.text2, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{report}</div> : null}</div>
@@ -2039,6 +2193,8 @@ function AIPanel(props) {
         </div>
       ) : null}
       {mainTab === "video" ? <VideoAnalysisPanel tasks={tasks} /> : null}
+      {mainTab === "ad" ? <AdAnalysisPanel ads={ads} /> : null}
+      {mainTab === "design" ? <DesignAnalysisPanel designTasks={designTasks} /> : null}
     </div>
   );
 }
@@ -3032,7 +3188,7 @@ export default function App() {
           {tab === "stats" ? <div style={{ maxWidth: 760, margin: "0 auto" }}><StatsPanel videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} currentUser={currentUser} /></div> : null}
           {tab === "overtime" ? <OvertimePanel currentUser={currentUser} users={users} isAdmin={isAdmin} /> : null}
           {tab === "messages" ? <MessagesPanel currentUser={currentUser} users={users} isAdmin={isAdmin} messages={directMessages} setMessages={setDirectMessagesRaw} /> : null}
-          {tab === "ai" ? <AIPanel tasks={tasks} users={users} /> : null}
+          {tab === "ai" ? <AIPanel tasks={tasks} users={users} ads={adsData} designTasks={designTasks} /> : null}
           {tab === "activity" ? <ActivityLogPanel log={activityLog} onRestore={restoreDeletedItem} onCleanup={cleanupActivityLog} isAdmin={isAdmin} /> : null}
         </div>
       </div>
