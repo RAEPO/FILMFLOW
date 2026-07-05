@@ -553,7 +553,7 @@ function ProfileModal(props) {
 
 function AdminPanel(props) {
   const { t } = useTheme();
-  const { users, onUpdateUsers, notices, onUpdateNotices, visibleTabs, setVisibleTabs, tasks, onUpdateTasks } = props;
+  const { users, onUpdateUsers, notices, onUpdateNotices, rolePermissions, setRolePermissions, tasks, onUpdateTasks } = props;
   const [aTab, setATab] = useState("users");
   const [noticeForm, setNoticeForm] = useState({ title: "", content: "", active: true });
   const [editNotice, setEditNotice] = useState(null);
@@ -678,15 +678,26 @@ function AdminPanel(props) {
       ) : null}
       {aTab === "tabs" ? (
         <div style={s}>
-          <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>탭 메뉴 표시 설정</div>
+          <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>역할별 탭 메뉴 표시 설정</div>
+          <div style={{ padding: "10px 16px", fontSize: 11, color: t.text4, borderBottom: "1px solid " + t.border }}>역할마다 어떤 탭을 볼 수 있는지 자유롭게 켜고 끌 수 있어요. (예: 뷰어는 통계 끄기)</div>
+          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 0.9fr 0.9fr 0.9fr", padding: "10px 16px", borderBottom: "1px solid " + t.border, fontSize: 11, fontWeight: 700, color: t.text4 }}>
+            <div>탭</div><div style={{ textAlign: "center" }}>뷰어</div><div style={{ textAlign: "center" }}>팀원</div><div style={{ textAlign: "center" }}>매니저</div>
+          </div>
           {ALL_TABS.map(function (tab) {
-            const active = visibleTabs.includes(tab.id);
             return (
-              <div key={tab.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 16px", borderBottom: "1px solid " + t.border }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: t.text, fontWeight: 500 }}><tab.icon size={16} strokeWidth={1.75} />{tab.text}</div>
-                <div onClick={function () { setVisibleTabs(active ? visibleTabs.filter(function (v) { return v !== tab.id; }) : visibleTabs.concat([tab.id])); }} style={{ width: 44, height: 24, borderRadius: 99, background: active ? "#6366f1" : t.surface2, border: "1px solid " + (active ? "#6366f1" : t.border), cursor: "pointer", position: "relative" }}>
-                  <div style={{ position: "absolute", top: 3, left: active ? 22 : 3, width: 16, height: 16, borderRadius: "50%", background: "#fff" }} />
-                </div>
+              <div key={tab.id} style={{ display: "grid", gridTemplateColumns: "1.4fr 0.9fr 0.9fr 0.9fr", alignItems: "center", padding: "11px 16px", borderBottom: "1px solid " + t.border }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: t.text, fontWeight: 500 }}><tab.icon size={15} strokeWidth={1.75} />{tab.text}</div>
+                {["viewer", "member", "manager"].map(function (role) {
+                  const list = rolePermissions[role] || [];
+                  const active = list.includes(tab.id);
+                  return (
+                    <div key={role} style={{ display: "flex", justifyContent: "center" }}>
+                      <div onClick={function () { const next = active ? list.filter(function (v) { return v !== tab.id; }) : list.concat([tab.id]); setRolePermissions(Object.assign({}, rolePermissions, { [role]: next })); }} style={{ width: 40, height: 22, borderRadius: 99, background: active ? "#6366f1" : t.surface2, border: "1px solid " + (active ? "#6366f1" : t.border), cursor: "pointer", position: "relative" }}>
+                        <div style={{ position: "absolute", top: 2, left: active ? 20 : 2, width: 16, height: 16, borderRadius: "50%", background: "#fff" }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             );
           })}
@@ -3048,7 +3059,12 @@ export default function App() {
   const [notices, setNoticesRaw, noticesReady] = useFirebaseData("notices", []);
   const [notifications, setNotificationsRaw] = useFirebaseData("notifications", []);
   const [directMessages, setDirectMessagesRaw] = useFirebaseData("directMessages", []);
-  const [visibleTabs, setVisibleTabsRaw] = useFirebaseData("settings/visibleTabs", ALL_TABS.map(function (t) { return t.id; }));
+  const DEFAULT_ROLE_PERMISSIONS = {
+    viewer: ALL_TABS.map(function (t) { return t.id; }).filter(function (id) { return ["ad", "ai", "overtime", "activity"].indexOf(id) === -1; }),
+    member: ALL_TABS.map(function (t) { return t.id; }).filter(function (id) { return id !== "activity"; }),
+    manager: ALL_TABS.map(function (t) { return t.id; }),
+  };
+  const [rolePermissions, setRolePermissionsRaw] = useFirebaseData("settings/rolePermissions", DEFAULT_ROLE_PERMISSIONS);
   const synced = usersReady && tasksReady && noticesReady && marketingTasksReady && designTasksReady;
 
   useEffect(function () {
@@ -3093,7 +3109,6 @@ export default function App() {
   const isViewer = currentUser && currentUser.role === "viewer";
   const isManager = currentUser && currentUser.role === "manager";
   const myUnreadMessages = currentUser ? directMessages.filter(function (m) { return m.to === currentUser.name && !(m.readBy && m.readBy[currentUser.name]); }).length : 0;
-  const VIEWER_BLOCKED_TABS = ["ad", "ai", "overtime"];
 
   const setCurrentUser = function (user) {
     setCurrentUserRaw(user);
@@ -3153,8 +3168,10 @@ export default function App() {
   const bulkAssignMarketingTasks = function (ids, assignee) { setMarketingTasksRaw(marketingTasks.map(function (tk) { return ids.indexOf(tk.id) !== -1 ? Object.assign({}, tk, { assignee: assignee }) : tk; })); logActivity("일괄 변경", "마케팅 업무 " + ids.length + "건 담당자를 " + assignee + "(으)로 일괄 변경"); };
   const bulkDeleteDesignTasks = function (ids) { setDesignTasksRaw(designTasks.filter(function (tk) { return ids.indexOf(tk.id) === -1; })); logActivity("일괄 삭제", "디자인 업무 " + ids.length + "건 일괄 삭제"); };
   const bulkAssignDesignTasks = function (ids, assignee) { setDesignTasksRaw(designTasks.map(function (tk) { return ids.indexOf(tk.id) !== -1 ? Object.assign({}, tk, { assignee: assignee }) : tk; })); logActivity("일괄 변경", "디자인 업무 " + ids.length + "건 담당자를 " + assignee + "(으)로 일괄 변경"); };
-  const vt = Array.isArray(visibleTabs) ? visibleTabs : Object.values(visibleTabs || {});
-  const displayTabs = isAdmin ? ALL_TABS : ALL_TABS.filter(function (tp) { return vt.includes(tp.id) && !(isViewer && VIEWER_BLOCKED_TABS.includes(tp.id)) && !(tp.id === "activity" && !isManager); });
+  const myRoleTabs = rolePermissions && currentUser ? (rolePermissions[currentUser.role] || []) : [];
+  const vt = Array.isArray(myRoleTabs) ? myRoleTabs : Object.values(myRoleTabs || {});
+  const displayTabs = isAdmin ? ALL_TABS : ALL_TABS.filter(function (tp) { return vt.includes(tp.id); });
+  const setRolePermissions = function (next) { setRolePermissionsRaw(next); };
 
   const sendNotification = function (toUser, fromUser, taskTitle, text) {
     const newNotif = { id: "notif_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7), toUser: toUser, fromUser: fromUser, taskTitle: taskTitle, text: text.length > 60 ? text.slice(0, 60) + "..." : text, kind: "comment", readBy: {}, createdAt: Date.now(), time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
@@ -3318,7 +3335,7 @@ export default function App() {
         })()}
 
         <div style={{ maxWidth: 1300, margin: "0 auto", padding: "clamp(10px,4vw,20px)", minWidth: 0, boxSizing: "border-box" }}>
-          {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} visibleTabs={vt} setVisibleTabs={function (v) { setVisibleTabsRaw(v); }} tasks={tasks} onUpdateTasks={setTasksRaw} /> : null}
+          {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} rolePermissions={rolePermissions || DEFAULT_ROLE_PERMISSIONS} setRolePermissions={setRolePermissions} tasks={tasks} onUpdateTasks={setTasksRaw} /> : null}
           {tab === "home" ? <HomePanel currentUser={currentUser} users={users} videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} /> : null}
           {tab === "unified" ? <CombinedCalendarView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onSelectAd={function () { setTab("ad"); }} users={users} onBulkDeleteVideo={isViewer ? null : bulkDeleteTasks} onBulkAssignVideo={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} /> : null}
           {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} onSelectAd={function () { setTab("ad"); }} onBulkDelete={isViewer ? null : bulkDeleteTasks} onBulkAssign={isViewer ? null : bulkAssignTasks} users={users} currentUser={currentUser} categoryOptions={TASK_CATEGORIES} categoryField="category" /> : null}
