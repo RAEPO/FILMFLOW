@@ -2950,6 +2950,7 @@ export default function App() {
               <div style={{ maxWidth: 1300, margin: "0 auto", display: "flex", gap: 2, justifyContent: "center", width: "max-content", minWidth: "100%" }}>
                 {isAdmin ? <button onClick={function () { setTab("admin"); }} style={tabBtnStyle(tab === "admin", "#f87171")}>🛡️ 관리자</button> : null}
                 {otherTabs.filter(function (tp) { return tp.id === "home"; }).map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}>{tp.label}</button>; })}
+                {otherTabs.filter(function (tp) { return tp.id === "messages"; }).map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}>{tp.label}{myUnreadMessages > 0 ? <span style={{ position: "absolute", top: 4, right: 4, background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 99, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}</button>; })}
                 {calendarTabs.length > 0 ? (
                   <div style={{ position: "relative" }}>
                     <button ref={calendarBtnRef} onClick={function () {
@@ -2967,7 +2968,7 @@ export default function App() {
                     ) : null}
                   </div>
                 ) : null}
-                {otherTabs.filter(function (tp) { return tp.id !== "home"; }).map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}>{tp.label}{tp.id === "messages" && myUnreadMessages > 0 ? <span style={{ position: "absolute", top: 4, right: 4, background: "#f87171", color: "#fff", fontSize: 9, fontWeight: 700, borderRadius: 99, minWidth: 15, height: 15, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 3px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}</button>; })}
+                {otherTabs.filter(function (tp) { return tp.id !== "home" && tp.id !== "messages"; }).map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}>{tp.label}</button>; })}
                 {opsTabs.length > 0 ? (
                   <div style={{ position: "relative" }}>
                     <button ref={opsBtnRef} onClick={function () {
