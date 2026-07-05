@@ -368,20 +368,58 @@ function AuthScreen(props) {
   const [form, setForm] = useState({ name: "", password: "", dept: "", rank: "", position: "", officePhone: "", mobile: "" });
   const [err, setErr] = useState("");
   const set = function (k, v) { setForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
+  const LOGIN_MAX_ATTEMPTS = 5;
+  const LOGIN_LOCKOUT_MINUTES = 5;
+  const getAttemptState = function () {
+    const raw = getCookie("timbel_login_attempts");
+    if (!raw) return {};
+    try { return JSON.parse(raw); } catch (e) { return {}; }
+  };
+  const saveAttemptState = function (state) { setCookie("timbel_login_attempts", JSON.stringify(state), 1); };
   const handleLogin = async function () {
+    const attempts = getAttemptState();
+    const rec = attempts[form.name] || { count: 0, lockUntil: 0 };
+    if (rec.lockUntil && Date.now() < rec.lockUntil) {
+      const remainMin = Math.ceil((rec.lockUntil - Date.now()) / 60000);
+      setErr("로그인 시도가 너무 많아요. " + remainMin + "분 후 다시 시도해주세요.");
+      return;
+    }
     const hashed = await hashPassword(form.password);
+    let success = false;
+    let pendingApproval = false;
+    let resolvedUser = null;
     if (form.name === "admin") {
-      if (hashed === adminPasswordHash) { onLogin(Object.assign({}, ADMIN_USER, { password: adminPasswordHash })); return; }
-      setErr("이름 또는 비밀번호가 올바르지 않습니다."); return;
+      success = hashed === adminPasswordHash;
+    } else {
+      let u = users.find(function (u) { return u.name === form.name && u.password === hashed; });
+      if (!u) {
+        const legacy = users.find(function (u) { return u.name === form.name && u.password === form.password; });
+        if (legacy) { u = Object.assign({}, legacy, { password: hashed }); if (onUpgradeUser) onUpgradeUser(u); }
+      }
+      if (u && u.approved) { success = true; resolvedUser = u; }
+      else if (u && !u.approved) pendingApproval = true;
     }
-    let u = users.find(function (u) { return u.name === form.name && u.password === hashed; });
-    if (!u) {
-      const legacy = users.find(function (u) { return u.name === form.name && u.password === form.password; });
-      if (legacy) { u = Object.assign({}, legacy, { password: hashed }); if (onUpgradeUser) onUpgradeUser(u); }
+    if (pendingApproval) { setErr("관리자 승인 대기 중입니다."); return; }
+    if (success) {
+      delete attempts[form.name];
+      saveAttemptState(attempts);
+      setErr("");
+      if (form.name === "admin") onLogin(Object.assign({}, ADMIN_USER, { password: adminPasswordHash }));
+      else onLogin(resolvedUser);
+      return;
     }
-    if (!u) { setErr("이름 또는 비밀번호가 올바르지 않습니다."); return; }
-    if (!u.approved) { setErr("관리자 승인 대기 중입니다."); return; }
-    setErr(""); onLogin(u);
+    rec.count = (rec.count || 0) + 1;
+    if (rec.count >= LOGIN_MAX_ATTEMPTS) {
+      rec.lockUntil = Date.now() + LOGIN_LOCKOUT_MINUTES * 60000;
+      rec.count = 0;
+      attempts[form.name] = rec;
+      saveAttemptState(attempts);
+      setErr("로그인 시도가 너무 많아요. " + LOGIN_LOCKOUT_MINUTES + "분 후 다시 시도해주세요.");
+      return;
+    }
+    attempts[form.name] = rec;
+    saveAttemptState(attempts);
+    setErr("이름 또는 비밀번호가 올바르지 않습니다. (남은 시도 " + (LOGIN_MAX_ATTEMPTS - rec.count) + "회)");
   };
   const handleRegister = async function () {
     if (!form.name || !form.password || !form.dept || !form.rank || !form.position || !form.mobile) { setErr("필수 항목을 모두 입력해주세요."); return; }
@@ -1665,7 +1703,6 @@ function BoardView(props) {
   const years = [...new Set(tasks.map(function (tk) { return tk.due && tk.due.slice(0, 4); }).filter(Boolean))].sort();
   if (years.indexOf(String(today.getFullYear())) === -1) years.push(String(today.getFullYear()));
   let filtered = filterMember === "전체" ? tasks : tasks.filter(function (tk) { return tk.assignee === filterMember; });
-  if (categoryFilter !== "all") filtered = filtered.filter(function (tk) { return tk.category === categoryFilter; });
   if (monthFilter === "month") { const prefix = selYear + "-" + pad(selMonth); filtered = filtered.filter(function (tk) { return tk.due && tk.due.indexOf(prefix) === 0; }); }
   let filteredAds = ads || [];
   if (filterMember !== "전체") filteredAds = filteredAds.filter(function (ad) { return ad.requester === filterMember; });
@@ -1676,6 +1713,15 @@ function BoardView(props) {
   let filteredMarketing = marketingTasks || [];
   if (filterMember !== "전체") filteredMarketing = filteredMarketing.filter(function (mt) { return mt.assignee === filterMember; });
   if (monthFilter === "month") { const prefix = selYear + "-" + pad(selMonth); filteredMarketing = filteredMarketing.filter(function (mt) { return mt.due && mt.due.indexOf(prefix) === 0; }); }
+  if (categoryFilter !== "all") {
+    const sepIdx = categoryFilter.indexOf(":");
+    const catType = categoryFilter.slice(0, sepIdx);
+    const catValue = categoryFilter.slice(sepIdx + 1);
+    filtered = catType === "video" ? filtered.filter(function (tk) { return tk.category === catValue; }) : [];
+    filteredMarketing = catType === "marketing" ? filteredMarketing.filter(function (mt) { return mt.tag === catValue; }) : [];
+    filteredDesign = catType === "design" ? filteredDesign.filter(function (dt) { return dt.tag === catValue; }) : [];
+    filteredAds = catType === "ad" ? filteredAds : [];
+  }
   const filterBtnStyle = function (active) { return { padding: "5px 14px", borderRadius: 20, border: "1px solid " + (active ? "#6366f1" : t.border), background: active ? "#6366f120" : "transparent", cursor: "pointer", fontSize: 12, fontWeight: 600, color: active ? "#818cf8" : t.text4 }; };
   const todayStr = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
   const isOverdueVideo = function (tk) { return tk.due && tk.due < todayStr && tk.status === STAGES[0]; };
@@ -1758,8 +1804,10 @@ function BoardView(props) {
         {memberNames.map(function (m) { return <button key={m} onClick={function () { setFilterMember(m); }} style={filterBtnStyle(filterMember === m)}>{m}</button>; })}
         {currentUser ? <button onClick={function () { setFilterMember(filterMember === currentUser.name ? "전체" : currentUser.name); }} style={Object.assign({}, filterBtnStyle(filterMember === currentUser.name), { display: "inline-flex", alignItems: "center", gap: 5 })}><User size={12} strokeWidth={2} /> 내 업무만</button> : null}
         <select value={categoryFilter} onChange={function (e) { setCategoryFilter(e.target.value); }} style={{ background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "5px 10px", fontSize: 12, color: t.text, outline: "none", cursor: "pointer", marginLeft: "auto" }}>
-          <option value="all">영상 업무 종류: 전체</option>
-          {TASK_CATEGORIES.map(function (c) { return <option key={c} value={c}>{c}</option>; })}
+          <option value="all">업무 종류: 전체</option>
+          <optgroup label="영상">{TASK_CATEGORIES.map(function (c) { return <option key={"v_" + c} value={"video:" + c}>{c}</option>; })}</optgroup>
+          <optgroup label="마케팅">{MARKETING_TAGS.map(function (c) { return <option key={"m_" + c} value={"marketing:" + c}>{c}</option>; })}</optgroup>
+          <optgroup label="디자인">{DESIGN_TAGS.map(function (c) { return <option key={"d_" + c} value={"design:" + c}>{c}</option>; })}</optgroup>
         </select>
       </div>
       <div style={{ overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 4, margin: "0 -2px" }}>
@@ -2018,11 +2066,12 @@ function AdAnalysisPanel(props) {
   const ads = props.ads || [];
   const [mode, setMode] = useState(ads.length > 0 ? "list" : "manual");
   const [selAd, setSelAd] = useState(null);
-  const [form, setFormState] = useState({ content: "", channel: "유튜브", target: "", goal: "" });
+  const [form, setFormState] = useState({ content: "", channel: "유튜브", target: "", goal: "", mediaUrl: "" });
   const setF = function (k, v) { setFormState(function (f) { return Object.assign({}, f, { [k]: v }); }); };
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
   const CHANNELS = ["유튜브", "인스타그램", "페이스북", "틱톡", "네이버", "기타"];
+  const previewUrl = mode === "list" ? (selAd ? (selAd.videoUrl || selAd.refUrl || selAd.planUrl || "") : "") : form.mediaUrl;
   const analyze = async function () {
     let info;
     if (mode === "list" && selAd) info = { content: selAd.content || "광고", channel: "미입력", target: "미입력", goal: selAd.workStatus || "미입력" };
@@ -2039,7 +2088,7 @@ function AdAnalysisPanel(props) {
     } catch (e) { setResult({ error: "분석 중 오류가 발생했습니다." }); }
     setLoading(false);
   };
-  const reset = function () { setResult(null); setSelAd(null); setFormState({ content: "", channel: "유튜브", target: "", goal: "" }); };
+  const reset = function () { setResult(null); setSelAd(null); setFormState({ content: "", channel: "유튜브", target: "", goal: "", mediaUrl: "" }); };
   const s = { background: t.surface, borderRadius: 15, padding: "16px 18px", border: "1px solid " + t.border };
   const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "8px 12px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
   return (
@@ -2067,8 +2116,10 @@ function AdAnalysisPanel(props) {
                 <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>목표</div><input value={form.goal} onChange={function (e) { setF("goal", e.target.value); }} placeholder="예: 신규 유입 확대" style={inp} /></div>
               </div>
               <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>타겟 고객</div><input value={form.target} onChange={function (e) { setF("target", e.target.value); }} placeholder="예: 20대 여성, 자취생 등" style={inp} /></div>
+              <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><Paperclip size={11} strokeWidth={2} /> 참고 링크 (선택)</div><input value={form.mediaUrl} onChange={function (e) { setF("mediaUrl", e.target.value); }} placeholder="https://... (유튜브·이미지·동영상 자동 미리보기)" style={inp} /></div>
             </div>
           )}
+          {previewUrl ? <div style={{ marginTop: 14 }}><MediaPreview url={previewUrl} /></div> : null}
           <button onClick={analyze} disabled={loading || (mode === "list" ? !selAd : !form.content.trim())} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, marginTop: 16, background: loading || (mode === "list" ? !selAd : !form.content.trim()) ? t.surface2 : "linear-gradient(135deg,#fbbf24,#f59e0b)", border: "none", borderRadius: 12, padding: "12px 0", color: loading || (mode === "list" ? !selAd : !form.content.trim()) ? t.text4 : "#fff", fontWeight: 700, fontSize: 14, cursor: loading || (mode === "list" ? !selAd : !form.content.trim()) ? "not-allowed" : "pointer" }}>{loading ? <RefreshCw size={15} strokeWidth={2} /> : <Megaphone size={15} strokeWidth={2} />}{loading ? "AI 분석 중..." : "AI 분석 시작"}</button>
         </div>
       ) : null}
@@ -2247,13 +2298,11 @@ function AdDetailModal(props) {
 
 function AdPanel(props) {
   const { t } = useTheme();
-  const onAdsChange = props.onAdsChange, onNewAd = props.onNewAd, currentUser = props.currentUser;
+  const onNewAd = props.onNewAd, currentUser = props.currentUser;
   const [adTab, setAdTab] = useState("ai");
-  const [aiAds, setAiAds] = useFirebaseData("ads/ai", []);
-  const [intAds, setIntAds] = useFirebaseData("ads/interview", []);
+  const aiAds = props.aiAds, setAiAds = props.setAiAds, intAds = props.intAds, setIntAds = props.setIntAds;
   const [selected, setSelected] = useState(null);
   const [selectedType, setSelectedType] = useState(null);
-  useEffect(function () { if (onAdsChange) onAdsChange(aiAds.concat(intAds)); }, [aiAds, intAds]);
   const updateAi = function (u) { setAiAds(aiAds.map(function (a) { return a.id === u.id ? u : a; })); };
   const updateInt = function (u) { setIntAds(intAds.map(function (a) { return a.id === u.id ? u : a; })); };
   const addAiAd = function () {
@@ -2848,28 +2897,41 @@ function ActivityLogPanel(props) {
 
 function SearchModal(props) {
   const { t } = useTheme();
-  const { videoTasks, marketingTasks, designTasks, onSelectVideo, onSelectMarketing, onSelectDesign, onClose } = props;
+  const { videoTasks, marketingTasks, designTasks, ads, onSelectVideo, onSelectMarketing, onSelectDesign, onNavigateTab, onClose } = props;
+  const [overtimeEntries] = useFirebaseData("overtimeEntries", []);
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
-  const TYPE_INFO = { video: { icon: Film, label: "영상", color: "#818cf8" }, marketing: { icon: CalendarDays, label: "마케팅", color: "#fb923c" }, design: { icon: Palette, label: "디자인", color: "#f87171" } };
+  const TYPE_INFO = { video: { icon: Film, label: "영상", color: "#818cf8" }, marketing: { icon: CalendarDays, label: "마케팅", color: "#fb923c" }, design: { icon: Palette, label: "디자인", color: "#f87171" }, ad: { icon: Megaphone, label: "광고", color: "#fbbf24" }, overtime: { icon: Clock, label: "야근", color: "#38bdf8" } };
   const matches = function (tk) {
     const hay = [tk.title, tk.desc, tk.assignee, tk.tag, tk.category, tk.status].concat((tk.comments || []).map(function (c) { return c.text; })).filter(Boolean).join(" ").toLowerCase();
     return hay.indexOf(q) !== -1;
   };
+  const matchesAd = function (ad) {
+    const hay = [ad.content, ad.requester, ad.note, ad.modifyContent].filter(Boolean).join(" ").toLowerCase();
+    return hay.indexOf(q) !== -1;
+  };
+  const matchesOvertime = function (e) {
+    const hay = [e.reason, e.user].filter(Boolean).join(" ").toLowerCase();
+    return hay.indexOf(q) !== -1;
+  };
   const results = q ? videoTasks.filter(matches).map(function (tk) { return Object.assign({}, tk, { kind: "video" }); })
     .concat(marketingTasks.filter(matches).map(function (tk) { return Object.assign({}, tk, { kind: "marketing" }); }))
-    .concat(designTasks.filter(matches).map(function (tk) { return Object.assign({}, tk, { kind: "design" }); })) : [];
+    .concat(designTasks.filter(matches).map(function (tk) { return Object.assign({}, tk, { kind: "design" }); }))
+    .concat((ads || []).filter(matchesAd).map(function (ad) { return { id: ad.id, kind: "ad", title: ad.content || "광고", assignee: ad.requester, status: ad.workStatus, due: ad.workDate || ad.expectedDate || "" }; }))
+    .concat((overtimeEntries || []).filter(matchesOvertime).map(function (e) { return { id: e.id, kind: "overtime", title: e.reason || "야근 기록", assignee: e.user, status: e.hours + "시간", due: e.date }; })) : [];
   const handleClick = function (item) {
     onClose();
     if (item.kind === "video") onSelectVideo(item);
     else if (item.kind === "marketing") onSelectMarketing(item);
-    else onSelectDesign(item);
+    else if (item.kind === "design") onSelectDesign(item);
+    else if (item.kind === "ad") onNavigateTab("ad");
+    else if (item.kind === "overtime") onNavigateTab("overtime");
   };
   return (
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 400, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "10vh", backdropFilter: "blur(4px)" }}>
       <div onClick={function (e) { e.stopPropagation(); }} style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 560px)", maxHeight: "70vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px #000c" }}>
         <div style={{ padding: "16px 18px", borderBottom: "1px solid " + t.border }}>
-          <input autoFocus value={query} onChange={function (e) { setQuery(e.target.value); }} placeholder="제목, 담당자, 코멘트로 검색... (영상·마케팅·디자인 전체)" style={{ width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 12, padding: "10px 14px", fontSize: 14, color: t.text, outline: "none", boxSizing: "border-box" }} />
+          <input autoFocus value={query} onChange={function (e) { setQuery(e.target.value); }} placeholder="제목, 담당자, 코멘트로 검색... (영상·마케팅·디자인·광고·야근 전체)" style={{ width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 12, padding: "10px 14px", fontSize: 14, color: t.text, outline: "none", boxSizing: "border-box" }} />
         </div>
         <div style={{ overflowY: "auto", padding: "6px 8px" }}>
           {!q ? <EmptyState icon={Search} text="검색어를 입력하세요" /> : null}
@@ -2954,7 +3016,9 @@ export default function App() {
   const [addDesignDate, setAddDesignDate] = useState("");
   const [selectedDesignTask, setSelectedDesignTask] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
-  const [adsData, setAdsData] = useState([]);
+  const [aiAds, setAiAds] = useFirebaseData("ads/ai", []);
+  const [intAds, setIntAds] = useFirebaseData("ads/interview", []);
+  const adsData = aiAds.concat(intAds);
 
   const isAdmin = currentUser && currentUser.role === "admin";
   const isViewer = currentUser && currentUser.role === "viewer";
@@ -3084,7 +3148,7 @@ export default function App() {
         {showAddMarketing ? <AddTaskModal onAdd={addMarketingTask} onClose={function () { setShowAddMarketing(false); }} defaultDate={addMarketingDate} users={users} stages={MARKETING_STAGES} tags={MARKETING_TAGS} title="새 마케팅 업무 추가" categoryLabel="카테고리" /> : null}
         {selectedMarketingTask ? <TaskDetailModal task={selectedMarketingTask} onClose={function () { setSelectedMarketingTask(null); }} onUpdate={updateMarketingTask} onMove={isViewer ? null : function (id, dir) { moveMarketingTask(id, dir); setSelectedMarketingTask(function (prev) { return Object.assign({}, prev, { status: MARKETING_STAGES[MARKETING_STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} tags={MARKETING_TAGS} categoryLabel="카테고리" editTitle="마케팅 업무 수정" allTasks={marketingTasks} onUpdateSeries={isViewer ? null : updateMarketingTaskSeries} /> : null}
         {showAddDesign ? <AddTaskModal onAdd={addDesignTask} onClose={function () { setShowAddDesign(false); }} defaultDate={addDesignDate} users={users} stages={DESIGN_STAGES} tags={DESIGN_TAGS} title="새 디자인 업무 추가" categoryLabel="카테고리" /> : null}
-        {showSearch ? <SearchModal videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onClose={function () { setShowSearch(false); }} /> : null}
+        {showSearch ? <SearchModal videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onNavigateTab={setTab} onClose={function () { setShowSearch(false); }} /> : null}
         {selectedDesignTask ? <TaskDetailModal task={selectedDesignTask} onClose={function () { setSelectedDesignTask(null); }} onUpdate={updateDesignTask} onMove={isViewer ? null : function (id, dir) { moveDesignTask(id, dir); setSelectedDesignTask(function (prev) { return Object.assign({}, prev, { status: DESIGN_STAGES[DESIGN_STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} tags={DESIGN_TAGS} categoryLabel="카테고리" editTitle="디자인 업무 수정" allTasks={designTasks} onUpdateSeries={isViewer ? null : updateDesignTaskSeries} /> : null}
         {showProfile ? <ProfileModal currentUser={currentUser} onClose={function () { setShowProfile(false); }} onUpdate={function (updated) { if (isAdmin) { setAdminAuthRaw({ password: updated.password }); setCurrentUser(updated); } else { setUsersRaw(users.map(function (u) { return u.id === updated.id ? updated : u; })); setCurrentUser(updated); } setShowProfile(false); }} /> : null}
 
@@ -3184,7 +3248,7 @@ export default function App() {
           {tab === "adCalendar" ? <CalendarView tasks={marketingTasks} onSelectTask={setSelectedMarketingTask} onAddTask={isViewer ? function () {} : openAddMarketing} ads={adsData} onMove={isViewer ? null : moveMarketingTask} onDelete={isViewer ? null : deleteMarketingTask} onSelectAd={function () { setTab("ad"); }} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} taskLabel="마케팅 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssign={isViewer ? null : bulkAssignMarketingTasks} users={users} currentUser={currentUser} categoryOptions={MARKETING_TAGS} categoryField="tag" /> : null}
           {tab === "designCalendar" ? <CalendarView tasks={designTasks} onSelectTask={setSelectedDesignTask} onAddTask={isViewer ? function () {} : openAddDesign} ads={[]} onMove={isViewer ? null : moveDesignTask} onDelete={isViewer ? null : deleteDesignTask} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} taskLabel="디자인 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteDesignTasks} onBulkAssign={isViewer ? null : bulkAssignDesignTasks} users={users} currentUser={currentUser} categoryOptions={DESIGN_TAGS} categoryField="tag" /> : null}
           {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} ads={adsData} onSelectAd={function () { setTab("ad"); }} designTasks={designTasks} onSelectDesign={setSelectedDesignTask} marketingTasks={marketingTasks} onSelectMarketing={setSelectedMarketingTask} onBulkDeleteTasks={isViewer ? null : bulkDeleteTasks} onBulkAssignTasks={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} currentUser={currentUser} /> : null}
-          {tab === "ad" ? <AdPanel onAdsChange={setAdsData} onNewAd={sendAdNotification} currentUser={currentUser} /> : null}
+          {tab === "ad" ? <AdPanel aiAds={aiAds} setAiAds={setAiAds} intAds={intAds} setIntAds={setIntAds} onNewAd={sendAdNotification} currentUser={currentUser} /> : null}
           {tab === "stats" ? <div style={{ maxWidth: 760, margin: "0 auto" }}><StatsPanel videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} currentUser={currentUser} /></div> : null}
           {tab === "overtime" ? <OvertimePanel currentUser={currentUser} users={users} isAdmin={isAdmin} /> : null}
           {tab === "messages" ? <MessagesPanel currentUser={currentUser} users={users} isAdmin={isAdmin} messages={directMessages} setMessages={setDirectMessagesRaw} /> : null}
