@@ -1347,9 +1347,22 @@ function CalendarView(props) {
     if (myTasksOnly && currentUser && tk.assignee !== currentUser.name) return false;
     return true;
   });
+  const isInDateRange = function (tk, ds) {
+    if (tk.deadline && tk.deadline > tk.due) return ds >= tk.due && ds <= tk.deadline;
+    return tk.due === ds;
+  };
   const getDayItems = function (d) {
     const ds = dateStr(d), taskItems = [];
-    for (let k = 0; k < filteredTasks.length; k++) if (filteredTasks[k].due === ds) { const copy = Object.assign({}, filteredTasks[k]); copy.kind = "task"; taskItems.push(copy); }
+    for (let k = 0; k < filteredTasks.length; k++) {
+      if (isInDateRange(filteredTasks[k], ds)) {
+        const copy = Object.assign({}, filteredTasks[k]);
+        copy.kind = "task";
+        copy.isSpanStart = filteredTasks[k].due === ds;
+        copy.isSpanEnd = filteredTasks[k].deadline === ds;
+        copy.isSpanMiddle = !copy.isSpanStart && !copy.isSpanEnd;
+        taskItems.push(copy);
+      }
+    }
     const adsForDay = [];
     for (let k = 0; k < adItems.length; k++) if (adItems[k].due === ds) adsForDay.push(adItems[k]);
     return taskItems.concat(adsForDay);
@@ -1415,7 +1428,10 @@ function CalendarView(props) {
               {dayItems.slice(0, 3).map(function (item) {
                 const overdue = item.kind === "task" && isOverdue(item);
                 const ItemIcon = getItemIcon(item);
-                return <div key={item.id} onClick={function (e) { e.stopPropagation(); if (item.kind === "task") onSelectTask(item); else if (onSelectAd) onSelectAd(item); }} style={{ display: "flex", alignItems: "center", gap: 3, background: overdue ? "#f8717130" : getItemColor(item) + "22", border: "none", borderRadius: 7, padding: "3px 6px", fontSize: 10, color: overdue ? "#f87171" : getItemColor(item), fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{overdue ? <Clock size={9} strokeWidth={2.5} style={{ flexShrink: 0 }} /> : null}<ItemIcon size={9} strokeWidth={2.5} style={{ flexShrink: 0 }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}{getItemSuffix(item)}</span></div>;
+                const isContinuation = item.kind === "task" && (item.isSpanMiddle || item.isSpanEnd);
+                const isMultiDayStart = item.kind === "task" && item.isSpanStart && item.deadline && item.deadline !== item.due;
+                const chipRadius = isMultiDayStart ? "7px 3px 3px 7px" : (isContinuation ? "3px 7px 7px 3px" : 7);
+                return <div key={item.id} onClick={function (e) { e.stopPropagation(); if (item.kind === "task") onSelectTask(item); else if (onSelectAd) onSelectAd(item); }} style={{ display: "flex", alignItems: "center", gap: 3, background: overdue ? "#f8717130" : getItemColor(item) + "22", border: "none", borderRadius: chipRadius, padding: "3px 6px", fontSize: 10, color: overdue ? "#f87171" : getItemColor(item), fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{overdue ? <Clock size={9} strokeWidth={2.5} style={{ flexShrink: 0 }} /> : null}{isContinuation ? <span style={{ flexShrink: 0 }}>›</span> : <ItemIcon size={9} strokeWidth={2.5} style={{ flexShrink: 0 }} />}<span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}{getItemSuffix(item)}</span></div>;
               })}
               {dayItems.length > 3 ? <div onClick={function (e) { e.stopPropagation(); setDayDetail({ date: dateStr(cell.day), items: dayItems }); }} style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>+{dayItems.length - 3}개 더보기</div> : null}
             </div>
@@ -1575,7 +1591,16 @@ function CombinedCalendarView(props) {
   }
   const withKind = function (list, kind) { return list.map(function (tk) { return Object.assign({}, tk, { kind: kind }); }); };
   const allItems = withKind(videoTasks, "video").concat(withKind(marketingTasks, "marketing")).concat(withKind(designTasks, "design")).concat(adItems);
-  const getDayItems = function (d) { const ds = dateStr(d); return allItems.filter(function (item) { return item.due === ds; }); };
+  const isInDateRangeCombined = function (item, ds) {
+    if (item.deadline && item.deadline > item.due) return ds >= item.due && ds <= item.deadline;
+    return item.due === ds;
+  };
+  const getDayItems = function (d) {
+    const ds = dateStr(d);
+    return allItems.filter(function (item) { return isInDateRangeCombined(item, ds); }).map(function (item) {
+      return Object.assign({}, item, { isSpanStart: item.due === ds, isSpanEnd: item.deadline === ds, isSpanMiddle: item.deadline && item.due !== ds && item.deadline !== ds });
+    });
+  };
   const isToday = function (d) { return d === today.getDate() && month === today.getMonth() && year === today.getFullYear(); };
   const goPrevMonth = function () { if (month === 0) { setMonth(11); setYear(year - 1); } else setMonth(month - 1); };
   const goNextMonth = function () { if (month === 11) { setMonth(0); setYear(year + 1); } else setMonth(month + 1); };
@@ -1622,7 +1647,10 @@ function CombinedCalendarView(props) {
               {dayItems.slice(0, 3).map(function (item) {
                 const info = COMBINED_TYPE_INFO[item.kind];
                 const ItemIcon = info.icon;
-                return <div key={item.kind + "_" + item.id} onClick={function () { handleItemClick(item); }} style={{ display: "flex", alignItems: "center", gap: 3, background: info.color + "22", border: "none", borderRadius: 7, padding: "3px 6px", fontSize: 10, color: info.color, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}><ItemIcon size={9} strokeWidth={2.5} style={{ flexShrink: 0 }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span></div>;
+                const isContinuation = item.isSpanMiddle || item.isSpanEnd;
+                const isMultiDayStart = item.isSpanStart && item.deadline && item.deadline !== item.due;
+                const chipRadius = isMultiDayStart ? "7px 3px 3px 7px" : (isContinuation ? "3px 7px 7px 3px" : 7);
+                return <div key={item.kind + "_" + item.id} onClick={function () { handleItemClick(item); }} style={{ display: "flex", alignItems: "center", gap: 3, background: info.color + "22", border: "none", borderRadius: chipRadius, padding: "3px 6px", fontSize: 10, color: info.color, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{isContinuation ? <span style={{ flexShrink: 0 }}>›</span> : <ItemIcon size={9} strokeWidth={2.5} style={{ flexShrink: 0 }} />}<span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span></div>;
               })}
               {dayItems.length > 3 ? <div onClick={function (e) { e.stopPropagation(); setDayDetail({ date: dateStr(cell.day), items: dayItems }); }} style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>+{dayItems.length - 3}개 더보기</div> : null}
             </div>
@@ -3172,9 +3200,9 @@ export default function App() {
 
   if (!synced || !authChecked) {
     return (
-      <div style={{ minHeight: "100vh", background: "#0d1117", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "-apple-system,sans-serif", gap: 16 }}>
-        <div style={{ display: "flex", justifyContent: "center" }}><Film size={28} strokeWidth={1.5} /></div>
-        <div style={{ fontSize: 15, fontWeight: 700, color: "#f9fafb" }}>TIMBEL 업무 스케줄러</div>
+      <div style={{ minHeight: "100vh", background: t.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "-apple-system,sans-serif", gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "center" }}><Film size={28} strokeWidth={1.5} color={t.text} /></div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>TIMBEL 업무 스케줄러</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#fbbf24", fontSize: 13 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fbbf24" }} />Firebase 연결 중...</div>
       </div>
     );
