@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, createContext, useContext } from "react";
-import { Home, LayoutGrid, Calendar, CalendarDays, Palette, Kanban, Megaphone, BarChart3, Settings, MessageCircle, Bot, Shield, Clock, History } from "lucide-react";
+import { Home, LayoutGrid, Calendar, CalendarDays, Palette, Kanban, Megaphone, BarChart3, Settings, MessageCircle, Bot, Shield, Clock, History, Search, Pencil, Film, Lightbulb, CheckCircle2, Users, ClipboardList, Flag, Upload, Paperclip, Palmtree, Repeat, AlertTriangle, User, Image as ImageIcon, Zap, Rocket, Bell, Folder, Trash2, Eye, Heart, TrendingUp, Hand, Sparkles, Video, Scissors, Inbox, Lock, Key, Plus, Tag, Circle, CornerUpLeft, Download, RefreshCw, FileText, Mic, Mail, Smile, RotateCcw, SearchX, Sun, Moon, X, Check, ArrowLeft, ArrowRight, Send, LogOut, UserCog } from "lucide-react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set as dbSet } from "firebase/database";
 
@@ -91,27 +91,27 @@ const PRIORITIES = ["높음", "중간", "낮음"];
 const PRIORITY_COLOR = { "높음": "#f87171", "중간": "#fbbf24", "낮음": "#34d399" };
 const STAGES = ["기획", "촬영", "편집", "검토", "업무 완료"];
 const STAGE_COLOR = { "기획": "#818cf8", "촬영": "#fb923c", "편집": "#38bdf8", "검토": "#c084fc", "업무 완료": "#34d399" };
-const STAGE_ICON = { "기획": "💡", "촬영": "🎥", "편집": "✂️", "검토": "🔍", "업무 완료": "🚀" };
+const STAGE_ICON = { "기획": Lightbulb, "촬영": Video, "편집": Scissors, "검토": Search, "업무 완료": Rocket };
 const TAGS = ["유튜브", "인스타그램", "틱톡", "쇼츠", "광고", "브이로그"];
 const TASK_CATEGORIES = ["기획", "촬영", "편집", "업로드", "미팅", "회의", "기타"];
 const VIDEO_WORK_CATEGORIES = ["기획", "촬영", "편집", "업로드"];
 const TAG_COLOR = { "유튜브": "#f87171", "인스타그램": "#c084fc", "틱톡": "#38bdf8", "쇼츠": "#fb923c", "광고": "#fbbf24", "브이로그": "#34d399" };
 const MARKETING_STAGES = ["기획", "진행중", "검토", "완료"];
 const MARKETING_STAGE_COLOR = { "기획": "#818cf8", "진행중": "#fb923c", "검토": "#c084fc", "완료": "#34d399" };
-const MARKETING_STAGE_ICON = { "기획": "💡", "진행중": "🚀", "검토": "🔍", "완료": "✅" };
+const MARKETING_STAGE_ICON = { "기획": Lightbulb, "진행중": Rocket, "검토": Search, "완료": CheckCircle2 };
 const MARKETING_TAGS = ["광고", "SNS", "이벤트", "제휴", "콘텐츠", "기타"];
 const MARKETING_TAG_COLOR = { "광고": "#fbbf24", "SNS": "#38bdf8", "이벤트": "#f87171", "제휴": "#c084fc", "콘텐츠": "#34d399", "기타": "#94a3b8" };
 const DESIGN_STAGES = ["기획", "시안 작업", "피드백", "완료"];
 const DESIGN_STAGE_COLOR = { "기획": "#818cf8", "시안 작업": "#fb923c", "피드백": "#c084fc", "완료": "#34d399" };
-const DESIGN_STAGE_ICON = { "기획": "💡", "시안 작업": "🎨", "피드백": "🔁", "완료": "✅" };
+const DESIGN_STAGE_ICON = { "기획": Lightbulb, "시안 작업": Palette, "피드백": Repeat, "완료": CheckCircle2 };
 const DESIGN_TAGS = ["로고", "배너", "템플릿", "인쇄물", "UI/UX", "기타"];
 const DESIGN_TAG_COLOR = { "로고": "#f87171", "배너": "#fbbf24", "템플릿": "#38bdf8", "인쇄물": "#c084fc", "UI/UX": "#34d399", "기타": "#94a3b8" };
 const COMBINED_TYPE_INFO = {
-  video: { color: "#818cf8", icon: "🎬", label: "영상" },
-  marketing: { color: "#fb923c", icon: "🗓️", label: "마케팅" },
-  design: { color: "#f87171", icon: "🎨", label: "디자인" },
-  adWork: { color: "#fbbf24", icon: "📢", label: "광고 제작일" },
-  adExpected: { color: "#38bdf8", icon: "🏁", label: "광고 예상완료" },
+  video: { color: "#818cf8", icon: Film, label: "영상" },
+  marketing: { color: "#fb923c", icon: CalendarDays, label: "마케팅" },
+  design: { color: "#f87171", icon: Palette, label: "디자인" },
+  adWork: { color: "#fbbf24", icon: Megaphone, label: "광고 제작일" },
+  adExpected: { color: "#38bdf8", icon: Flag, label: "광고 예상완료" },
 };
 const WEEKDAYS = ["일", "월", "화", "수", "목", "금", "토"];
 const CONFIRM_STATUS = ["대기", "컨펌중", "컨펌완료", "수정", "반려"];
@@ -213,7 +213,7 @@ function StatusBadge(props) {
 }
 function UrlCell(props) {
   if (!props.url) return <span style={{ color: "#6b7280", fontSize: 12 }}>-</span>;
-  return <a href={props.url} target="_blank" rel="noreferrer" onClick={function (e) { e.stopPropagation(); }} style={{ color: "#818cf8", fontSize: 11, textDecoration: "none", background: "#818cf820", padding: "2px 8px", borderRadius: 7 }}>링크 ↗</a>;
+  return <a href={props.url} target="_blank" rel="noreferrer" onClick={function (e) { e.stopPropagation(); }} style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "#818cf8", fontSize: 11, textDecoration: "none", background: "#818cf820", padding: "2px 8px", borderRadius: 7 }}>링크 <ArrowRight size={10} strokeWidth={2.5} /></a>;
 }
 function MediaPreview(props) {
   const { t } = useTheme();
@@ -237,7 +237,8 @@ function MediaPreview(props) {
 }
 function EmptyState(props) {
   const { t } = useTheme();
-  return <div style={{ textAlign: "center", padding: props.compact ? "20px 0" : "30px 0" }}><div style={{ fontSize: 26, marginBottom: 8, opacity: 0.45 }}>{props.icon || "📭"}</div><div style={{ color: t.text5, fontSize: 13 }}>{props.text}</div></div>;
+  const Icon = props.icon || Inbox;
+  return <div style={{ textAlign: "center", padding: props.compact ? "20px 0" : "30px 0" }}><div style={{ display: "flex", justifyContent: "center", marginBottom: 8, opacity: 0.4 }}><Icon size={28} strokeWidth={1.5} /></div><div style={{ color: t.text5, fontSize: 13 }}>{props.text}</div></div>;
 }
 function MentionText(props) {
   const names = (props.users || []).map(function (u) { return u.name; }).filter(Boolean).sort(function (a, b) { return b.length - a.length; });
@@ -289,8 +290,8 @@ function NotificationBell(props) {
   const unreadCount = myNotifs.filter(function (n) { return !isRead(n); }).length + overdueList.length;
   return (
     <div style={{ position: "relative" }}>
-      <button onClick={function () { setOpen(!open); }} style={{ position: "relative", background: t.surface2, border: "none", borderRadius: 20, padding: "8px 11px", cursor: "pointer", fontSize: 15, display: "flex", alignItems: "center" }}>
-        🔔
+      <button onClick={function () { setOpen(!open); }} style={{ position: "relative", background: t.surface2, border: "none", borderRadius: 20, padding: "8px 11px", cursor: "pointer", display: "flex", alignItems: "center" }}>
+        <Bell size={16} strokeWidth={1.75} color={t.text3} />
         {unreadCount > 0 ? <span style={{ position: "absolute", top: -4, right: -4, background: "#f87171", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 99, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{unreadCount > 9 ? "9+" : unreadCount}</span> : null}
       </button>
       {open ? (
@@ -301,7 +302,7 @@ function NotificationBell(props) {
               {myNotifs.some(function (n) { return !isRead(n); }) ? <button onClick={function () { onMarkAllRead(); }} style={{ background: "none", border: "none", color: "#818cf8", fontSize: 11, cursor: "pointer", fontWeight: 600 }}>모두 읽음</button> : null}
             </div>
             <div style={{ overflowY: "auto", flex: 1 }}>
-              {myNotifs.length === 0 && overdueList.length === 0 ? <EmptyState icon="🔔" text="알림이 없습니다" compact /> : null}
+              {myNotifs.length === 0 && overdueList.length === 0 ? <EmptyState icon={Bell} text="알림이 없습니다" compact /> : null}
               {overdueList.map(function (item) {
                 return (
                   <div key={item.id} onClick={function () { onClickOverdue(item); setOpen(false); }} style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, cursor: "pointer", background: "#f8717112" }}>
@@ -414,7 +415,7 @@ function AuthScreen(props) {
             <input placeholder="비밀번호" type="password" value={form.password} onChange={function (e) { set("password", e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") handleLogin(); }} style={inpStyle} />
             {err ? <div style={{ fontSize: 12, color: "#f87171", marginBottom: 10, textAlign: "center" }}>{err}</div> : null}
             <button onClick={handleLogin} style={{ width: "100%", background: "#6366f1", border: "none", borderRadius: 12, padding: "11px 0", fontWeight: 700, fontSize: 14, color: "#fff", cursor: "pointer" }}>로그인</button>
-            {adminPasswordHash === DEFAULT_ADMIN_PASSWORD_HASH ? <div style={{ textAlign: "center", marginTop: 12, fontSize: 11, color: "#f59e0b" }}>⚠️ 관리자 기본 계정: admin / admin1234 — 로그인 후 반드시 비밀번호를 변경하세요</div> : null}
+            {adminPasswordHash === DEFAULT_ADMIN_PASSWORD_HASH ? <div style={{ textAlign: "center", marginTop: 12, fontSize: 11, color: "#f59e0b", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><AlertTriangle size={11} strokeWidth={2} /> 관리자 기본 계정: admin / admin1234 — 로그인 후 반드시 비밀번호를 변경하세요</div> : null}
           </div>
         ) : (
           <div>
@@ -465,8 +466,9 @@ function ProfileModal(props) {
           </div>
         </div>
         <div style={{ display: "flex", borderBottom: "1px solid " + t.border }}>
-          {[["info", "👤 개인정보"], ["password", "🔒 비밀번호"]].map(function (item) {
-            return <button key={item[0]} onClick={function () { setPTab(item[0]); setErr(""); setOk(""); }} style={{ flex: 1, padding: "10px 0", background: "none", border: "none", borderBottom: pTab === item[0] ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: pTab === item[0] ? 700 : 500, fontSize: 13, color: pTab === item[0] ? "#818cf8" : t.text4 }}>{item[1]}</button>;
+          {[["info", User, "개인정보"], ["password", Lock, "비밀번호"]].map(function (item) {
+            const PTabIcon = item[1];
+            return <button key={item[0]} onClick={function () { setPTab(item[0]); setErr(""); setOk(""); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, padding: "10px 0", background: "none", border: "none", borderBottom: pTab === item[0] ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: pTab === item[0] ? 700 : 500, fontSize: 13, color: pTab === item[0] ? "#818cf8" : t.text4 }}><PTabIcon size={13} strokeWidth={2} /> {item[2]}</button>;
           })}
         </div>
         <div style={{ padding: "18px 22px 22px" }}>
@@ -481,7 +483,7 @@ function ProfileModal(props) {
                 <Inp label="핸드폰" val={form.mobile} onChange={function (v) { setForm(function (f) { return Object.assign({}, f, { mobile: v }); }); }} required />
               </div>
               {err ? <div style={{ fontSize: 12, color: "#f87171", marginBottom: 10, textAlign: "center" }}>{err}</div> : null}
-              {ok ? <div style={{ fontSize: 12, color: "#34d399", marginBottom: 10, textAlign: "center" }}>✓ {ok}</div> : null}
+              {ok ? <div style={{ fontSize: 12, color: "#34d399", marginBottom: 10, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><Check size={12} strokeWidth={2.5} /> {ok}</div> : null}
               <button onClick={saveInfo} style={{ width: "100%", background: "#6366f1", border: "none", borderRadius: 12, padding: "11px 0", fontWeight: 700, fontSize: 14, color: "#fff", cursor: "pointer" }}>저장하기</button>
             </div>
           ) : (
@@ -490,7 +492,7 @@ function ProfileModal(props) {
               <Inp label="새 비밀번호 (4자 이상)" val={pw.next} onChange={function (v) { setPw(function (p) { return Object.assign({}, p, { next: v }); }); }} type="password" />
               <Inp label="새 비밀번호 확인" val={pw.confirm} onChange={function (v) { setPw(function (p) { return Object.assign({}, p, { confirm: v }); }); }} type="password" />
               {err ? <div style={{ fontSize: 12, color: "#f87171", marginBottom: 10, textAlign: "center" }}>{err}</div> : null}
-              {ok ? <div style={{ fontSize: 12, color: "#34d399", marginBottom: 10, textAlign: "center" }}>✓ {ok}</div> : null}
+              {ok ? <div style={{ fontSize: 12, color: "#34d399", marginBottom: 10, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}><Check size={12} strokeWidth={2.5} /> {ok}</div> : null}
               <button onClick={savePw} style={{ width: "100%", background: "#6366f1", border: "none", borderRadius: 12, padding: "11px 0", fontWeight: 700, fontSize: 14, color: "#fff", cursor: "pointer" }}>비밀번호 변경</button>
             </div>
           )}
@@ -529,13 +531,14 @@ function AdminPanel(props) {
   return (
     <div>
       <div style={{ background: "linear-gradient(135deg,#7f1d1d,#991b1b)", borderRadius: 14, padding: "14px 20px", marginBottom: 18, display: "flex", alignItems: "center", gap: 10 }}>
-        <span style={{ fontSize: 20 }}>🛡️</span>
+        <Shield size={19} strokeWidth={1.75} color="#fff" />
         <div><div style={{ fontSize: 15, fontWeight: 800, color: "#fff" }}>관리자 대시보드</div><div style={{ fontSize: 11, color: "#fca5a5" }}>시스템 전체 설정 및 사용자 관리</div></div>
         {pending.length > 0 ? <div style={{ marginLeft: "auto", background: "#f87171", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700, color: "#fff" }}>승인 대기 {pending.length}명</div> : null}
       </div>
       <div style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: "1px solid " + t.border }}>
-        {[["users", "👥 회원 관리"], ["notices", "📢 공지사항"], ["tabs", "🗂️ 탭 설정"], ["schedule", "📋 스케줄 조율"]].map(function (item) {
-          return <button key={item[0]} onClick={function () { setATab(item[0]); }} style={aTabStyle(item[0])}>{item[1]}</button>;
+        {[["users", Users, "회원 관리"], ["notices", Megaphone, "공지사항"], ["tabs", Folder, "탭 설정"], ["schedule", ClipboardList, "스케줄 조율"]].map(function (item) {
+          const TabIcon = item[1];
+          return <button key={item[0]} onClick={function () { setATab(item[0]); }} style={Object.assign({}, aTabStyle(item[0]), { display: "inline-flex", alignItems: "center", gap: 6 })}><TabIcon size={14} strokeWidth={2} />{item[2]}</button>;
         })}
       </div>
       {aTab === "users" ? (
@@ -549,8 +552,8 @@ function AdminPanel(props) {
                     <Avatar name={u.name} size={36} users={users} />
                     <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{u.name}</div><div style={{ fontSize: 11, color: t.text4 }}>{u.dept} · {u.rank} / {u.position}</div></div>
                     <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={function () { approve(u.id); }} style={{ background: "#34d399", border: "none", borderRadius: 10, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer" }}>✓ 승인</button>
-                      <button onClick={function () { reject(u.id); }} style={{ background: "#f87171", border: "none", borderRadius: 10, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer" }}>✕ 거절</button>
+                      <button onClick={function () { approve(u.id); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "#34d399", border: "none", borderRadius: 10, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer" }}><Check size={12} strokeWidth={2.5} /> 승인</button>
+                      <button onClick={function () { reject(u.id); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "#f87171", border: "none", borderRadius: 10, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer" }}><X size={12} strokeWidth={2.5} /> 거절</button>
                     </div>
                   </div>
                 );
@@ -559,7 +562,7 @@ function AdminPanel(props) {
           ) : null}
           <div style={s}>
             <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 회원 ({members.length})</div>
-            {members.length === 0 ? <EmptyState icon="👥" text="등록된 회원이 없습니다" /> : null}
+            {members.length === 0 ? <EmptyState icon={Users} text="등록된 회원이 없습니다" /> : null}
             {members.map(function (u) {
               return (
                 <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid " + t.border }}>
@@ -574,7 +577,7 @@ function AdminPanel(props) {
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                     <button onClick={function () { toggleRole(u.id); }} style={{ background: t.surface2, border: "none", borderRadius: 10, padding: "5px 10px", fontSize: 11, color: t.text3, cursor: "pointer" }}>{ROLE_LABEL[ROLE_ORDER[(ROLE_ORDER.indexOf(u.role) + 1) % ROLE_ORDER.length]]}로 변경</button>
-                    <button onClick={function () { resetPassword(u.id, u.name); }} style={{ background: "#fbbf2420", border: "1px solid #fbbf2440", borderRadius: 10, padding: "5px 10px", fontSize: 11, color: "#fbbf24", cursor: "pointer" }}>🔑 비밀번호 초기화</button>
+                    <button onClick={function () { resetPassword(u.id, u.name); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "#fbbf2420", border: "1px solid #fbbf2440", borderRadius: 10, padding: "5px 10px", fontSize: 11, color: "#fbbf24", cursor: "pointer" }}><Key size={11} strokeWidth={2} /> 비밀번호 초기화</button>
                     <button onClick={function () { deleteUser(u.id); }} style={{ background: "#f8717120", border: "1px solid #f8717140", borderRadius: 10, padding: "5px 10px", fontSize: 11, color: "#f87171", cursor: "pointer" }}>삭제</button>
                   </div>
                 </div>
@@ -586,7 +589,7 @@ function AdminPanel(props) {
       {aTab === "notices" ? (
         <div>
           <div style={Object.assign({}, s, { padding: 18, marginBottom: 14 })}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14 }}>{editNotice ? "✏️ 공지 수정" : "➕ 새 공지 등록"}</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 14, display: "flex", alignItems: "center", gap: 6 }}>{editNotice ? <Pencil size={14} strokeWidth={2} /> : <Plus size={14} strokeWidth={2} />}{editNotice ? "공지 수정" : "새 공지 등록"}</div>
             <Inp label="제목" val={noticeForm.title} onChange={function (v) { setNoticeForm(function (f) { return Object.assign({}, f, { title: v }); }); }} required />
             <div style={{ marginBottom: 12 }}>
               <div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>내용 *</div>
@@ -602,7 +605,7 @@ function AdminPanel(props) {
           </div>
           <div style={s}>
             <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>등록된 공지 ({notices.length})</div>
-            {notices.length === 0 ? <EmptyState icon="📢" text="등록된 공지가 없습니다" /> : null}
+            {notices.length === 0 ? <EmptyState icon={Megaphone} text="등록된 공지가 없습니다" /> : null}
             {notices.map(function (n) {
               return (
                 <div key={n.id} style={{ padding: "12px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "flex-start", gap: 12 }}>
@@ -644,7 +647,7 @@ function AdminPanel(props) {
       {aTab === "schedule" ? (
         <div style={s}>
           <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 스케줄 조율 ({tasks.length}개)</div>
-          {tasks.length === 0 ? <EmptyState icon="📅" text="등록된 스케줄이 없습니다" /> : null}
+          {tasks.length === 0 ? <EmptyState icon={Calendar} text="등록된 스케줄이 없습니다" /> : null}
           {tasks.map(function (tk) {
             return (
               <div key={tk.id} style={{ padding: "12px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", gap: 12 }}>
@@ -705,7 +708,7 @@ function ReportModal(props) {
         </div>
         <div style={{ padding: "22px 28px 28px" }}>
           <div style={{ marginBottom: 22 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", borderLeft: "3px solid #6366f1", paddingLeft: 10, marginBottom: 12 }}>📊 종합 현황</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", borderLeft: "3px solid #6366f1", paddingLeft: 10, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><BarChart3 size={13} strokeWidth={2} /> 종합 현황</div>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 10 }}>
               {[["전체 " + sourceLabel, total, "#6366f1"], [doneStatus, done, "#22c55e"], ["진행 중", total - done, "#f59e0b"], ["완료율", rate + "%", "#3b82f6"]].map(function (item) {
                 return <div key={item[0]} style={{ background: "#f8fafc", borderRadius: 12, padding: "12px 0", textAlign: "center", border: "1px solid #e2e8f0" }}><div style={{ fontSize: 22, fontWeight: 800, color: item[2] }}>{item[1]}</div><div style={{ fontSize: 11, color: "#64748b", marginTop: 2 }}>{item[0]}</div></div>;
@@ -713,14 +716,15 @@ function ReportModal(props) {
             </div>
           </div>
           <div style={{ marginBottom: 22 }}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", borderLeft: "3px solid #fb923c", paddingLeft: 10, marginBottom: 12 }}>🎬 단계별 현황</div>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", borderLeft: "3px solid #fb923c", paddingLeft: 10, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Film size={13} strokeWidth={2} /> 단계별 현황</div>
             <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
               <thead><tr style={{ background: "#f8fafc" }}>{["단계", sourceLabel + " 수", "비율"].map(function (h) { return <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>{h}</th>; })}</tr></thead>
               <tbody>
                 {byStage.filter(function (x) { return x.count > 0; }).map(function (item) {
+                  const StageIcon = stageIconMap[item.s];
                   return (
                     <tr key={item.s}>
-                      <td style={{ padding: "8px 12px", color: "#1e293b", borderBottom: "1px solid #f1f5f9" }}>{stageIconMap[item.s]} {item.s}</td>
+                      <td style={{ padding: "8px 12px", color: "#1e293b", borderBottom: "1px solid #f1f5f9", display: "flex", alignItems: "center", gap: 6 }}><StageIcon size={13} strokeWidth={1.75} /> {item.s}</td>
                       <td style={{ padding: "8px 12px", fontWeight: 700, color: stageColorMap[item.s], borderBottom: "1px solid #f1f5f9" }}>{item.count}개</td>
                       <td style={{ padding: "8px 12px", borderBottom: "1px solid #f1f5f9" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ width: 80, background: "#e2e8f0", borderRadius: 99, height: 5 }}><div style={{ width: total ? (item.count / total * 100) + "%" : "0%", background: stageColorMap[item.s], height: "100%", borderRadius: 99 }} /></div><span style={{ fontSize: 11, color: "#64748b" }}>{total ? Math.round(item.count / total * 100) : 0}%</span></div>
@@ -733,13 +737,13 @@ function ReportModal(props) {
           </div>
           {byTag.length > 0 ? (
             <div style={{ marginBottom: 22 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", borderLeft: "3px solid #38bdf8", paddingLeft: 10, marginBottom: 12 }}>🏷️ 카테고리별</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", borderLeft: "3px solid #38bdf8", paddingLeft: 10, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Tag size={13} strokeWidth={2} /> 카테고리별</div>
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{byTag.map(function (item) { return <div key={item.tag} style={{ background: (tagColorMap[item.tag] || "#818cf8") + "15", border: "1px solid " + ((tagColorMap[item.tag] || "#818cf8") + "30"), borderRadius: 12, padding: "8px 16px", textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 800, color: tagColorMap[item.tag] || "#818cf8" }}>{item.count}</div><div style={{ fontSize: 11, color: "#64748b" }}>{item.tag}</div></div>; })}</div>
             </div>
           ) : null}
           {byMember.length > 0 ? (
             <div style={{ marginBottom: 22 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", borderLeft: "3px solid #c084fc", paddingLeft: 10, marginBottom: 12 }}>👥 담당자별 성과</div>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#1e293b", borderLeft: "3px solid #c084fc", paddingLeft: 10, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Users size={13} strokeWidth={2} /> 담당자별 성과</div>
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
                 <thead><tr style={{ background: "#f8fafc" }}>{["담당자", "전체", "완료", "완료율"].map(function (h) { return <th key={h} style={{ padding: "8px 12px", textAlign: "left", fontSize: 11, fontWeight: 700, color: "#64748b", borderBottom: "1px solid #e2e8f0" }}>{h}</th>; })}</tr></thead>
                 <tbody>
@@ -869,9 +873,9 @@ function StatsPanel(props) {
   const sourceTabs = (
     <div style={{ display: "flex", gap: 4, background: t.bg, borderRadius: 11, padding: 3, border: "1px solid " + t.border, flexWrap: "wrap" }}>
       <button style={sourceBtn("all", "#6366f1")} onClick={function () { setSource("all"); }}>전체</button>
-      <button style={sourceBtn("video", "#818cf8")} onClick={function () { setSource("video"); }}>📅 영상</button>
-      <button style={sourceBtn("marketing", "#fbbf24")} onClick={function () { setSource("marketing"); }}>🗓️ 마케팅</button>
-      <button style={sourceBtn("design", "#f87171")} onClick={function () { setSource("design"); }}>🎨 디자인</button>
+      <button style={Object.assign({}, sourceBtn("video", "#818cf8"), { display: "inline-flex", alignItems: "center", gap: 5 })} onClick={function () { setSource("video"); }}><Film size={12} strokeWidth={2} /> 영상</button>
+      <button style={Object.assign({}, sourceBtn("marketing", "#fbbf24"), { display: "inline-flex", alignItems: "center", gap: 5 })} onClick={function () { setSource("marketing"); }}><CalendarDays size={12} strokeWidth={2} /> 마케팅</button>
+      <button style={Object.assign({}, sourceBtn("design", "#f87171"), { display: "inline-flex", alignItems: "center", gap: 5 })} onClick={function () { setSource("design"); }}><Palette size={12} strokeWidth={2} /> 디자인</button>
     </div>
   );
   const periodTabs = (
@@ -906,8 +910,8 @@ function StatsPanel(props) {
             {periodTabs}
             {periodSelectors}
             <span style={{ fontSize: 12, color: t.text4 }}>{total}개</span>
-            <button onClick={function () { downloadCSV(cfg.label + "_업무목록_" + selYear + ".csv", filtered.map(function (tk) { return { 제목: tk.title, 설명: tk.desc || "", 담당자: tk.assignee, 우선순위: tk.priority, 카테고리: tk.tag, 단계: tk.status, 작업시작일: tk.due }; })); }} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: t.surface2, border: "1px solid " + t.border, borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: t.text3, cursor: "pointer" }}>📤 CSV</button>
-            <button onClick={function () { setShowReport(true); }} style={{ display: "flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#6366f1,#818cf8)", border: "none", borderRadius: 11, padding: "7px 16px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>📋 {mode === "all" ? "보고서 생성" : mode === "year" ? selYear + "년 보고" : selYear + "년 " + selMonth + "월 보고"}</button>
+            <button onClick={function () { downloadCSV(cfg.label + "_업무목록_" + selYear + ".csv", filtered.map(function (tk) { return { 제목: tk.title, 설명: tk.desc || "", 담당자: tk.assignee, 우선순위: tk.priority, 카테고리: tk.tag, 단계: tk.status, 작업시작일: tk.due }; })); }} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: t.surface2, border: "1px solid " + t.border, borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: t.text3, cursor: "pointer" }}><Download size={13} strokeWidth={2} /> CSV</button>
+            <button onClick={function () { setShowReport(true); }} style={{ display: "flex", alignItems: "center", gap: 6, background: "linear-gradient(135deg,#6366f1,#818cf8)", border: "none", borderRadius: 11, padding: "7px 16px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}><ClipboardList size={13} strokeWidth={2} /> {mode === "all" ? "보고서 생성" : mode === "year" ? selYear + "년 보고" : selYear + "년 " + selMonth + "월 보고"}</button>
           </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 10 }}>
@@ -969,7 +973,7 @@ function StatsPanel(props) {
               .concat(filteredMarketing.map(function (tk) { return { 유형: "마케팅", 제목: tk.title, 담당자: tk.assignee, 우선순위: tk.priority, 카테고리: tk.tag, 단계: tk.status, 작업시작일: tk.due }; }))
               .concat(filteredDesign.map(function (tk) { return { 유형: "디자인", 제목: tk.title, 담당자: tk.assignee, 우선순위: tk.priority, 카테고리: tk.tag, 단계: tk.status, 작업시작일: tk.due }; }));
             downloadCSV("전체_업무목록_" + selYear + ".csv", rows);
-          }} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: t.surface2, border: "1px solid " + t.border, borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: t.text3, cursor: "pointer" }}>📤 CSV</button>
+          }} style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: t.surface2, border: "1px solid " + t.border, borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: t.text3, cursor: "pointer" }}><Download size={13} strokeWidth={2} /> CSV</button>
         </div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 10 }}>
@@ -1004,13 +1008,14 @@ function TaskDetailModal(props) {
   const tagList = props.tags || TAGS;
   const categoryLabel = props.categoryLabel || "플랫폼";
   const categories = props.categories || null;
-  const editTitle = props.editTitle || "✏️ 영상 정보 수정";
+  const editTitle = props.editTitle || "영상 정보 수정";
   const [comment, setComment] = useState("");
   const [mentionQuery, setMentionQuery] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [applyToSeries, setApplyToSeries] = useState(false);
   const [editForm, setEditForm] = useState({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") });
   const idx = stageList.indexOf(task.status);
+  const StageIconBadge = stageIconMap[task.status] || Circle;
   const memberNames = users.filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return u.name; });
   const setEF = function (k, v) { setEditForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
   const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "8px 11px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
@@ -1054,7 +1059,7 @@ function TaskDetailModal(props) {
       <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 300, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
         <div style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 400px)", maxHeight: "85vh", overflowY: "auto", boxShadow: "0 24px 64px #000c", padding: "22px 24px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 18 }}>
-            <div style={{ fontSize: 15, fontWeight: 800, color: t.text }}>{editTitle}</div>
+            <div style={{ fontSize: 15, fontWeight: 800, color: t.text, display: "flex", alignItems: "center", gap: 6 }}><Pencil size={15} strokeWidth={2} />{editTitle}</div>
             <button onClick={function () { setEditMode(false); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20 }}>×</button>
           </div>
           <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>제목</div><input value={editForm.title} onChange={function (e) { setEF("title", e.target.value); }} style={inp} /></div>
@@ -1066,11 +1071,11 @@ function TaskDetailModal(props) {
           </div>
           {categories ? <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>업무 종류</div><select value={editForm.category} onChange={function (e) { setEF("category", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{categories.map(function (c) { return <option key={c}>{c}</option>; })}</select></div> : null}
           <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{categoryLabel}</div><select value={editForm.tag} onChange={function (e) { setEF("tag", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{tagList.map(function (tg) { return <option key={tg}>{tg}</option>; })}</select></div>
-          <div style={{ marginBottom: 18 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 결과물 링크 (유튜브·피그마·구글드라이브·PDF·이미지·동영상·오디오 자동 미리보기)</div><input value={editForm.fileUrl} onChange={function (e) { setEF("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
+          <div style={{ marginBottom: 18 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><Paperclip size={11} strokeWidth={2} /> 결과물 링크 (유튜브·피그마·구글드라이브·PDF·이미지·동영상·오디오 자동 미리보기)</div><input value={editForm.fileUrl} onChange={function (e) { setEF("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
           {seriesCount > 1 && onUpdateSeries ? (
             <label style={{ display: "flex", alignItems: "flex-start", gap: 7, cursor: "pointer", fontSize: 12, color: t.text3, marginBottom: 18, background: t.bg, borderRadius: 10, padding: "9px 11px" }}>
               <input type="checkbox" checked={applyToSeries} onChange={function (e) { setApplyToSeries(e.target.checked); }} style={{ marginTop: 2, width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer", flexShrink: 0 }} />
-              <span>🔁 이 반복 시리즈 전체({seriesCount}개)에 적용 — 작업 시작일은 각자 유지되고 나머지 정보만 함께 바뀌어요</span>
+              <span style={{ display: "flex", alignItems: "flex-start", gap: 5 }}><Repeat size={13} strokeWidth={2} style={{ flexShrink: 0, marginTop: 1 }} /><span>이 반복 시리즈 전체({seriesCount}개)에 적용 — 작업 시작일은 각자 유지되고 나머지 정보만 함께 바뀌어요</span></span>
             </label>
           ) : null}
           <div style={{ display: "flex", gap: 8 }}>
@@ -1089,40 +1094,40 @@ function TaskDetailModal(props) {
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
-                <span style={{ fontSize: 11, color: stageColorMap[task.status], background: stageColorMap[task.status] + "18", padding: "2px 9px", borderRadius: 20, fontWeight: 700 }}>{stageIconMap[task.status]} {task.status}</span>
+                <span style={{ fontSize: 11, color: stageColorMap[task.status], background: stageColorMap[task.status] + "18", padding: "2px 9px", borderRadius: 20, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 4 }}><StageIconBadge size={11} strokeWidth={2} /> {task.status}</span>
                 <span style={{ fontSize: 11, color: PRIORITY_COLOR[task.priority], background: PRIORITY_COLOR[task.priority] + "18", padding: "2px 9px", borderRadius: 20, fontWeight: 700 }}>{task.priority}</span>
                 {categories && task.category ? <span style={{ fontSize: 11, color: VIDEO_WORK_CATEGORIES.indexOf(task.category) !== -1 ? "#818cf8" : "#94a3b8", background: (VIDEO_WORK_CATEGORIES.indexOf(task.category) !== -1 ? "#818cf8" : "#94a3b8") + "18", padding: "2px 9px", borderRadius: 20, fontWeight: 700 }}>{task.category}</span> : null}
               </div>
               <div style={{ fontSize: 16, fontWeight: 800, color: t.text }}>{task.title}</div>
               <div style={{ fontSize: 12, color: t.text4, marginTop: 3 }}>{task.desc}</div>
-              <div style={{ display: "flex", gap: 14, marginTop: 10 }}><div style={{ display: "flex", alignItems: "center", gap: 6 }}><Avatar name={task.assignee} size={18} users={users} /><span style={{ fontSize: 12, color: t.text3 }}>{task.assignee}</span></div><span style={{ fontSize: 12, color: t.text4 }}>📅 {task.due}</span></div>
-              {task.fileUrl ? <div style={{ marginTop: 12 }}><MediaPreview url={task.fileUrl} /><a href={task.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 12, color: "#818cf8", background: "#818cf818", border: "1px solid #818cf830", borderRadius: 10, padding: "5px 10px", textDecoration: "none" }}>📎 원본 링크에서 열기 ↗</a></div> : null}
+              <div style={{ display: "flex", gap: 14, marginTop: 10 }}><div style={{ display: "flex", alignItems: "center", gap: 6 }}><Avatar name={task.assignee} size={18} users={users} /><span style={{ fontSize: 12, color: t.text3 }}>{task.assignee}</span></div><span style={{ fontSize: 12, color: t.text4, display: "inline-flex", alignItems: "center", gap: 4 }}><Calendar size={12} strokeWidth={2} /> {task.due}</span></div>
+              {task.fileUrl ? <div style={{ marginTop: 12 }}><MediaPreview url={task.fileUrl} /><a href={task.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 12, color: "#818cf8", background: "#818cf818", border: "1px solid #818cf830", borderRadius: 10, padding: "5px 10px", textDecoration: "none" }}><Paperclip size={12} strokeWidth={2} /> 원본 링크에서 열기 <ArrowRight size={11} strokeWidth={2.5} /></a></div> : null}
             </div>
             <button onClick={onClose} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20, padding: 0, marginLeft: 12 }}>×</button>
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
-            {onMove && idx > 0 ? <button onClick={function () { onMove(task.id, -1); onClose(); }} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 10, padding: "6px 0", fontSize: 11, cursor: "pointer", color: t.text4 }}>← {stageList[idx - 1]}</button> : null}
-            {onMove && idx < stageList.length - 1 ? <button onClick={function () { onMove(task.id, 1); onClose(); }} style={{ flex: 1, background: "#6366f120", border: "1px solid #6366f140", borderRadius: 10, padding: "6px 0", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>{stageList[idx + 1]} →</button> : null}
-            {onMove && task.status !== stageList[stageList.length - 1] ? <button onClick={function () { onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1] })); onClose(); }} style={{ background: "#34d39920", border: "1px solid #34d39940", borderRadius: 10, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700, flexShrink: 0 }}>✅ 업무 완료</button> : null}
-            {onMove ? <button onClick={function () { setEditForm({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") }); setEditMode(true); }} style={{ background: t.surface2, border: "1px solid " + t.border2, borderRadius: 10, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: t.text4, flexShrink: 0 }}>✏️ 정보 수정</button> : null}
+            {onMove && idx > 0 ? <button onClick={function () { onMove(task.id, -1); onClose(); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 10, padding: "6px 0", fontSize: 11, cursor: "pointer", color: t.text4 }}><ArrowLeft size={11} strokeWidth={2} /> {stageList[idx - 1]}</button> : null}
+            {onMove && idx < stageList.length - 1 ? <button onClick={function () { onMove(task.id, 1); onClose(); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: "#6366f120", border: "1px solid #6366f140", borderRadius: 10, padding: "6px 0", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>{stageList[idx + 1]} <ArrowRight size={11} strokeWidth={2} /></button> : null}
+            {onMove && task.status !== stageList[stageList.length - 1] ? <button onClick={function () { onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1] })); onClose(); }} style={{ display: "flex", alignItems: "center", gap: 5, background: "#34d39920", border: "1px solid #34d39940", borderRadius: 10, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700, flexShrink: 0 }}><CheckCircle2 size={12} strokeWidth={2} /> 업무 완료</button> : null}
+            {onMove ? <button onClick={function () { setEditForm({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") }); setEditMode(true); }} style={{ display: "flex", alignItems: "center", gap: 5, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 10, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: t.text4, flexShrink: 0 }}><Pencil size={12} strokeWidth={2} /> 정보 수정</button> : null}
           </div>
           {onMove && currentUser && (currentUser.role === "admin" || currentUser.role === "manager") && task.status === stageList[stageList.length - 2] ? (
             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <button onClick={function () { onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1] })); onClose(); }} style={{ flex: 1, background: "#34d39920", border: "1px solid #34d39940", borderRadius: 10, padding: "7px 0", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700 }}>✅ 승인 (완료 처리)</button>
+              <button onClick={function () { onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1] })); onClose(); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: "#34d39920", border: "1px solid #34d39940", borderRadius: 10, padding: "7px 0", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700 }}><CheckCircle2 size={12} strokeWidth={2} /> 승인 (완료 처리)</button>
               <button onClick={function () {
                 const reason = window.prompt("수정 요청 사유를 입력해주세요");
                 if (!reason) return;
-                const newComments = (task.comments || []).concat([{ id: "c_" + Date.now(), author: currentUser.name, text: "🔴 수정 요청: " + reason, time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }]);
+                const newComments = (task.comments || []).concat([{ id: "c_" + Date.now(), author: currentUser.name, text: "수정 요청: " + reason, time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }]);
                 const backStageIdx = Math.max(0, stageList.length - 3);
                 onUpdate(Object.assign({}, task, { status: stageList[backStageIdx], comments: newComments }));
                 if (onNotify && task.assignee && task.assignee !== currentUser.name) onNotify(task.assignee, currentUser.name, task.title, "수정 요청: " + reason);
-              }} style={{ flex: 1, background: "#f8717120", border: "1px solid #f8717140", borderRadius: 10, padding: "7px 0", fontSize: 11, cursor: "pointer", color: "#f87171", fontWeight: 700 }}>↩️ 수정 요청</button>
+              }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: "#f8717120", border: "1px solid #f8717140", borderRadius: 10, padding: "7px 0", fontSize: 11, cursor: "pointer", color: "#f87171", fontWeight: 700 }}><CornerUpLeft size={12} strokeWidth={2} /> 수정 요청</button>
             </div>
           ) : null}
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px" }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 12, textTransform: "uppercase", letterSpacing: ".5px" }}>코멘트 {(task.comments || []).length > 0 ? "· " + (task.comments || []).length : ""}</div>
-          {(task.comments || []).length === 0 ? <EmptyState icon="💬" text="아직 코멘트가 없습니다" compact /> : null}
+          {(task.comments || []).length === 0 ? <EmptyState icon={MessageCircle} text="아직 코멘트가 없습니다" compact /> : null}
           {(task.comments || []).map(function (c) {
             return (
               <div key={c.id} style={{ display: "flex", gap: 10, marginBottom: 12 }}>
@@ -1224,11 +1229,11 @@ function AddTaskModal(props) {
         {[["제목", "title", "text"], ["설명", "desc", "text"], ["작업 시작일", "due", "date"]].map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><input type={item[2]} value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={inp} /></div>; })}
         {[["담당자", "assignee", memberNames.length ? memberNames : ["미배정"]], ["우선순위", "priority", PRIORITIES]].concat(categories ? [["업무 종류", "category", categories]] : []).concat([[categoryLabel, "tag", tagList], ["단계", "status", stageList]]).map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><select value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{item[2].map(function (o) { return <option key={o}>{o}</option>; })}</select></div>; })}
         <div style={{ display: "grid", gridTemplateColumns: form.repeat === "없음" ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 11 }}>
-          <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>🔁 반복</div><select value={form.repeat} onChange={function (e) { set("repeat", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{REPEAT_OPTIONS.map(function (o) { return <option key={o}>{o}</option>; })}</select></div>
+          <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><Repeat size={11} strokeWidth={2} /> 반복</div><select value={form.repeat} onChange={function (e) { set("repeat", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{REPEAT_OPTIONS.map(function (o) { return <option key={o}>{o}</option>; })}</select></div>
           {form.repeat !== "없음" ? <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>반복 횟수 (최대 24)</div><input type="number" min="1" max="24" value={form.repeatCount} onChange={function (e) { set("repeatCount", e.target.value); }} style={inp} /></div> : null}
         </div>
         {form.repeat !== "없음" ? <div style={{ fontSize: 11, color: t.text4, marginBottom: 11, background: t.bg, borderRadius: 10, padding: "7px 10px" }}>작업 시작일부터 {form.repeat}으로 {form.repeatCount || 1}개 일정이 한 번에 등록돼요.</div> : null}
-        <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 결과물 링크 (유튜브·피그마·구글드라이브·PDF·이미지·동영상·오디오 자동 미리보기)</div><input value={form.fileUrl} onChange={function (e) { set("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
+        <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><Paperclip size={11} strokeWidth={2} /> 결과물 링크 (유튜브·피그마·구글드라이브·PDF·이미지·동영상·오디오 자동 미리보기)</div><input value={form.fileUrl} onChange={function (e) { set("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
         <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
           <button onClick={onClose} style={{ flex: 1, background: t.surface2, border: "none", borderRadius: 11, padding: "10px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
           <button onClick={submit} style={{ flex: 1, background: "#6366f1", border: "none", borderRadius: 11, padding: "10px 0", cursor: "pointer", color: "#fff", fontWeight: 700 }}>추가</button>
@@ -1297,7 +1302,7 @@ function CalendarView(props) {
   const monthAdsUnsorted = adItems.filter(function (a) { return a.due && a.due.indexOf(monthPrefix) === 0; });
   const monthAds = monthAdsUnsorted.slice().sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : 0; });
   const getItemColor = function (item) { if (item.kind === "task") return stageColorMap[item.status] || "#818cf8"; if (item.kind === "adWork") return "#fbbf24"; if (item.kind === "adExpected") return "#38bdf8"; return "#818cf8"; };
-  const getItemIcon = function (item) { if (item.kind === "task") return stageIconMap[item.status] || "🎬"; if (item.kind === "adWork") return "📢"; if (item.kind === "adExpected") return "🏁"; return "•"; };
+  const getItemIcon = function (item) { if (item.kind === "task") return stageIconMap[item.status] || Film; if (item.kind === "adWork") return Megaphone; if (item.kind === "adExpected") return Flag; return Circle; };
   const getItemSuffix = function (item) { if (item.kind === "adWork") return " (제작일)"; if (item.kind === "adExpected") return " (예상완료)"; return ""; };
   const handleEditClick = function (e, taskObj) { e.stopPropagation(); onSelectTask(taskObj); };
   const handleMoveClick = function (e, taskId, direction) { e.stopPropagation(); onMove(taskId, direction); };
@@ -1315,7 +1320,7 @@ function CalendarView(props) {
         {videoMode ? <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 9, height: 9, borderRadius: 4, background: "#818cf8" }} /><span style={{ fontSize: 11, color: t.text4 }}>{taskLabel}</span></div> : null}
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 9, height: 9, borderRadius: 4, background: "#fbbf24" }} /><span style={{ fontSize: 11, color: t.text4 }}>광고 제작일</span></div>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 9, height: 9, borderRadius: 4, background: "#38bdf8" }} /><span style={{ fontSize: 11, color: t.text4 }}>광고 예상완료일</span></div>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ fontSize: 11 }}>🎌</span><span style={{ fontSize: 11, color: t.text4 }}>공휴일</span></div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Flag size={11} strokeWidth={2} color={t.text4} /><span style={{ fontSize: 11, color: t.text4 }}>공휴일</span></div>
         {videoMode ? <div style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ fontSize: 11 }}>⏰</span><span style={{ fontSize: 11, color: t.text4 }}>시작 지연 (시작일 지났는데 기획 단계)</span></div> : null}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
@@ -1326,7 +1331,7 @@ function CalendarView(props) {
           </select>
         ) : null}
         {currentUser ? (
-          <button onClick={function () { setMyTasksOnly(!myTasksOnly); }} style={{ background: myTasksOnly ? "#6366f1" : t.surface2, border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: myTasksOnly ? "#fff" : t.text3, cursor: "pointer" }}>👤 내 업무만</button>
+          <button onClick={function () { setMyTasksOnly(!myTasksOnly); }} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: myTasksOnly ? "#6366f1" : t.surface2, border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: myTasksOnly ? "#fff" : t.text3, cursor: "pointer" }}><User size={12} strokeWidth={2} /> 내 업무만</button>
         ) : null}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", marginBottom: 4 }}>
@@ -1345,10 +1350,11 @@ function CalendarView(props) {
                 <span>{cell.day}</span>
                 {isToday(cell.day) ? <span style={{ fontSize: 9, background: "#6366f1", color: "#fff", borderRadius: 99, padding: "1px 5px", fontWeight: 700, flexShrink: 0 }}>오늘</span> : null}
               </div>
-              {holidayName ? <div style={{ fontSize: 9, color: "#f87171", fontWeight: 600, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>🎌 {holidayName}</div> : null}
+              {holidayName ? <div style={{ fontSize: 9, color: "#f87171", fontWeight: 600, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 3 }}><Flag size={9} strokeWidth={2} /> {holidayName}</div> : null}
               {dayItems.slice(0, 3).map(function (item) {
                 const overdue = item.kind === "task" && isOverdue(item);
-                return <div key={item.id} onClick={function (e) { e.stopPropagation(); if (item.kind === "task") onSelectTask(item); else if (onSelectAd) onSelectAd(item); }} style={{ background: overdue ? "#f8717130" : getItemColor(item) + "22", border: "none", borderRadius: 7, padding: "3px 6px", fontSize: 10, color: overdue ? "#f87171" : getItemColor(item), fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 3, cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{overdue ? "⏰ " : ""}{getItemIcon(item)} {item.title}{getItemSuffix(item)}</div>;
+                const ItemIcon = getItemIcon(item);
+                return <div key={item.id} onClick={function (e) { e.stopPropagation(); if (item.kind === "task") onSelectTask(item); else if (onSelectAd) onSelectAd(item); }} style={{ display: "flex", alignItems: "center", gap: 3, background: overdue ? "#f8717130" : getItemColor(item) + "22", border: "none", borderRadius: 7, padding: "3px 6px", fontSize: 10, color: overdue ? "#f87171" : getItemColor(item), fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{overdue ? <Clock size={9} strokeWidth={2.5} style={{ flexShrink: 0 }} /> : null}<ItemIcon size={9} strokeWidth={2.5} style={{ flexShrink: 0 }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}{getItemSuffix(item)}</span></div>;
               })}
               {dayItems.length > 3 ? <div onClick={function (e) { e.stopPropagation(); setDayDetail({ date: dateStr(cell.day), items: dayItems }); }} style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>+{dayItems.length - 3}개 더보기</div> : null}
             </div>
@@ -1362,7 +1368,7 @@ function CalendarView(props) {
         if (monthHolidays.length === 0) return null;
         return (
           <div style={{ marginTop: 18, background: t.surface, borderRadius: 16, border: "1px solid #f8717130", overflow: "hidden" }}>
-            <div style={{ padding: "11px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: "#f87171", textTransform: "uppercase", letterSpacing: ".5px" }}>🎌 {month + 1}월 공휴일</div>
+            <div style={{ padding: "11px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: "#f87171", textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", gap: 6 }}><Flag size={13} strokeWidth={2} /> {month + 1}월 공휴일</div>
             {monthHolidays.map(function (h, i) {
               const isLast = i === monthHolidays.length - 1;
               const d = new Date(h.date), wd = WEEKDAYS[d.getDay()];
@@ -1395,16 +1401,16 @@ function CalendarView(props) {
                   {onMove && (onBulkDelete || onBulkAssign) ? <input type="checkbox" checked={checked} onChange={function () { setSelectedIds(checked ? selectedIds.filter(function (id) { return id !== tk.id; }) : selectedIds.concat([tk.id])); }} style={{ width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer", flexShrink: 0 }} /> : null}
                   <div onClick={function (e) { handleEditClick(e, tk); }} style={{ width: 3, height: 30, borderRadius: 99, background: stageColorMap[tk.status], flexShrink: 0, cursor: "pointer" }} />
                   {getThumbnailUrl(tk.fileUrl) ? <img src={getThumbnailUrl(tk.fileUrl)} alt="" onClick={function (e) { handleEditClick(e, tk); }} style={{ width: 44, height: 30, objectFit: "cover", borderRadius: 7, flexShrink: 0, cursor: "pointer" }} /> : null}
-                  <div onClick={function (e) { handleEditClick(e, tk); }} style={{ flex: 1, minWidth: 100, cursor: "pointer" }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{tk.title}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 1 }}>{stageIconMap[tk.status]} {tk.status} · {tk.tag}</div></div>
+                  <div onClick={function (e) { handleEditClick(e, tk); }} style={{ flex: 1, minWidth: 100, cursor: "pointer" }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{tk.title}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 1, display: "flex", alignItems: "center", gap: 4 }}>{(function () { const SIcon = stageIconMap[tk.status]; return <SIcon size={11} strokeWidth={2} />; })()} {tk.status} · {tk.tag}</div></div>
                   <span style={{ fontSize: 11, color: overdue ? "#f87171" : t.text4, fontWeight: overdue ? 700 : 400, flexShrink: 0 }}>{tk.due.slice(5)}</span>
                   <span style={{ fontSize: 10, color: PRIORITY_COLOR[tk.priority], background: PRIORITY_COLOR[tk.priority] + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>{tk.priority}</span>
                   {overdue ? <span style={{ fontSize: 10, color: "#f87171", background: "#f8717120", padding: "2px 7px", borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>⏰ 시작 지연</span> : null}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {hasPrev && onMove ? <button onClick={function (e) { handleMoveClick(e, tk.id, -1); }} style={{ background: t.bg, border: "1px solid " + t.border, borderRadius: 7, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: t.text4, fontWeight: 600 }}>← 이전 단계</button> : null}
-                  {hasNext && onMove ? <button onClick={function (e) { handleMoveClick(e, tk.id, 1); }} style={{ background: "#6366f118", border: "1px solid #6366f130", borderRadius: 7, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>다음 단계 →</button> : null}
-                  <button onClick={function (e) { handleEditClick(e, tk); }} style={{ background: t.bg, border: "1px solid " + t.border, borderRadius: 7, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: t.text4, fontWeight: 600 }}>{onMove ? "✏️ 수정" : "🔍 자세히"}</button>
-                  {onDelete ? <button onClick={function (e) { handleDeleteClick(e, tk); }} style={{ background: "#f8717118", border: "1px solid #f8717130", borderRadius: 7, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: "#f87171", fontWeight: 600 }}>🗑️ 삭제</button> : null}
+                  {hasPrev && onMove ? <button onClick={function (e) { handleMoveClick(e, tk.id, -1); }} style={{ display: "flex", alignItems: "center", gap: 4, background: t.bg, border: "1px solid " + t.border, borderRadius: 7, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: t.text4, fontWeight: 600 }}><ArrowLeft size={11} strokeWidth={2} /> 이전 단계</button> : null}
+                  {hasNext && onMove ? <button onClick={function (e) { handleMoveClick(e, tk.id, 1); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "#6366f118", border: "1px solid #6366f130", borderRadius: 7, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>다음 단계 <ArrowRight size={11} strokeWidth={2} /></button> : null}
+                  <button onClick={function (e) { handleEditClick(e, tk); }} style={{ display: "flex", alignItems: "center", gap: 4, background: t.bg, border: "1px solid " + t.border, borderRadius: 7, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: t.text4, fontWeight: 600 }}>{onMove ? <Pencil size={11} strokeWidth={2} /> : <Search size={11} strokeWidth={2} />} {onMove ? "수정" : "자세히"}</button>
+                  {onDelete ? <button onClick={function (e) { handleDeleteClick(e, tk); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "#f8717118", border: "1px solid #f8717130", borderRadius: 7, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: "#f87171", fontWeight: 600 }}><Trash2 size={11} strokeWidth={2} /> 삭제</button> : null}
                 </div>
               </div>
             );
@@ -1416,7 +1422,8 @@ function CalendarView(props) {
           <div style={{ padding: "11px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>{month + 1}월 광고 일정</div>
           {monthAds.map(function (item, i) {
             const isLast = i === monthAds.length - 1;
-            return <div key={item.id} onClick={function () { if (onSelectAd) onSelectAd(item); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", borderBottom: isLast ? "none" : "1px solid " + t.border, cursor: onSelectAd ? "pointer" : "default" }}><div style={{ width: 3, height: 30, borderRadius: 99, background: getItemColor(item), flexShrink: 0 }} /><div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{getItemIcon(item)} {item.title}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 1 }}>{item.kind === "adWork" ? "제작일" : "예상완료일"} · {item.status}</div></div><span style={{ fontSize: 11, color: t.text4 }}>{item.due.slice(5)}</span></div>;
+            const ItemIcon = getItemIcon(item);
+            return <div key={item.id} onClick={function () { if (onSelectAd) onSelectAd(item); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", borderBottom: isLast ? "none" : "1px solid " + t.border, cursor: onSelectAd ? "pointer" : "default" }}><div style={{ width: 3, height: 30, borderRadius: 99, background: getItemColor(item), flexShrink: 0 }} /><div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text, display: "flex", alignItems: "center", gap: 5 }}><ItemIcon size={13} strokeWidth={2} /> {item.title}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 1 }}>{item.kind === "adWork" ? "제작일" : "예상완료일"} · {item.status}</div></div><span style={{ fontSize: 11, color: t.text4 }}>{item.due.slice(5)}</span></div>;
           })}
         </div>
       ) : null}
@@ -1430,10 +1437,13 @@ function CalendarView(props) {
             <div style={{ padding: "8px 12px", overflowY: "auto" }}>
               {dayDetail.items.map(function (item) {
                 const overdue = item.kind === "task" && isOverdue(item);
+                const ItemIcon = getItemIcon(item);
                 return (
                   <div key={item.id} onClick={function () { setDayDetail(null); if (item.kind === "task") onSelectTask(item); else if (onSelectAd) onSelectAd(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px", borderRadius: 11, cursor: "pointer", marginBottom: 3, background: overdue ? "#f8717115" : "transparent" }}>
                     <span style={{ width: 8, height: 8, borderRadius: "50%", background: overdue ? "#f87171" : getItemColor(item), flexShrink: 0 }} />
-                    <span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0 }}>{overdue ? "⏰ " : ""}{getItemIcon(item)} {item.title}{getItemSuffix(item)}</span>
+                    {overdue ? <Clock size={12} strokeWidth={2.5} color="#f87171" style={{ flexShrink: 0 }} /> : null}
+                    <ItemIcon size={12} strokeWidth={2} style={{ flexShrink: 0, color: t.text3 }} />
+                    <span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0 }}>{item.title}{getItemSuffix(item)}</span>
                   </div>
                 );
               })}
@@ -1527,8 +1537,8 @@ function CombinedCalendarView(props) {
         <button onClick={goNextMonth} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 10, padding: "7px 14px", color: t.text3, cursor: "pointer", fontSize: 14 }}>›</button>
       </div>
       <div style={{ display: "flex", gap: 14, marginBottom: 14, flexWrap: "wrap" }}>
-        {["video", "marketing", "design", "adWork", "adExpected"].map(function (k) { return <div key={k} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 9, height: 9, borderRadius: 4, background: COMBINED_TYPE_INFO[k].color }} /><span style={{ fontSize: 11, color: t.text4 }}>{COMBINED_TYPE_INFO[k].icon} {COMBINED_TYPE_INFO[k].label}</span></div>; })}
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ fontSize: 11 }}>🎌</span><span style={{ fontSize: 11, color: t.text4 }}>공휴일</span></div>
+        {["video", "marketing", "design", "adWork", "adExpected"].map(function (k) { const LIcon = COMBINED_TYPE_INFO[k].icon; return <div key={k} style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 9, height: 9, borderRadius: 4, background: COMBINED_TYPE_INFO[k].color }} /><span style={{ fontSize: 11, color: t.text4, display: "flex", alignItems: "center", gap: 3 }}><LIcon size={11} strokeWidth={2} /> {COMBINED_TYPE_INFO[k].label}</span></div>; })}
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Flag size={11} strokeWidth={2} color={t.text4} /><span style={{ fontSize: 11, color: t.text4 }}>공휴일</span></div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", marginBottom: 4 }}>
         {WEEKDAYS.map(function (w, i) { return <div key={w} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, padding: "6px 0", color: weekdayColor(i) }}>{w}</div>; })}
@@ -1546,10 +1556,11 @@ function CombinedCalendarView(props) {
                 <span>{cell.day}</span>
                 {isToday(cell.day) ? <span style={{ fontSize: 9, background: "#6366f1", color: "#fff", borderRadius: 99, padding: "1px 5px", fontWeight: 700, flexShrink: 0 }}>오늘</span> : null}
               </div>
-              {holidayName ? <div style={{ fontSize: 9, color: "#f87171", fontWeight: 600, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>🎌 {holidayName}</div> : null}
+              {holidayName ? <div style={{ fontSize: 9, color: "#f87171", fontWeight: 600, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "flex", alignItems: "center", gap: 3 }}><Flag size={9} strokeWidth={2} /> {holidayName}</div> : null}
               {dayItems.slice(0, 3).map(function (item) {
                 const info = COMBINED_TYPE_INFO[item.kind];
-                return <div key={item.kind + "_" + item.id} onClick={function () { handleItemClick(item); }} style={{ background: info.color + "22", border: "none", borderRadius: 7, padding: "3px 6px", fontSize: 10, color: info.color, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 3, cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{info.icon} {item.title}</div>;
+                const ItemIcon = info.icon;
+                return <div key={item.kind + "_" + item.id} onClick={function () { handleItemClick(item); }} style={{ display: "flex", alignItems: "center", gap: 3, background: info.color + "22", border: "none", borderRadius: 7, padding: "3px 6px", fontSize: 10, color: info.color, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}><ItemIcon size={9} strokeWidth={2.5} style={{ flexShrink: 0 }} /><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span></div>;
               })}
               {dayItems.length > 3 ? <div onClick={function (e) { e.stopPropagation(); setDayDetail({ date: dateStr(cell.day), items: dayItems }); }} style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>+{dayItems.length - 3}개 더보기</div> : null}
             </div>
@@ -1560,7 +1571,7 @@ function CombinedCalendarView(props) {
         <div style={{ marginTop: 18, background: t.surface, borderRadius: 16, border: "1px solid " + t.border, overflow: "hidden" }}>
           <div style={{ padding: "11px 18px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
             <span style={{ fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>{month + 1}월 전체 일정 ({monthItems.length})</span>
-            {canBulk ? <button onClick={function () { setSelectMode(!selectMode); setSelectedItems([]); }} style={{ background: selectMode ? "#6366f1" : t.surface2, border: "1px solid " + (selectMode ? "#6366f1" : t.border), borderRadius: 10, padding: "6px 12px", fontWeight: 700, fontSize: 11, color: selectMode ? "#fff" : t.text3, cursor: "pointer" }}>{selectMode ? "선택 모드 종료" : "✅ 선택 모드"}</button> : null}
+            {canBulk ? <button onClick={function () { setSelectMode(!selectMode); setSelectedItems([]); }} style={{ background: selectMode ? "#6366f1" : t.surface2, border: "1px solid " + (selectMode ? "#6366f1" : t.border), borderRadius: 10, padding: "6px 12px", fontWeight: 700, fontSize: 11, color: selectMode ? "#fff" : t.text3, cursor: "pointer" }}><span style={{display:"inline-flex",alignItems:"center",gap:5}}>{selectMode ? null : <CheckCircle2 size={12} strokeWidth={2} />}{selectMode ? "선택 모드 종료" : "선택 모드"}</span></button> : null}
           </div>
           {selectMode && selectedItems.length > 0 ? (
             <div style={{ padding: "10px 18px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", background: "#6366f110" }}>
@@ -1595,7 +1606,7 @@ function CombinedCalendarView(props) {
               <div key={item.kind + "_" + item.id} onClick={function () { if (selectable) toggleSelect(item.id, item.kind); else handleItemClick(item); }} style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 18px", borderBottom: isLast ? "none" : "1px solid " + t.border, cursor: "pointer", background: checked ? "#6366f118" : "transparent" }}>
                 {selectMode ? (selectable ? <input type="checkbox" checked={checked} onChange={function () { toggleSelect(item.id, item.kind); }} onClick={function (e) { e.stopPropagation(); }} style={{ width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer", flexShrink: 0 }} /> : <span style={{ width: 15, flexShrink: 0 }} />) : null}
                 <div style={{ width: 3, height: 30, borderRadius: 99, background: info.color, flexShrink: 0 }} />
-                <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0 }}>{info.icon} {info.label}</span>
+                <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span>
                 <div style={{ flex: 1, minWidth: 0 }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</div>{item.assignee ? <div style={{ fontSize: 11, color: t.text4, marginTop: 1 }}>{item.assignee} · {item.status}</div> : null}</div>
                 <span style={{ fontSize: 11, color: t.text4, flexShrink: 0 }}>{item.due.slice(5)}</span>
               </div>
@@ -1615,7 +1626,7 @@ function CombinedCalendarView(props) {
                 const info = COMBINED_TYPE_INFO[item.kind];
                 return (
                   <div key={item.kind + "_" + item.id} onClick={function () { setDayDetail(null); handleItemClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 10px", borderRadius: 11, cursor: "pointer", marginBottom: 3 }}>
-                    <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0 }}>{info.icon} {info.label}</span>
+                    <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span>
                     <span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span>
                   </div>
                 );
@@ -1677,8 +1688,9 @@ function BoardView(props) {
   return (
     <div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(90px, 1fr))", gap: 10, marginBottom: 12 }}>
-        {[["전체", totalItems, "#6366f1"], ["🎬 영상", filtered.length, "#818cf8"], ["🗓️ 마케팅", filteredMarketing.length, "#fb923c"], ["📢 광고", filteredAds.length, "#fbbf24"], ["🎨 디자인", filteredDesign.length, "#f87171"]].map(function (item) {
-          return <div key={item[0]} style={{ background: t.surface, border: "1px solid " + t.border, borderRadius: 14, padding: "12px 0", textAlign: "center" }}><div style={{ fontSize: 22, fontWeight: 900, color: item[2] }}>{item[1]}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>{item[0]}</div></div>;
+        {[["전체", null, totalItems, "#6366f1"], ["영상", Film, filtered.length, "#818cf8"], ["마케팅", CalendarDays, filteredMarketing.length, "#fb923c"], ["광고", Megaphone, filteredAds.length, "#fbbf24"], ["디자인", Palette, filteredDesign.length, "#f87171"]].map(function (item) {
+          const CardIcon = item[1];
+          return <div key={item[0]} style={{ background: t.surface, border: "1px solid " + t.border, borderRadius: 14, padding: "12px 0", textAlign: "center" }}><div style={{ fontSize: 22, fontWeight: 900, color: item[3] }}>{item[2]}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>{CardIcon ? <CardIcon size={11} strokeWidth={2} /> : null}{item[0]}</div></div>;
         })}
       </div>
       <div style={{ background: t.surface, border: "1px solid " + t.border, borderRadius: 14, padding: "12px 16px", marginBottom: 12 }}>
@@ -1689,11 +1701,11 @@ function BoardView(props) {
         <div style={{ background: t.bg, borderRadius: 99, height: 7 }}><div style={{ width: doneRate + "%", background: "linear-gradient(90deg,#6366f1,#34d399)", height: "100%", borderRadius: 99, transition: "width .3s" }} /></div>
       </div>
       <div style={{ fontSize: 11, color: t.text4, marginBottom: 10, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#818cf8" }} />🎬 영상 캘린더 항목</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#fb923c" }} />🗓️ 마케팅 캘린더 항목</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#fbbf24" }} />📢 광고 관리 항목</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#f87171" }} />🎨 디자인 캘린더 항목</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#f87171", border: "1px solid #fff" }} />⏰ 시작 지연 (시작일 지났는데 기획 단계)</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#818cf8" }} /><Film size={11} strokeWidth={2} /> 영상 캘린더 항목</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#fb923c" }} /><CalendarDays size={11} strokeWidth={2} /> 마케팅 캘린더 항목</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#fbbf24" }} /><Megaphone size={11} strokeWidth={2} /> 광고 관리 항목</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#f87171" }} /><Palette size={11} strokeWidth={2} /> 디자인 캘린더 항목</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#f87171", border: "1px solid #fff" }} /><Clock size={11} strokeWidth={2} /> 시작 지연 (시작일 지났는데 기획 단계)</span>
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
         <button onClick={function () {
@@ -1701,8 +1713,8 @@ function BoardView(props) {
             .concat(filteredMarketing.map(function (mt) { return { 유형: "마케팅", 제목: mt.title, 담당자: mt.assignee, 우선순위: mt.priority, 카테고리: mt.tag, 단계: mt.status, 작업시작일: mt.due }; }))
             .concat(filteredDesign.map(function (dt) { return { 유형: "디자인", 제목: dt.title, 담당자: dt.assignee, 우선순위: dt.priority, 카테고리: dt.tag, 단계: dt.status, 작업시작일: dt.due }; }));
           downloadCSV("제작보드_" + today.getFullYear() + ".csv", rows);
-        }} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: t.text3, cursor: "pointer" }}>📤 CSV 내보내기</button>
-        {canBulk ? <button onClick={function () { setSelectMode(!selectMode); setSelectedItems([]); }} style={{ background: selectMode ? "#6366f1" : t.surface2, border: "1px solid " + (selectMode ? "#6366f1" : t.border), borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: selectMode ? "#fff" : t.text3, cursor: "pointer" }}>{selectMode ? "선택 모드 종료" : "✅ 선택 모드"}</button> : null}
+        }} style={{ display: "flex", alignItems: "center", gap: 6, background: t.surface2, border: "1px solid " + t.border, borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: t.text3, cursor: "pointer" }}><Download size={13} strokeWidth={2} /> CSV 내보내기</button>
+        {canBulk ? <button onClick={function () { setSelectMode(!selectMode); setSelectedItems([]); }} style={{ background: selectMode ? "#6366f1" : t.surface2, border: "1px solid " + (selectMode ? "#6366f1" : t.border), borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: selectMode ? "#fff" : t.text3, cursor: "pointer" }}><span style={{display:"inline-flex",alignItems:"center",gap:5}}>{selectMode ? null : <CheckCircle2 size={12} strokeWidth={2} />}{selectMode ? "선택 모드 종료" : "선택 모드"}</span></button> : null}
         {selectMode && selectedItems.length > 0 ? (
           <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
             <span style={{ fontSize: 12, color: "#818cf8", fontWeight: 700 }}>{selectedItems.length}개 선택됨</span>
@@ -1744,7 +1756,7 @@ function BoardView(props) {
       </div>
       <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         {memberNames.map(function (m) { return <button key={m} onClick={function () { setFilterMember(m); }} style={filterBtnStyle(filterMember === m)}>{m}</button>; })}
-        {currentUser ? <button onClick={function () { setFilterMember(filterMember === currentUser.name ? "전체" : currentUser.name); }} style={filterBtnStyle(filterMember === currentUser.name)}>👤 내 업무만</button> : null}
+        {currentUser ? <button onClick={function () { setFilterMember(filterMember === currentUser.name ? "전체" : currentUser.name); }} style={Object.assign({}, filterBtnStyle(filterMember === currentUser.name), { display: "inline-flex", alignItems: "center", gap: 5 })}><User size={12} strokeWidth={2} /> 내 업무만</button> : null}
         <select value={categoryFilter} onChange={function (e) { setCategoryFilter(e.target.value); }} style={{ background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "5px 10px", fontSize: 12, color: t.text, outline: "none", cursor: "pointer", marginLeft: "auto" }}>
           <option value="all">영상 업무 종류: 전체</option>
           {TASK_CATEGORIES.map(function (c) { return <option key={c} value={c}>{c}</option>; })}
@@ -1761,7 +1773,7 @@ function BoardView(props) {
           return (
             <div key={col} style={{ background: t.surface, borderRadius: 18, padding: "14px 10px 10px", boxShadow: "0 1px 3px #00000015", borderTop: "3px solid " + STAGE_COLOR[col] }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <div style={{ width: 28, height: 28, borderRadius: 11, background: STAGE_COLOR[col] + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{STAGE_ICON[col]}</div>
+                <div style={{ width: 28, height: 28, borderRadius: 11, background: STAGE_COLOR[col] + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{(function () { const SIcon = STAGE_ICON[col]; return <SIcon size={15} strokeWidth={2} color={STAGE_COLOR[col]} />; })()}</div>
                 <span style={{ fontWeight: 800, fontSize: 13, color: t.text2 }}>{col}</span>
                 <span style={{ marginLeft: "auto", background: STAGE_COLOR[col], color: "#fff", borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 800 }}>{colTotal}</span>
               </div>
@@ -1786,12 +1798,12 @@ function BoardView(props) {
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Avatar name={tk.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text3 }}>{tk.assignee}</span></div>
-                        <div style={{ display: "flex", gap: 8 }}>{(tk.comments || []).length > 0 ? <span style={{ fontSize: 10, color: t.text4 }}>💬{tk.comments.length}</span> : null}{tk.fileUrl ? <span style={{ fontSize: 10, color: t.text4 }}>📎</span> : null}<span style={{ fontSize: 10, color: overdue ? "#f87171" : t.text4, fontWeight: overdue ? 700 : 400 }}>{tk.due && tk.due.slice(5)}</span></div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>{(tk.comments || []).length > 0 ? <span style={{ fontSize: 10, color: t.text4, display: "flex", alignItems: "center", gap: 2 }}><MessageCircle size={10} strokeWidth={2} />{tk.comments.length}</span> : null}{tk.fileUrl ? <Paperclip size={10} strokeWidth={2} color={t.text4} /> : null}<span style={{ fontSize: 10, color: overdue ? "#f87171" : t.text4, fontWeight: overdue ? 700 : 400 }}>{tk.due && tk.due.slice(5)}</span></div>
                       </div>
                       {onMove && !selectMode ? (
                         <div style={{ display: "flex", gap: 5 }} onClick={function (e) { e.stopPropagation(); }}>
-                          {STAGES.indexOf(tk.status) > 0 ? <button onClick={function () { onMove(tk.id, -1); }} style={{ flex: 1, background: t.bg, border: "1px solid " + t.border, borderRadius: 7, padding: "4px 0", fontSize: 10, cursor: "pointer", color: t.text4 }}>← 이전</button> : null}
-                          {STAGES.indexOf(tk.status) < STAGES.length - 1 ? <button onClick={function () { onMove(tk.id, 1); }} style={{ flex: 1, background: "#6366f118", border: "1px solid #6366f130", borderRadius: 7, padding: "4px 0", fontSize: 10, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>다음 →</button> : null}
+                          {STAGES.indexOf(tk.status) > 0 ? <button onClick={function () { onMove(tk.id, -1); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 3, background: t.bg, border: "1px solid " + t.border, borderRadius: 7, padding: "4px 0", fontSize: 10, cursor: "pointer", color: t.text4 }}><ArrowLeft size={10} strokeWidth={2} /> 이전</button> : null}
+                          {STAGES.indexOf(tk.status) < STAGES.length - 1 ? <button onClick={function () { onMove(tk.id, 1); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 3, background: "#6366f118", border: "1px solid #6366f130", borderRadius: 7, padding: "4px 0", fontSize: 10, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>다음 <ArrowRight size={10} strokeWidth={2} /></button> : null}
                         </div>
                       ) : null}
                     </div>
@@ -1804,7 +1816,7 @@ function BoardView(props) {
                     <div style={{ width: 4, background: "#fbbf24", flexShrink: 0 }} />
                     <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>📢 {ad.content || "광고"}</span>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1, display: "flex", alignItems: "center", gap: 5 }}><Megaphone size={13} strokeWidth={2} /> {ad.content || "광고"}</span>
                       </div>
                       <div style={{ display: "flex", gap: 5, marginBottom: 8 }}>
                         <span style={{ fontSize: 10, color: WORK_COLOR[ad.workStatus] || t.text4, background: (WORK_COLOR[ad.workStatus] || t.text4) + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{ad.workStatus || "대기"}</span>
@@ -1827,7 +1839,7 @@ function BoardView(props) {
                     <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
                       {getThumbnailUrl(dt.fileUrl) ? <img src={getThumbnailUrl(dt.fileUrl)} alt="" style={{ width: "100%", height: 72, objectFit: "cover", borderRadius: 8, marginBottom: 7, display: "block" }} /> : null}
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>🎨 {dt.title}</span>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1, display: "flex", alignItems: "center", gap: 5 }}><Palette size={13} strokeWidth={2} /> {dt.title}</span>
                       </div>
                       <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 10, color: DESIGN_TAG_COLOR[dt.tag] || "#818cf8", background: (DESIGN_TAG_COLOR[dt.tag] || "#818cf8") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{dt.tag}</span>
@@ -1851,7 +1863,7 @@ function BoardView(props) {
                     <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
                       {getThumbnailUrl(mt.fileUrl) ? <img src={getThumbnailUrl(mt.fileUrl)} alt="" style={{ width: "100%", height: 72, objectFit: "cover", borderRadius: 8, marginBottom: 7, display: "block" }} /> : null}
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
-                        <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1 }}>🗓️ {mt.title}</span>
+                        <span style={{ fontWeight: 600, fontSize: 13, color: t.text, flex: 1, display: "flex", alignItems: "center", gap: 5 }}><CalendarDays size={13} strokeWidth={2} /> {mt.title}</span>
                       </div>
                       <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 10, color: MARKETING_TAG_COLOR[mt.tag] || "#818cf8", background: (MARKETING_TAG_COLOR[mt.tag] || "#818cf8") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{mt.tag}</span>
@@ -1911,36 +1923,36 @@ function VideoAnalysisPanel(props) {
   const reset = function () { setResult(null); setYtData(null); setUrl(""); setSelTask(null); setFormState({ title: "", platform: "유튜브", views: "", likes: "", comments: "", duration: "", uploadDate: "", desc: "" }); setActiveSection("all"); };
   const s = { background: t.surface, borderRadius: 15, padding: "16px 18px", border: "1px solid " + t.border };
   const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "8px 12px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
-  const secBtn = function (v, l) { return <button key={v} onClick={function () { setActiveSection(v); }} style={{ padding: "5px 13px", borderRadius: 20, border: "1px solid " + (activeSection === v ? "#6366f1" : t.border), background: activeSection === v ? "#6366f120" : "transparent", cursor: "pointer", fontSize: 12, fontWeight: activeSection === v ? 700 : 500, color: activeSection === v ? "#818cf8" : t.text4 }}>{l}</button>; };
+  const secBtn = function (v, l, Icon) { return <button key={v} onClick={function () { setActiveSection(v); }} style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "5px 13px", borderRadius: 20, border: "1px solid " + (activeSection === v ? "#6366f1" : t.border), background: activeSection === v ? "#6366f120" : "transparent", cursor: "pointer", fontSize: 12, fontWeight: activeSection === v ? 700 : 500, color: activeSection === v ? "#818cf8" : t.text4 }}>{Icon ? <Icon size={12} strokeWidth={2} /> : null}{l}</button>; };
   return (
     <div style={{ maxWidth: 860, margin: "0 auto" }}>
       <div style={{ background: "linear-gradient(135deg,#6366f1,#ec4899)", borderRadius: 16, padding: "16px 22px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
-        <span style={{ fontSize: 26 }}>🔍</span>
+        <Search size={24} strokeWidth={1.75} color="#fff" />
         <div><div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>영상 분석</div><div style={{ fontSize: 12, color: "#ffffff88", marginTop: 2 }}>YouTube URL 자동 분석 · SNS 영상 AI 인사이트</div></div>
       </div>
       {!result ? (
         <div style={Object.assign({}, s, { marginBottom: 16 })}>
           <div style={{ display: "flex", gap: 4, background: t.bg, borderRadius: 11, padding: 3, marginBottom: 18, border: "1px solid " + t.border, width: "fit-content" }}>
-            {[["url", "▶ 유튜브 URL"], ["manual", "✏️ 직접 입력"], ["list", "📋 제작 목록"]].map(function (item) { return <button key={item[0]} onClick={function () { setMode(item[0]); setYtData(null); setYtError(""); }} style={{ padding: "7px 15px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: mode === item[0] ? 700 : 500, fontSize: 12, background: mode === item[0] ? "#6366f1" : "transparent", color: mode === item[0] ? "#fff" : t.text4 }}>{item[1]}</button>; })}
+            {[["url", Video, "유튜브 URL"], ["manual", Pencil, "직접 입력"], ["list", ClipboardList, "제작 목록"]].map(function (item) { const ModeIcon = item[1]; return <button key={item[0]} onClick={function () { setMode(item[0]); setYtData(null); setYtError(""); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "7px 15px", borderRadius: 8, border: "none", cursor: "pointer", fontWeight: mode === item[0] ? 700 : 500, fontSize: 12, background: mode === item[0] ? "#6366f1" : "transparent", color: mode === item[0] ? "#fff" : t.text4 }}><ModeIcon size={13} strokeWidth={2} /> {item[2]}</button>; })}
           </div>
           {mode === "url" ? (
             <div>
               <div style={{ fontSize: 11, color: t.text4, marginBottom: 6, fontWeight: 600 }}>유튜브 URL 입력</div>
               <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
                 <input value={url} onChange={function (e) { setUrl(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") fetchYT(); }} placeholder="https://www.youtube.com/watch?v=... 또는 https://youtu.be/..." style={Object.assign({}, inp, { flex: 1 })} />
-                <button onClick={fetchYT} disabled={fetchLoading || !url.trim()} style={{ background: fetchLoading || !url.trim() ? t.surface2 : "#6366f1", border: "none", borderRadius: 11, padding: "0 18px", color: fetchLoading || !url.trim() ? t.text4 : "#fff", fontWeight: 700, fontSize: 13, cursor: fetchLoading || !url.trim() ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>{fetchLoading ? "불러오는 중..." : "📥 정보 불러오기"}</button>
+                <button onClick={fetchYT} disabled={fetchLoading || !url.trim()} style={{ display: "flex", alignItems: "center", gap: 5, background: fetchLoading || !url.trim() ? t.surface2 : "#6366f1", border: "none", borderRadius: 11, padding: "0 18px", color: fetchLoading || !url.trim() ? t.text4 : "#fff", fontWeight: 700, fontSize: 13, cursor: fetchLoading || !url.trim() ? "not-allowed" : "pointer", whiteSpace: "nowrap" }}>{fetchLoading ? null : <Download size={13} strokeWidth={2} />}{fetchLoading ? "불러오는 중..." : "정보 불러오기"}</button>
               </div>
-              {ytError ? <div style={{ fontSize: 12, color: "#f87171", marginBottom: 10 }}>⚠️ {ytError}</div> : null}
+              {ytError ? <div style={{ fontSize: 12, color: "#f87171", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}><AlertTriangle size={12} strokeWidth={2} /> {ytError}</div> : null}
               {ytData ? (
                 <div style={{ background: t.bg, borderRadius: 14, padding: 14, border: "1px solid " + t.border, marginBottom: 14 }}>
                   <div style={{ display: "flex", gap: 12, marginBottom: 12 }}>
                     {ytData.thumbnail ? <img src={ytData.thumbnail} alt="썸네일" style={{ width: 120, height: 68, borderRadius: 10, objectFit: "cover", flexShrink: 0 }} /> : null}
                     <div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>{ytData.title}</div><div style={{ fontSize: 11, color: t.text4 }}>{ytData.channelTitle} · {ytData.publishedAt} · {ytData.duration}</div></div>
                   </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>{[["👁 조회수", ytData.views, "#818cf8"], ["❤️ 좋아요", ytData.likes, "#f87171"], ["💬 댓글", ytData.comments, "#fb923c"]].map(function (item) { return <div key={item[0]} style={{ background: t.surface, borderRadius: 10, padding: "10px 0", textAlign: "center", border: "1px solid " + t.border }}><div style={{ fontSize: 16, fontWeight: 800, color: item[2] }}>{item[1]}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 2 }}>{item[0]}</div></div>; })}</div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8 }}>{[[Eye, "조회수", ytData.views, "#818cf8"], [Heart, "좋아요", ytData.likes, "#f87171"], [MessageCircle, "댓글", ytData.comments, "#fb923c"]].map(function (item) { const StatIcon = item[0]; return <div key={item[1]} style={{ background: t.surface, borderRadius: 10, padding: "10px 0", textAlign: "center", border: "1px solid " + t.border }}><div style={{ fontSize: 16, fontWeight: 800, color: item[3] }}>{item[2]}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 2, display: "flex", alignItems: "center", justifyContent: "center", gap: 3 }}><StatIcon size={11} strokeWidth={2} /> {item[1]}</div></div>; })}</div>
                 </div>
               ) : null}
-              {ytData ? <button onClick={analyze} disabled={loading} style={{ width: "100%", background: loading ? t.surface2 : "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", borderRadius: 12, padding: "12px 0", color: loading ? t.text4 : "#fff", fontWeight: 700, fontSize: 14, cursor: loading ? "not-allowed" : "pointer" }}>{loading ? "⏳ AI 분석 중..." : "🔍 AI 분석 시작"}</button> : null}
+              {ytData ? <button onClick={analyze} disabled={loading} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: loading ? t.surface2 : "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", borderRadius: 12, padding: "12px 0", color: loading ? t.text4 : "#fff", fontWeight: 700, fontSize: 14, cursor: loading ? "not-allowed" : "pointer" }}>{loading ? <RefreshCw size={15} strokeWidth={2} /> : <Search size={15} strokeWidth={2} />}{loading ? "AI 분석 중..." : "AI 분석 시작"}</button> : null}
             </div>
           ) : null}
           {mode === "manual" ? (
@@ -1952,25 +1964,25 @@ function VideoAnalysisPanel(props) {
                 {[["조회수", "views", "예: 12,500"], ["좋아요", "likes", "예: 430"], ["댓글 수", "comments", "예: 52"], ["영상 길이", "duration", "예: 8:32"]].map(function (item) { return <div key={item[1]}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><input value={form[item[1]]} onChange={function (e) { setF(item[1], e.target.value); }} placeholder={item[2]} style={inp} /></div>; })}
                 <div style={{ gridColumn: "1/-1" }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>영상 설명 (선택)</div><textarea value={form.desc} onChange={function (e) { setF("desc", e.target.value); }} placeholder="영상 내용, 타겟, 기획 의도 등" style={Object.assign({}, inp, { minHeight: 68, resize: "vertical" })} /></div>
               </div>
-              <button onClick={analyze} disabled={loading || !form.title.trim()} style={{ width: "100%", background: loading || !form.title.trim() ? t.surface2 : "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", borderRadius: 12, padding: "12px 0", color: loading || !form.title.trim() ? t.text4 : "#fff", fontWeight: 700, fontSize: 14, cursor: loading || !form.title.trim() ? "not-allowed" : "pointer" }}>{loading ? "⏳ AI 분석 중..." : "🔍 AI 분석 시작"}</button>
+              <button onClick={analyze} disabled={loading || !form.title.trim()} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: loading || !form.title.trim() ? t.surface2 : "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", borderRadius: 12, padding: "12px 0", color: loading || !form.title.trim() ? t.text4 : "#fff", fontWeight: 700, fontSize: 14, cursor: loading || !form.title.trim() ? "not-allowed" : "pointer" }}>{loading ? <RefreshCw size={15} strokeWidth={2} /> : <Search size={15} strokeWidth={2} />}{loading ? "AI 분석 중..." : "AI 분석 시작"}</button>
             </div>
           ) : null}
           {mode === "list" ? (
             <div>
               <div style={{ fontSize: 12, color: t.text4, marginBottom: 10 }}>스케줄러에 등록된 영상을 선택해서 분석받으세요</div>
-              {tasks.length === 0 ? <EmptyState icon="🎬" text="등록된 영상이 없습니다" /> : (
+              {tasks.length === 0 ? <EmptyState icon={Film} text="등록된 영상이 없습니다" /> : (
                 <div style={{ display: "flex", flexDirection: "column", gap: 7, maxHeight: 260, overflowY: "auto", marginBottom: 14 }}>
-                  {tasks.map(function (tk) { return <div key={tk.id} onClick={function () { setSelTask(tk); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 11, border: "1px solid " + (selTask && selTask.id === tk.id ? "#6366f1" : t.border), background: selTask && selTask.id === tk.id ? "#6366f115" : t.bg, cursor: "pointer" }}><span>{STAGE_ICON[tk.status]}</span><div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{tk.title}</div><div style={{ fontSize: 11, color: t.text4 }}>{tk.tag} · {tk.assignee} · {tk.status}</div></div><span style={{ fontSize: 10, color: TAG_COLOR[tk.tag] || "#818cf8", background: (TAG_COLOR[tk.tag] || "#818cf8") + "18", padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>{tk.tag}</span></div>; })}
+                  {tasks.map(function (tk) { const SIcon = STAGE_ICON[tk.status]; return <div key={tk.id} onClick={function () { setSelTask(tk); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 11, border: "1px solid " + (selTask && selTask.id === tk.id ? "#6366f1" : t.border), background: selTask && selTask.id === tk.id ? "#6366f115" : t.bg, cursor: "pointer" }}><SIcon size={14} strokeWidth={2} style={{ flexShrink: 0, color: t.text3 }} /><div style={{ flex: 1 }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{tk.title}</div><div style={{ fontSize: 11, color: t.text4 }}>{tk.tag} · {tk.assignee} · {tk.status}</div></div><span style={{ fontSize: 10, color: TAG_COLOR[tk.tag] || "#818cf8", background: (TAG_COLOR[tk.tag] || "#818cf8") + "18", padding: "2px 8px", borderRadius: 20, fontWeight: 700 }}>{tk.tag}</span></div>; })}
                 </div>
               )}
-              {selTask ? <button onClick={analyze} disabled={loading} style={{ width: "100%", background: loading ? t.surface2 : "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", borderRadius: 12, padding: "12px 0", color: loading ? t.text4 : "#fff", fontWeight: 700, fontSize: 14, cursor: loading ? "not-allowed" : "pointer" }}>{loading ? "⏳ AI 분석 중..." : "🔍 \"" + selTask.title + "\" 분석하기"}</button> : null}
+              {selTask ? <button onClick={analyze} disabled={loading} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: loading ? t.surface2 : "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", borderRadius: 12, padding: "12px 0", color: loading ? t.text4 : "#fff", fontWeight: 700, fontSize: 14, cursor: loading ? "not-allowed" : "pointer" }}>{loading ? <RefreshCw size={15} strokeWidth={2} /> : <Search size={15} strokeWidth={2} />}{loading ? "AI 분석 중..." : "\"" + selTask.title + "\" 분석하기"}</button> : null}
             </div>
           ) : null}
         </div>
       ) : null}
       {loading ? (
         <div style={Object.assign({}, s, { textAlign: "center", padding: "48px 0" })}>
-          <div style={{ fontSize: 36, marginBottom: 14 }}>🔍</div><div style={{ fontSize: 15, fontWeight: 700, color: t.text, marginBottom: 6 }}>AI가 분석하고 있어요...</div><div style={{ fontSize: 12, color: t.text4 }}>제목 개선안, 트렌드, 아이디어를 생성 중입니다</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: 14 }}><RefreshCw size={32} strokeWidth={1.5} color={t.text3} /></div><div style={{ fontSize: 15, fontWeight: 700, color: t.text, marginBottom: 6 }}>AI가 분석하고 있어요...</div><div style={{ fontSize: 12, color: t.text4 }}>제목 개선안, 트렌드, 아이디어를 생성 중입니다</div>
         </div>
       ) : null}
       {result && !result.error ? (
@@ -1981,22 +1993,22 @@ function VideoAnalysisPanel(props) {
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: 15, fontWeight: 800, color: t.text }}>{result.info && result.info.title}</div>
                 <div style={{ fontSize: 12, color: t.text4, marginTop: 3 }}>{result.info && result.info.platform} {result.info && result.info.channel ? "· " + result.info.channel : ""} · {result.scoreComment}</div>
-                <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>{[["👁", result.info && result.info.views], ["❤️", result.info && result.info.likes], ["💬", result.info && result.info.comments], ["⏱", result.info && result.info.duration]].filter(function (item) { return item[1] && item[1] !== "미입력"; }).map(function (item) { return <span key={item[0]} style={{ fontSize: 12, color: t.text3, background: t.surface2, border: "1px solid " + t.border, borderRadius: 20, padding: "2px 10px" }}>{item[0]} {item[1]}</span>; })}</div>
+                <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>{[[Eye, "views", result.info && result.info.views], [Heart, "likes", result.info && result.info.likes], [MessageCircle, "comments", result.info && result.info.comments], [Clock, "duration", result.info && result.info.duration]].filter(function (item) { return item[2] && item[2] !== "미입력"; }).map(function (item) { const BadgeIcon = item[0]; return <span key={item[1]} style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 12, color: t.text3, background: t.surface2, border: "1px solid " + t.border, borderRadius: 20, padding: "2px 10px" }}><BadgeIcon size={12} strokeWidth={2} /> {item[2]}</span>; })}</div>
               </div>
               <div style={{ textAlign: "center", background: "linear-gradient(135deg,#6366f1,#ec4899)", borderRadius: 14, padding: "10px 16px", flexShrink: 0 }}><div style={{ fontSize: 24, fontWeight: 900, color: "#fff" }}>{result.score}</div><div style={{ fontSize: 10, color: "#ffffffaa" }}>/ 100</div></div>
             </div>
           </div>
-          <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>{[["all", "전체"], ["title", "✏️ 제목"], ["thumbnail", "🖼️ 썸네일"], ["trend", "📈 트렌드"], ["ideas", "💡 아이디어"], ["improve", "⚡ 개선점"], ["report", "📋 리포트"]].map(function (item) { return secBtn(item[0], item[1]); })}</div>
-          {(activeSection === "all" || activeSection === "title") && result.titleSuggestions ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12 }}>✏️ 제목 개선 제안</div>{result.titleSuggestions.map(function (title, i) { return <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid " + t.border }}><span style={{ width: 22, height: 22, borderRadius: "50%", background: "#6366f1", color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span><span style={{ fontSize: 13, color: t.text }}>{title}</span></div>; })}</div> : null}
-          {(activeSection === "all" || activeSection === "thumbnail") && result.thumbnailSuggestions ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12 }}>🖼️ 썸네일 개선 제안</div>{result.thumbnailSuggestions.map(function (tip, i) { return <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid " + t.border }}><span style={{ flexShrink: 0 }}>🖼️</span><span style={{ fontSize: 13, color: t.text, lineHeight: 1.6 }}>{tip}</span></div>; })}</div> : null}
-          {(activeSection === "all" || activeSection === "trend") && result.trendAnalysis ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 10 }}>📈 트렌드 분석</div><div style={{ fontSize: 13, color: t.text2, lineHeight: 1.8, background: t.bg, borderRadius: 11, padding: "12px 14px", border: "1px solid " + t.border }}>{result.trendAnalysis}</div></div> : null}
-          {(activeSection === "all" || activeSection === "ideas") && result.nextVideoIdeas ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12 }}>💡 다음 영상 아이디어</div>{result.nextVideoIdeas.map(function (idea, i) { return <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid " + t.border }}><span style={{ flexShrink: 0 }}>💡</span><span style={{ fontSize: 13, color: t.text, lineHeight: 1.6 }}>{idea}</span></div>; })}</div> : null}
-          {(activeSection === "all" || activeSection === "improve") && result.improvements ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12 }}>⚡ 개선점</div>{result.improvements.map(function (imp, i) { return <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid #fbbf2440" }}><span style={{ flexShrink: 0 }}>⚡</span><span style={{ fontSize: 13, color: t.text, lineHeight: 1.6 }}>{imp}</span></div>; })}</div> : null}
-          {(activeSection === "all" || activeSection === "report") && result.performanceReport ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 10 }}>📋 종합 성과 리포트</div><div style={{ fontSize: 13, color: t.text2, lineHeight: 1.8, background: t.bg, borderRadius: 11, padding: "14px 16px", border: "1px solid " + t.border, whiteSpace: "pre-wrap" }}>{result.performanceReport}</div></div> : null}
-          <button onClick={reset} style={{ width: "100%", background: t.surface2, border: "1px solid " + t.border, borderRadius: 12, padding: "11px 0", color: t.text3, fontWeight: 600, fontSize: 13, cursor: "pointer", marginBottom: 20 }}>🔄 새 영상 분석하기</button>
+          <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap" }}>{[["all", "전체", null], ["title", "제목", Pencil], ["thumbnail", "썸네일", ImageIcon], ["trend", "트렌드", TrendingUp], ["ideas", "아이디어", Lightbulb], ["improve", "개선점", Zap], ["report", "리포트", ClipboardList]].map(function (item) { return secBtn(item[0], item[1], item[2]); })}</div>
+          {(activeSection === "all" || activeSection === "title") && result.titleSuggestions ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Pencil size={13} strokeWidth={2} /> 제목 개선 제안</div>{result.titleSuggestions.map(function (title, i) { return <div key={i} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid " + t.border }}><span style={{ width: 22, height: 22, borderRadius: "50%", background: "#6366f1", color: "#fff", fontSize: 11, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{i + 1}</span><span style={{ fontSize: 13, color: t.text }}>{title}</span></div>; })}</div> : null}
+          {(activeSection === "all" || activeSection === "thumbnail") && result.thumbnailSuggestions ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><ImageIcon size={13} strokeWidth={2} /> 썸네일 개선 제안</div>{result.thumbnailSuggestions.map(function (tip, i) { return <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid " + t.border }}><ImageIcon size={14} strokeWidth={2} style={{ flexShrink: 0, color: t.text4 }} /><span style={{ fontSize: 13, color: t.text, lineHeight: 1.6 }}>{tip}</span></div>; })}</div> : null}
+          {(activeSection === "all" || activeSection === "trend") && result.trendAnalysis ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><TrendingUp size={13} strokeWidth={2} /> 트렌드 분석</div><div style={{ fontSize: 13, color: t.text2, lineHeight: 1.8, background: t.bg, borderRadius: 11, padding: "12px 14px", border: "1px solid " + t.border }}>{result.trendAnalysis}</div></div> : null}
+          {(activeSection === "all" || activeSection === "ideas") && result.nextVideoIdeas ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Lightbulb size={13} strokeWidth={2} /> 다음 영상 아이디어</div>{result.nextVideoIdeas.map(function (idea, i) { return <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid " + t.border }}><Lightbulb size={14} strokeWidth={2} style={{ flexShrink: 0, color: t.text4 }} /><span style={{ fontSize: 13, color: t.text, lineHeight: 1.6 }}>{idea}</span></div>; })}</div> : null}
+          {(activeSection === "all" || activeSection === "improve") && result.improvements ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 12, display: "flex", alignItems: "center", gap: 6 }}><Zap size={13} strokeWidth={2} /> 개선점</div>{result.improvements.map(function (imp, i) { return <div key={i} style={{ display: "flex", gap: 10, padding: "10px 14px", background: t.bg, borderRadius: 11, marginBottom: 7, border: "1px solid #fbbf2440" }}><Zap size={14} strokeWidth={2} style={{ flexShrink: 0, color: "#fbbf24" }} /><span style={{ fontSize: 13, color: t.text, lineHeight: 1.6 }}>{imp}</span></div>; })}</div> : null}
+          {(activeSection === "all" || activeSection === "report") && result.performanceReport ? <div style={Object.assign({}, s, { marginBottom: 14 })}><div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><ClipboardList size={13} strokeWidth={2} /> 종합 성과 리포트</div><div style={{ fontSize: 13, color: t.text2, lineHeight: 1.8, background: t.bg, borderRadius: 11, padding: "14px 16px", border: "1px solid " + t.border, whiteSpace: "pre-wrap" }}>{result.performanceReport}</div></div> : null}
+          <button onClick={reset} style={{ width: "100%", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, background: t.surface2, border: "1px solid " + t.border, borderRadius: 12, padding: "11px 0", color: t.text3, fontWeight: 600, fontSize: 13, cursor: "pointer", marginBottom: 20 }}><RefreshCw size={13} strokeWidth={2} /> 새 영상 분석하기</button>
         </div>
       ) : null}
-      {result && result.error ? <div style={Object.assign({}, s, { textAlign: "center", padding: "30px" })}><div style={{ fontSize: 24, marginBottom: 8 }}>⚠️</div><div style={{ fontSize: 13, color: "#f87171" }}>{result.error}</div><button onClick={reset} style={{ marginTop: 12, background: "#f8717120", border: "1px solid #f8717140", borderRadius: 11, padding: "8px 20px", color: "#f87171", cursor: "pointer", fontSize: 12 }}>다시 시도</button></div> : null}
+      {result && result.error ? <div style={Object.assign({}, s, { textAlign: "center", padding: "30px" })}><div style={{ display: "flex", justifyContent: "center", marginBottom: 8 }}><AlertTriangle size={22} strokeWidth={1.75} color="#f87171" /></div><div style={{ fontSize: 13, color: "#f87171" }}>{result.error}</div><button onClick={reset} style={{ marginTop: 12, background: "#f8717120", border: "1px solid #f8717140", borderRadius: 11, padding: "8px 20px", color: "#f87171", cursor: "pointer", fontSize: 12 }}>다시 시도</button></div> : null}
     </div>
   );
 }
@@ -2015,15 +2027,15 @@ function AIPanel(props) {
   };
   const s = { background: t.surface, borderRadius: 15, padding: "17px 19px", border: "1px solid " + t.border, marginBottom: 12 };
   const btn = function (l, bg) { return { width: "100%", padding: "10px 0", border: "none", borderRadius: 10, fontWeight: 700, fontSize: 13, cursor: l ? "not-allowed" : "pointer", background: l ? t.surface2 : bg, color: l ? t.text4 : "#fff", marginTop: 12 }; };
-  const mainTabBtn = function (v, l) { return <button key={v} onClick={function () { setMainTab(v); }} style={{ padding: "8px 18px", background: "none", border: "none", borderBottom: mainTab === v ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: mainTab === v ? 700 : 500, fontSize: 13, color: mainTab === v ? "#818cf8" : t.text4, marginBottom: -1 }}>{l}</button>; };
+  const mainTabBtn = function (v, l, Icon) { return <button key={v} onClick={function () { setMainTab(v); }} style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 18px", background: "none", border: "none", borderBottom: mainTab === v ? "2px solid #6366f1" : "2px solid transparent", cursor: "pointer", fontWeight: mainTab === v ? 700 : 500, fontSize: 13, color: mainTab === v ? "#818cf8" : t.text4, marginBottom: -1 }}><Icon size={14} strokeWidth={2} />{l}</button>; };
   return (
     <div>
-      <div style={{ display: "flex", gap: 2, marginBottom: 18, borderBottom: "1px solid " + t.border }}>{mainTabBtn("ai", "🤖 AI 분석")}{mainTabBtn("video", "🔍 영상 분석")}</div>
+      <div style={{ display: "flex", gap: 2, marginBottom: 18, borderBottom: "1px solid " + t.border }}>{mainTabBtn("ai", "AI 분석", Bot)}{mainTabBtn("video", "영상 분석", Search)}</div>
       {mainTab === "ai" ? (
         <div style={{ maxWidth: 560, margin: "0 auto" }}>
-          <div style={s}><div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 3 }}>📄 제작 현황 요약</div><div style={{ fontSize: 12, color: t.text4 }}>현재 영상 제작 현황을 AI가 요약합니다</div><button disabled={lR} style={btn(lR, "#6366f1")} onClick={function () { callAI("다음 영상 제작 현황을 요약 리포트로 작성해주세요.\n\n" + summary, setReport, setLR); }}>{lR ? "생성 중..." : "리포트 생성"}</button>{report ? <div style={{ marginTop: 12, background: t.bg, borderRadius: 11, padding: "12px 14px", fontSize: 12, color: t.text2, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{report}</div> : null}</div>
-          <div style={s}><div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 3 }}>💡 생산성 인사이트</div><div style={{ fontSize: 12, color: t.text4 }}>병목 지점과 개선 방향을 분석합니다</div><button disabled={lI} style={btn(lI, "#ec4899")} onClick={function () { callAI("다음 영상 제작 데이터를 분석해서 인사이트와 개선 제안 3가지 제공해주세요.\n\n" + summary, setInsight, setLI); }}>{lI ? "분석 중..." : "인사이트 분석"}</button>{insight ? <div style={{ marginTop: 12, background: t.bg, borderRadius: 11, padding: "12px 14px", fontSize: 12, color: t.text2, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{insight}</div> : null}</div>
-          <div style={{ fontSize: 11, color: t.text4, textAlign: "center" }}>💬 자유롭게 대화하며 물어보고 싶으신 건 화면 우측 하단의 AI 챗봇을 이용해주세요</div>
+          <div style={s}><div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 3, display: "flex", alignItems: "center", gap: 6 }}><FileText size={14} strokeWidth={2} /> 제작 현황 요약</div><div style={{ fontSize: 12, color: t.text4 }}>현재 영상 제작 현황을 AI가 요약합니다</div><button disabled={lR} style={btn(lR, "#6366f1")} onClick={function () { callAI("다음 영상 제작 현황을 요약 리포트로 작성해주세요.\n\n" + summary, setReport, setLR); }}>{lR ? "생성 중..." : "리포트 생성"}</button>{report ? <div style={{ marginTop: 12, background: t.bg, borderRadius: 11, padding: "12px 14px", fontSize: 12, color: t.text2, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{report}</div> : null}</div>
+          <div style={s}><div style={{ fontSize: 14, fontWeight: 700, color: t.text, marginBottom: 3, display: "flex", alignItems: "center", gap: 6 }}><Lightbulb size={14} strokeWidth={2} /> 생산성 인사이트</div><div style={{ fontSize: 12, color: t.text4 }}>병목 지점과 개선 방향을 분석합니다</div><button disabled={lI} style={btn(lI, "#ec4899")} onClick={function () { callAI("다음 영상 제작 데이터를 분석해서 인사이트와 개선 제안 3가지 제공해주세요.\n\n" + summary, setInsight, setLI); }}>{lI ? "분석 중..." : "인사이트 분석"}</button>{insight ? <div style={{ marginTop: 12, background: t.bg, borderRadius: 11, padding: "12px 14px", fontSize: 12, color: t.text2, lineHeight: 1.8, whiteSpace: "pre-wrap" }}>{insight}</div> : null}</div>
+          <div style={{ fontSize: 11, color: t.text4, textAlign: "center", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}><MessageCircle size={12} strokeWidth={2} /> 자유롭게 대화하며 물어보고 싶으신 건 화면 우측 하단의 AI 챗봇을 이용해주세요</div>
         </div>
       ) : null}
       {mainTab === "video" ? <VideoAnalysisPanel tasks={tasks} /> : null}
@@ -2109,7 +2121,7 @@ function AdPanel(props) {
     <div>
       {selected ? <AdDetailModal ad={selected} type={selectedType} onClose={function () { setSelected(null); }} onUpdate={function (v) { updateAd(v); setSelected(null); }} /> : null}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 6 }}><button style={adTabStyle("ai")} onClick={function () { setAdTab("ai"); }}>🤖 타사 광고 (AI 포함)</button><button style={adTabStyle("int")} onClick={function () { setAdTab("int"); }}>🎙️ 인터뷰 파생 광고</button></div>
+        <div style={{ display: "flex", gap: 6 }}><button style={Object.assign({}, adTabStyle("ai"), { display: "inline-flex", alignItems: "center", gap: 5 })} onClick={function () { setAdTab("ai"); }}><Bot size={13} strokeWidth={2} /> 타사 광고 (AI 포함)</button><button style={Object.assign({}, adTabStyle("int"), { display: "inline-flex", alignItems: "center", gap: 5 })} onClick={function () { setAdTab("int"); }}><Mic size={13} strokeWidth={2} /> 인터뷰 파생 광고</button></div>
         <button onClick={adTab === "ai" ? addAiAd : addIntAd} style={{ background: "#6366f1", border: "none", borderRadius: 10, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>+ 추가</button>
       </div>
       <div style={{ fontSize: 11, color: t.text4, marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 7, height: 7, borderRadius: "50%", background: "#34d399" }} />제작일·예상완료일이 캘린더 탭에 자동으로 표시됩니다</div>
@@ -2165,7 +2177,7 @@ function OvertimeEntryModal(props) {
   return (
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
       <div style={{ background: t.surface, borderRadius: 20, padding: "22px 26px", width: "min(92vw, 340px)", boxShadow: "0 24px 64px #000c" }}>
-        <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, color: t.text }}>{isEntry ? "⏰ 야근 기록 추가" : "🏖️ 대체휴가 사용 추가"}</div>
+        <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, color: t.text, display: "flex", alignItems: "center", gap: 6 }}>{isEntry ? <Clock size={15} strokeWidth={2} /> : <Palmtree size={15} strokeWidth={2} />}{isEntry ? "야근 기록 추가" : "대체휴가 사용 추가"}</div>
         <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>날짜</div><input type="date" value={form.date} onChange={function (e) { set("date", e.target.value); }} style={inp} /></div>
         <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{isEntry ? "야근 시간 (시간 단위, 예: 2.5)" : "사용 시간 (시간 단위, 예: 4)"}</div><input type="number" step="0.5" min="0" value={form.hours} onChange={function (e) { set("hours", e.target.value); }} placeholder="예: 2.5" style={inp} /></div>
         <div style={{ marginBottom: 18 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{isEntry ? "사유" : "메모"}</div><input value={form.note} onChange={function (e) { set("note", e.target.value); }} placeholder={isEntry ? "예: 편집 마감 대응" : "예: 반차로 사용"} style={inp} /></div>
@@ -2213,7 +2225,7 @@ function OvertimePanel(props) {
       {showAddUsage ? <OvertimeEntryModal kind="usage" onAdd={addUsage} onClose={function () { setShowAddUsage(false); }} /> : null}
       <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
         <button style={viewBtn("mine")} onClick={function () { setView("mine"); }}>내 기록</button>
-        <button style={viewBtn("all")} onClick={function () { setView("all"); setExpandedUser(null); }}>👥 팀 전체 현황</button>
+        <button style={Object.assign({}, viewBtn("all"), { display: "inline-flex", alignItems: "center", gap: 6 })} onClick={function () { setView("all"); setExpandedUser(null); }}><Users size={13} strokeWidth={2} /> 팀 전체 현황</button>
       </div>
       {view === "mine" ? (
         <div>
@@ -2227,7 +2239,7 @@ function OvertimePanel(props) {
               <span style={{ fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>⏰ 야근 기록 ({myEntries.length})</span>
               <button onClick={function () { setShowAddEntry(true); }} style={{ background: "#6366f1", border: "none", borderRadius: 10, padding: "6px 12px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>+ 추가</button>
             </div>
-            {myEntries.length === 0 ? <EmptyState icon="⏰" text="기록된 야근이 없습니다" /> : null}
+            {myEntries.length === 0 ? <EmptyState icon={Clock} text="기록된 야근이 없습니다" /> : null}
             {myEntries.map(function (e) {
               return (
                 <div key={e.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", borderBottom: "1px solid " + t.border }}>
@@ -2241,10 +2253,10 @@ function OvertimePanel(props) {
           </div>
           <div style={s}>
             <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>🏖️ 대체휴가 사용 기록 ({myUsage.length})</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", gap: 6 }}><Palmtree size={13} strokeWidth={2} /> 대체휴가 사용 기록 ({myUsage.length})</span>
               <button onClick={function () { setShowAddUsage(true); }} style={{ background: "#fb923c", border: "none", borderRadius: 10, padding: "6px 12px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>+ 추가</button>
             </div>
-            {myUsage.length === 0 ? <EmptyState icon="🏖️" text="사용 기록이 없습니다" /> : null}
+            {myUsage.length === 0 ? <EmptyState icon={Palmtree} text="사용 기록이 없습니다" /> : null}
             {myUsage.map(function (u) {
               return (
                 <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "11px 16px", borderBottom: "1px solid " + t.border }}>
@@ -2266,7 +2278,7 @@ function OvertimePanel(props) {
           </div>
           <div style={s}>
             <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>팀원별 현황 ({summaryByUser.length}명) · 이름을 클릭하면 상세 기록이 열려요</div>
-            {summaryByUser.length === 0 ? <EmptyState icon="👥" text="등록된 직원이 없습니다" /> : null}
+            {summaryByUser.length === 0 ? <EmptyState icon={Users} text="등록된 직원이 없습니다" /> : null}
             {summaryByUser.map(function (item) {
               const isMe = item.name === myName;
               const isOpen = expandedUser === item.name;
@@ -2296,7 +2308,7 @@ function OvertimePanel(props) {
                         })}
                       </div>
                       <div style={{ background: t.bg, borderRadius: 11, border: "1px solid " + t.border, overflow: "hidden" }}>
-                        <div style={{ padding: "8px 12px", borderBottom: "1px solid " + t.border, fontSize: 11, fontWeight: 700, color: t.text4 }}>🏖️ 대체휴가 사용 ({personUsage.length})</div>
+                        <div style={{ padding: "8px 12px", borderBottom: "1px solid " + t.border, fontSize: 11, fontWeight: 700, color: t.text4, display: "flex", alignItems: "center", gap: 5 }}><Palmtree size={12} strokeWidth={2} /> 대체휴가 사용 ({personUsage.length})</div>
                         {personUsage.length === 0 ? <div style={{ padding: "14px", textAlign: "center", color: t.text5, fontSize: 12 }}>기록 없음</div> : personUsage.map(function (u) {
                           return <div key={u.id} style={{ display: "flex", gap: 8, padding: "8px 12px", borderBottom: "1px solid " + t.border, fontSize: 12 }}><span style={{ color: t.text4, width: 76, flexShrink: 0 }}>{u.date}</span><span style={{ color: "#fb923c", fontWeight: 700, width: 40, flexShrink: 0 }}>{fmt(u.hours)}h</span><span style={{ color: t.text3, flex: 1 }}>{u.note || "-"}</span></div>;
                         })}
@@ -2368,11 +2380,11 @@ function MessagesPanel(props) {
       <div style={{ background: t.surface, borderRadius: 16, border: "1px solid " + t.border, display: "flex", height: 620, overflow: "hidden" }}>
         <div style={{ width: "clamp(150px, 40vw, 250px)", flexShrink: 0, borderRight: "1px solid " + t.border, display: "flex", flexDirection: "column" }}>
           <div style={{ padding: "14px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <span>💬 메시지(메모)</span>
+            <span style={{ display: "flex", alignItems: "center", gap: 5 }}><MessageCircle size={13} strokeWidth={2} /> 메시지(메모)</span>
             {totalUnread > 0 ? <span style={{ fontSize: 10, background: "#f87171", color: "#fff", borderRadius: 99, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", fontWeight: 700 }}>{totalUnread > 9 ? "9+" : totalUnread}</span> : null}
           </div>
           <div style={{ flex: 1, overflowY: "auto" }}>
-            {partnersSorted.length === 0 ? <EmptyState icon="👋" text="대화 가능한 팀원이 없습니다" compact /> : null}
+            {partnersSorted.length === 0 ? <EmptyState icon={Users} text="대화 가능한 팀원이 없습니다" compact /> : null}
             {partnersSorted.map(function (p) {
               const last = lastMessageWith(p.name);
               const unread = unreadFrom(p.name);
@@ -2402,7 +2414,7 @@ function MessagesPanel(props) {
                 <div><div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{selectedPartner}</div><div style={{ fontSize: 11, color: t.text4 }}>{partnerInfo ? [partnerInfo.rank, partnerInfo.position].filter(Boolean).join(" · ") : ""}</div></div>
               </div>
               <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
-                {conv.length === 0 ? <EmptyState icon="💌" text="아직 메시지가 없습니다. 첫 메시지를 보내보세요!" /> : null}
+                {conv.length === 0 ? <EmptyState icon={Mail} text="아직 메시지가 없습니다. 첫 메시지를 보내보세요!" /> : null}
                 {conv.map(function (m) {
                   const mine = m.from === myName;
                   return (
@@ -2439,7 +2451,7 @@ function HomePanel(props) {
   const todayStr = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
   const in7 = new Date(today); in7.setDate(in7.getDate() + 7);
   const in7Str = in7.getFullYear() + "-" + pad(in7.getMonth() + 1) + "-" + pad(in7.getDate());
-  const TYPE_INFO = { video: { icon: "🎬", label: "영상", color: "#818cf8", firstStage: STAGES[0], reviewStage: STAGES[STAGES.length - 2] }, marketing: { icon: "🗓️", label: "마케팅", color: "#fb923c", firstStage: MARKETING_STAGES[0], reviewStage: MARKETING_STAGES[MARKETING_STAGES.length - 2] }, design: { icon: "🎨", label: "디자인", color: "#f87171", firstStage: DESIGN_STAGES[0], reviewStage: DESIGN_STAGES[DESIGN_STAGES.length - 2] } };
+  const TYPE_INFO = { video: { icon: Film, label: "영상", color: "#818cf8", firstStage: STAGES[0], reviewStage: STAGES[STAGES.length - 2] }, marketing: { icon: CalendarDays, label: "마케팅", color: "#fb923c", firstStage: MARKETING_STAGES[0], reviewStage: MARKETING_STAGES[MARKETING_STAGES.length - 2] }, design: { icon: Palette, label: "디자인", color: "#f87171", firstStage: DESIGN_STAGES[0], reviewStage: DESIGN_STAGES[DESIGN_STAGES.length - 2] } };
   const canApprove = currentUser.role === "admin" || currentUser.role === "manager";
   const withKind = function (list, kind) { return list.map(function (tk) { return Object.assign({}, tk, { kind: kind }); }); };
   const all = withKind(videoTasks, "video").concat(withKind(marketingTasks, "marketing")).concat(withKind(designTasks, "design"));
@@ -2462,7 +2474,7 @@ function HomePanel(props) {
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}>
       <div style={{ background: "linear-gradient(135deg,#6366f1,#818cf8)", borderRadius: 16, padding: "18px 22px" }}>
-        <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>안녕하세요, {currentUser.name}님 👋</div>
+        <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>안녕하세요, {currentUser.name}님</div>
         <div style={{ fontSize: 12, color: "#ffffffcc", marginTop: 3 }}>{today.getFullYear()}년 {today.getMonth() + 1}월 {today.getDate()}일 오늘의 업무 현황이에요</div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
@@ -2474,10 +2486,10 @@ function HomePanel(props) {
       </div>
       {canApprove && pendingApproval.length > 0 ? (
         <div style={Object.assign({}, s, { border: "1px solid #38bdf840" })}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8", marginBottom: 10 }}>✅ 승인 대기 업무 ({pendingApproval.length})</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}><CheckCircle2 size={13} strokeWidth={2} /> 승인 대기 업무 ({pendingApproval.length})</div>
           {pendingApproval.slice(0, 6).map(function (item) {
             const info = TYPE_INFO[item.kind];
-            return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0 }}>{info.icon} {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span><Avatar name={item.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text4 }}>{item.assignee}</span></div>;
+            return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span><Avatar name={item.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text4 }}>{item.assignee}</span></div>;
           })}
         </div>
       ) : null}
@@ -2486,18 +2498,18 @@ function HomePanel(props) {
           <div style={{ fontSize: 12, fontWeight: 700, color: "#f87171", marginBottom: 10 }}>⏰ 시작 지연 업무 ({overdueAll.length})</div>
           {overdueAll.slice(0, 6).map(function (item) {
             const info = TYPE_INFO[item.kind];
-            return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0 }}>{info.icon} {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span><span style={{ fontSize: 11, color: t.text4 }}>{item.assignee}</span></div>;
+            return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span><span style={{ fontSize: 11, color: t.text4 }}>{item.assignee}</span></div>;
           })}
         </div>
       ) : null}
       <div style={s}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: t.text4, marginBottom: 10, textTransform: "uppercase", letterSpacing: ".5px" }}>📅 다가오는 일정 (7일 이내)</div>
-        {upcoming.length === 0 ? <EmptyState icon="📅" text="예정된 일정이 없습니다" compact /> : null}
+        <div style={{ fontSize: 12, fontWeight: 700, color: t.text4, marginBottom: 10, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", gap: 6 }}><Calendar size={13} strokeWidth={2} /> 다가오는 일정 (7일 이내)</div>
+        {upcoming.length === 0 ? <EmptyState icon={Calendar} text="예정된 일정이 없습니다" compact /> : null}
         {upcoming.slice(0, 10).map(function (item) {
           const info = TYPE_INFO[item.kind];
           return (
             <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}>
-              <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0 }}>{info.icon} {info.label}</span>
+              <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span>
               <span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span>
               <Avatar name={item.assignee} size={18} users={users} />
               <span style={{ fontSize: 11, color: t.text4, width: 60, flexShrink: 0, textAlign: "right" }}>{item.due.slice(5)}</span>
@@ -2506,8 +2518,8 @@ function HomePanel(props) {
         })}
       </div>
       <div style={s}>
-        <div style={{ fontSize: 12, fontWeight: 700, color: t.text4, marginBottom: 12, textTransform: "uppercase", letterSpacing: ".5px" }}>👥 담당자별 업무량 (진행중 기준)</div>
-        {workload.length === 0 ? <EmptyState icon="📊" text="데이터가 없습니다" compact /> : null}
+        <div style={{ fontSize: 12, fontWeight: 700, color: t.text4, marginBottom: 12, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", gap: 6 }}><Users size={13} strokeWidth={2} /> 담당자별 업무량 (진행중 기준)</div>
+        {workload.length === 0 ? <EmptyState icon={BarChart3} text="데이터가 없습니다" compact /> : null}
         {workload.map(function (w) {
           return (
             <div key={w.name} style={{ marginBottom: 9 }}>
@@ -2534,7 +2546,7 @@ function FloatingChatWidget(props) {
   const [dragging, setDragging] = useState(false);
   const dragRef = useRef({ active: false, startX: 0, startY: 0, origX: 0, origY: 0, moved: false });
   const btnRef = useRef(null);
-  const [messages, setMessages] = useState([{ role: "assistant", content: "안녕하세요! 무엇을 도와드릴까요? 😊" }]);
+  const [messages, setMessages] = useState([{ role: "assistant", content: "안녕하세요! 무엇을 도와드릴까요?" }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -2610,11 +2622,11 @@ function FloatingChatWidget(props) {
     <div>
       <style dangerouslySetInnerHTML={{ __html: "@keyframes tbFloatBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }" }} />
       {!isOpen ? (
-        <button ref={btnRef} onMouseDown={startDrag} onTouchStart={startDrag} onClick={handleToggle} style={Object.assign({ position: "fixed", width: 58, height: 58, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", cursor: dragging ? "grabbing" : "grab", boxShadow: "0 8px 24px #00000060", fontSize: 26, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", animation: dragging ? "none" : "tbFloatBounce 3s ease-in-out infinite" }, posStyle)} title="AI 어시스턴트">✨</button>
+        <button ref={btnRef} onMouseDown={startDrag} onTouchStart={startDrag} onClick={handleToggle} style={Object.assign({ position: "fixed", width: 58, height: 58, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", cursor: dragging ? "grabbing" : "grab", boxShadow: "0 8px 24px #00000060", fontSize: 26, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", animation: dragging ? "none" : "tbFloatBounce 3s ease-in-out infinite" }, posStyle)} title="AI 어시스턴트"><Sparkles size={24} strokeWidth={1.75} color="#fff" /></button>
       ) : (
         <div ref={btnRef} style={Object.assign({ position: "fixed", width: "min(90vw, 320px)", height: 440, background: t.surface, borderRadius: 18, border: "1px solid " + t.border, boxShadow: "0 16px 48px #000a", zIndex: 9999, display: "flex", flexDirection: "column", overflow: "hidden" }, posStyle)}>
           <div onMouseDown={startDrag} onTouchStart={startDrag} style={{ padding: "12px 14px", background: "linear-gradient(135deg,#6366f1,#ec4899)", display: "flex", alignItems: "center", gap: 8, cursor: dragging ? "grabbing" : "grab", flexShrink: 0 }}>
-            <span style={{ fontSize: 18 }}>✨</span>
+            <Sparkles size={17} strokeWidth={1.75} color="#fff" />
             <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", flex: 1 }}>AI 어시스턴트</span>
             <button onClick={function () { setIsOpen(false); }} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
           </div>
@@ -2624,7 +2636,7 @@ function FloatingChatWidget(props) {
           </div>
           <div style={{ padding: 10, borderTop: "1px solid " + t.border, display: "flex", gap: 6, flexShrink: 0 }}>
             <input value={input} onChange={function (e) { setInput(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") send(); }} placeholder="메시지 입력..." style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 10, padding: "8px 10px", fontSize: 12.5, color: t.text, outline: "none", minWidth: 0 }} />
-            <button onClick={send} style={{ background: "#6366f1", border: "none", borderRadius: 10, padding: "0 12px", color: "#fff", cursor: "pointer", fontSize: 13, flexShrink: 0 }}>➤</button>
+            <button onClick={send} style={{ background: "#6366f1", border: "none", borderRadius: 10, padding: "0 12px", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0 }}><Send size={14} strokeWidth={2} /></button>
           </div>
         </div>
       )}
@@ -2654,12 +2666,12 @@ function ActivityLogPanel(props) {
   return (
     <div style={{ maxWidth: 800, margin: "0 auto" }}>
       <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
-        <button onClick={exportLog} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: t.text3, cursor: "pointer" }}>📤 전체 CSV로 내보내기</button>
-        {isAdmin && onCleanup ? <button onClick={cleanupOld} style={{ background: "#f8717118", border: "1px solid #f8717130", borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: "#f87171", cursor: "pointer" }}>🗑️ 오래된 기록 정리</button> : null}
+        <button onClick={exportLog} style={{ display: "flex", alignItems: "center", gap: 6, background: t.surface2, border: "1px solid " + t.border, borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: t.text3, cursor: "pointer" }}><Download size={13} strokeWidth={2} /> 전체 CSV로 내보내기</button>
+        {isAdmin && onCleanup ? <button onClick={cleanupOld} style={{ display: "flex", alignItems: "center", gap: 6, background: "#f8717118", border: "1px solid #f8717130", borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: "#f87171", cursor: "pointer" }}><Trash2 size={13} strokeWidth={2} /> 오래된 기록 정리</button> : null}
       </div>
       <div style={{ background: t.surface, borderRadius: 16, border: "1px solid " + t.border, overflow: "hidden" }}>
         <div style={{ padding: "12px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 활동 ({log.length}) · 자동 삭제 없이 모두 보존돼요 · 최근 200개만 표시</div>
-        {log.length === 0 ? <EmptyState icon="🗂️" text="활동 기록이 없습니다" /> : null}
+        {log.length === 0 ? <EmptyState icon={History} text="활동 기록이 없습니다" /> : null}
         {log.slice(0, 200).map(function (entry) {
           const canRestore = entry.action === "삭제" && entry.snapshot && entry.restoreType && onRestore;
           const alreadyRestored = restoredIds[entry.id];
@@ -2669,7 +2681,7 @@ function ActivityLogPanel(props) {
               <span style={{ fontSize: 13, color: t.text2, flex: 1, minWidth: 0 }}>{entry.detail}</span>
               <span style={{ fontSize: 11, color: t.text4, flexShrink: 0 }}>{entry.actor}</span>
               <span style={{ fontSize: 10, color: t.text5, flexShrink: 0 }}>{entry.time}</span>
-              {canRestore ? <button disabled={alreadyRestored} onClick={function () { onRestore(entry); setRestoredIds(function (prev) { return Object.assign({}, prev, { [entry.id]: true }); }); }} style={{ background: alreadyRestored ? t.surface2 : "#38bdf820", border: "1px solid " + (alreadyRestored ? t.border : "#38bdf840"), borderRadius: 10, padding: "4px 10px", fontSize: 11, cursor: alreadyRestored ? "default" : "pointer", color: alreadyRestored ? t.text5 : "#38bdf8", fontWeight: 700, flexShrink: 0 }}>{alreadyRestored ? "✓ 복구됨" : "♻️ 복구"}</button> : null}
+              {canRestore ? <button disabled={alreadyRestored} onClick={function () { onRestore(entry); setRestoredIds(function (prev) { return Object.assign({}, prev, { [entry.id]: true }); }); }} style={{ background: alreadyRestored ? t.surface2 : "#38bdf820", border: "1px solid " + (alreadyRestored ? t.border : "#38bdf840"), borderRadius: 10, padding: "4px 10px", fontSize: 11, cursor: alreadyRestored ? "default" : "pointer", color: alreadyRestored ? t.text5 : "#38bdf8", fontWeight: 700, flexShrink: 0 }}><span style={{display:"inline-flex",alignItems:"center",gap:4}}>{alreadyRestored ? <Check size={11} strokeWidth={2.5}/> : <RotateCcw size={11} strokeWidth={2}/>}{alreadyRestored ? "복구됨" : "복구"}</span></button> : null}
             </div>
           );
         })}
@@ -2683,7 +2695,7 @@ function SearchModal(props) {
   const { videoTasks, marketingTasks, designTasks, onSelectVideo, onSelectMarketing, onSelectDesign, onClose } = props;
   const [query, setQuery] = useState("");
   const q = query.trim().toLowerCase();
-  const TYPE_INFO = { video: { icon: "🎬", label: "영상", color: "#818cf8" }, marketing: { icon: "🗓️", label: "마케팅", color: "#fb923c" }, design: { icon: "🎨", label: "디자인", color: "#f87171" } };
+  const TYPE_INFO = { video: { icon: Film, label: "영상", color: "#818cf8" }, marketing: { icon: CalendarDays, label: "마케팅", color: "#fb923c" }, design: { icon: Palette, label: "디자인", color: "#f87171" } };
   const matches = function (tk) {
     const hay = [tk.title, tk.desc, tk.assignee, tk.tag, tk.category, tk.status].concat((tk.comments || []).map(function (c) { return c.text; })).filter(Boolean).join(" ").toLowerCase();
     return hay.indexOf(q) !== -1;
@@ -2701,16 +2713,16 @@ function SearchModal(props) {
     <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 400, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "10vh", backdropFilter: "blur(4px)" }}>
       <div onClick={function (e) { e.stopPropagation(); }} style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 560px)", maxHeight: "70vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px #000c" }}>
         <div style={{ padding: "16px 18px", borderBottom: "1px solid " + t.border }}>
-          <input autoFocus value={query} onChange={function (e) { setQuery(e.target.value); }} placeholder="🔍 제목, 담당자, 코멘트로 검색... (영상·마케팅·디자인 전체)" style={{ width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 12, padding: "10px 14px", fontSize: 14, color: t.text, outline: "none", boxSizing: "border-box" }} />
+          <input autoFocus value={query} onChange={function (e) { setQuery(e.target.value); }} placeholder="제목, 담당자, 코멘트로 검색... (영상·마케팅·디자인 전체)" style={{ width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 12, padding: "10px 14px", fontSize: 14, color: t.text, outline: "none", boxSizing: "border-box" }} />
         </div>
         <div style={{ overflowY: "auto", padding: "6px 8px" }}>
-          {!q ? <EmptyState icon="🔍" text="검색어를 입력하세요" /> : null}
-          {q && results.length === 0 ? <EmptyState icon="😕" text="검색 결과가 없습니다" /> : null}
+          {!q ? <EmptyState icon={Search} text="검색어를 입력하세요" /> : null}
+          {q && results.length === 0 ? <EmptyState icon={SearchX} text="검색 결과가 없습니다" /> : null}
           {results.map(function (item) {
             const info = TYPE_INFO[item.kind];
             return (
               <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 11, cursor: "pointer" }}>
-                <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0 }}>{info.icon} {info.label}</span>
+                <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: 13, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</div>
                   <div style={{ fontSize: 11, color: t.text4 }}>{item.assignee} · {item.status} · {item.due}</div>
@@ -2892,7 +2904,7 @@ export default function App() {
   if (!synced || !authChecked) {
     return (
       <div style={{ minHeight: "100vh", background: "#0d1117", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "-apple-system,sans-serif", gap: 16 }}>
-        <div style={{ fontSize: 30 }}>🎬</div>
+        <div style={{ display: "flex", justifyContent: "center" }}><Film size={28} strokeWidth={1.5} /></div>
         <div style={{ fontSize: 15, fontWeight: 700, color: "#f9fafb" }}>TIMBEL 업무 스케줄러</div>
         <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#fbbf24", fontSize: 13 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fbbf24" }} />Firebase 연결 중...</div>
       </div>
@@ -2912,27 +2924,27 @@ export default function App() {
         <style dangerouslySetInnerHTML={{ __html: "button:not(:disabled){transition:opacity .15s ease,transform .1s ease,box-shadow .15s ease;} button:not(:disabled):hover{opacity:.85;} button:not(:disabled):active{transform:scale(0.97);} input,select,textarea{transition:border-color .15s ease,box-shadow .15s ease;} input:focus,select:focus,textarea:focus{outline:none;border-color:#6366f1 !important;box-shadow:0 0 0 3px rgba(99,102,241,0.16);}" }} />
         <FloatingChatWidget tasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} />
         {showAdd ? <AddTaskModal onAdd={addTask} onClose={function () { setShowAdd(false); }} defaultDate={addDate} users={users} title="업무 추가" categories={TASK_CATEGORIES} /> : null}
-        {selectedTask ? <TaskDetailModal task={selectedTask} onClose={function () { setSelectedTask(null); }} onUpdate={updateTask} onMove={isViewer ? null : function (id, dir) { moveTask(id, dir); setSelectedTask(function (prev) { return Object.assign({}, prev, { status: STAGES[STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} editTitle="✏️ 업무 정보 수정" categories={TASK_CATEGORIES} allTasks={tasks} onUpdateSeries={isViewer ? null : updateTaskSeries} /> : null}
+        {selectedTask ? <TaskDetailModal task={selectedTask} onClose={function () { setSelectedTask(null); }} onUpdate={updateTask} onMove={isViewer ? null : function (id, dir) { moveTask(id, dir); setSelectedTask(function (prev) { return Object.assign({}, prev, { status: STAGES[STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} editTitle="업무 정보 수정" categories={TASK_CATEGORIES} allTasks={tasks} onUpdateSeries={isViewer ? null : updateTaskSeries} /> : null}
         {showAddMarketing ? <AddTaskModal onAdd={addMarketingTask} onClose={function () { setShowAddMarketing(false); }} defaultDate={addMarketingDate} users={users} stages={MARKETING_STAGES} tags={MARKETING_TAGS} title="새 마케팅 업무 추가" categoryLabel="카테고리" /> : null}
-        {selectedMarketingTask ? <TaskDetailModal task={selectedMarketingTask} onClose={function () { setSelectedMarketingTask(null); }} onUpdate={updateMarketingTask} onMove={isViewer ? null : function (id, dir) { moveMarketingTask(id, dir); setSelectedMarketingTask(function (prev) { return Object.assign({}, prev, { status: MARKETING_STAGES[MARKETING_STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} tags={MARKETING_TAGS} categoryLabel="카테고리" editTitle="✏️ 마케팅 업무 수정" allTasks={marketingTasks} onUpdateSeries={isViewer ? null : updateMarketingTaskSeries} /> : null}
+        {selectedMarketingTask ? <TaskDetailModal task={selectedMarketingTask} onClose={function () { setSelectedMarketingTask(null); }} onUpdate={updateMarketingTask} onMove={isViewer ? null : function (id, dir) { moveMarketingTask(id, dir); setSelectedMarketingTask(function (prev) { return Object.assign({}, prev, { status: MARKETING_STAGES[MARKETING_STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} tags={MARKETING_TAGS} categoryLabel="카테고리" editTitle="마케팅 업무 수정" allTasks={marketingTasks} onUpdateSeries={isViewer ? null : updateMarketingTaskSeries} /> : null}
         {showAddDesign ? <AddTaskModal onAdd={addDesignTask} onClose={function () { setShowAddDesign(false); }} defaultDate={addDesignDate} users={users} stages={DESIGN_STAGES} tags={DESIGN_TAGS} title="새 디자인 업무 추가" categoryLabel="카테고리" /> : null}
         {showSearch ? <SearchModal videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onClose={function () { setShowSearch(false); }} /> : null}
-        {selectedDesignTask ? <TaskDetailModal task={selectedDesignTask} onClose={function () { setSelectedDesignTask(null); }} onUpdate={updateDesignTask} onMove={isViewer ? null : function (id, dir) { moveDesignTask(id, dir); setSelectedDesignTask(function (prev) { return Object.assign({}, prev, { status: DESIGN_STAGES[DESIGN_STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} tags={DESIGN_TAGS} categoryLabel="카테고리" editTitle="✏️ 디자인 업무 수정" allTasks={designTasks} onUpdateSeries={isViewer ? null : updateDesignTaskSeries} /> : null}
+        {selectedDesignTask ? <TaskDetailModal task={selectedDesignTask} onClose={function () { setSelectedDesignTask(null); }} onUpdate={updateDesignTask} onMove={isViewer ? null : function (id, dir) { moveDesignTask(id, dir); setSelectedDesignTask(function (prev) { return Object.assign({}, prev, { status: DESIGN_STAGES[DESIGN_STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} tags={DESIGN_TAGS} categoryLabel="카테고리" editTitle="디자인 업무 수정" allTasks={designTasks} onUpdateSeries={isViewer ? null : updateDesignTaskSeries} /> : null}
         {showProfile ? <ProfileModal currentUser={currentUser} onClose={function () { setShowProfile(false); }} onUpdate={function (updated) { if (isAdmin) { setAdminAuthRaw({ password: updated.password }); setCurrentUser(updated); } else { setUsersRaw(users.map(function (u) { return u.id === updated.id ? updated : u; })); setCurrentUser(updated); } setShowProfile(false); }} /> : null}
 
         <div style={{ boxShadow: "0 1px 0 " + t.border, padding: "12px clamp(10px,4vw,24px)", display: "flex", flexWrap: "wrap", rowGap: 8, justifyContent: "space-between", alignItems: "center", background: t.headerBg, position: "sticky", top: 0, zIndex: 50 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", rowGap: 6 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 15, fontWeight: 900, color: "#818cf8", letterSpacing: "2px" }}>TIMBEL</span><span style={{ fontSize: 13, fontWeight: 600, color: t.text3 }}>업무 스케줄러</span></div>
-            {isAdmin ? <span style={{ fontSize: 10, background: "#f8717120", color: "#f87171", border: "1px solid #f8717140", borderRadius: 20, padding: "2px 9px", fontWeight: 700 }}>🛡️ 관리자</span> : null}
+            {isAdmin ? <span style={{ fontSize: 10, background: "#f8717120", color: "#f87171", border: "1px solid #f8717140", borderRadius: 20, padding: "2px 9px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}><Shield size={10} strokeWidth={2} /> 관리자</span> : null}
             <span title={"영상 " + tasks.length + " · 마케팅 " + marketingTasks.length + " · 디자인 " + designTasks.length} style={{ fontSize: 11, color: t.text4, background: t.surface2, padding: "2px 9px", borderRadius: 20, border: "1px solid " + t.border, cursor: "default" }}>{tasks.length + marketingTasks.length + designTasks.length}개</span>
             <SyncBadge synced={synced} />
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", rowGap: 6 }}>
-            <button onClick={function () { setShowSearch(true); }} style={{ background: t.surface2, border: "none", borderRadius: 20, padding: "8px 11px", cursor: "pointer", fontSize: 15 }}>🔍</button>
+            <button onClick={function () { setShowSearch(true); }} style={{ background: t.surface2, border: "none", borderRadius: 20, padding: "8px 11px", cursor: "pointer", display: "flex", alignItems: "center" }}><Search size={16} strokeWidth={1.75} color={t.text3} /></button>
             <NotificationBell notifications={notifications || []} currentUser={currentUser} onMarkRead={markNotifRead} onMarkAllRead={markAllNotifsRead} onClickNotif={handleNotifClick} overdueItems={myOverdueItems} onClickOverdue={handleOverdueClick} />
             <div style={{ display: "flex", alignItems: "center", background: t.surface2, border: "none", borderRadius: 12, padding: 3, gap: 2 }}>
-              <button onClick={function () { setIsDark(false); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: !isDark ? "#fff" : "transparent", color: !isDark ? "#1e293b" : t.text4, fontWeight: !isDark ? 700 : 500, fontSize: 12 }}>☀️ 일반</button>
-              <button onClick={function () { setIsDark(true); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: isDark ? "#1e293b" : "transparent", color: isDark ? "#818cf8" : t.text4, fontWeight: isDark ? 700 : 500, fontSize: 12 }}>🌙 다크</button>
+              <button onClick={function () { setIsDark(false); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: !isDark ? "#fff" : "transparent", color: !isDark ? "#1e293b" : t.text4, fontWeight: !isDark ? 700 : 500, fontSize: 12 }}><Sun size={13} strokeWidth={2} /> 일반</button>
+              <button onClick={function () { setIsDark(true); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: isDark ? "#1e293b" : "transparent", color: isDark ? "#818cf8" : t.text4, fontWeight: isDark ? 700 : 500, fontSize: 12 }}><Moon size={13} strokeWidth={2} /> 다크</button>
             </div>
             {displayTabs.some(function (tp) { return tp.id === "messages"; }) ? (
               <button onClick={function () { setTab("messages"); }} style={{ position: "relative", background: tab === "messages" ? "#6366f1" : t.surface2, border: "none", borderRadius: 20, padding: "8px 11px", cursor: "pointer", fontSize: 15, color: tab === "messages" ? "#fff" : t.text3, display: "flex", alignItems: "center" }} title="메시지(메모)">
@@ -2944,7 +2956,7 @@ export default function App() {
               <Avatar name={currentUser.name} size={22} users={users} />
               <div><div style={{ fontSize: 12, fontWeight: 700, color: t.text }}>{currentUser.name}</div><div style={{ fontSize: 10, color: t.text4 }}>{currentUser.rank} · {currentUser.position}</div></div>
             </div>
-            <button onClick={function () { setShowProfile(true); }} style={{ background: t.surface2, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, color: t.text4, cursor: "pointer" }}>⚙️ 내 정보</button>
+            <button onClick={function () { setShowProfile(true); }} style={{ display: "flex", alignItems: "center", gap: 5, background: t.surface2, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, color: t.text4, cursor: "pointer" }}><UserCog size={13} strokeWidth={2} /> 내 정보</button>
             <button onClick={function () { setCurrentUser(null); }} style={{ background: t.surface2, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, color: t.text4, cursor: "pointer" }}>로그아웃</button>
             {!isAdmin && !isViewer ? <button onClick={function () { openAdd(); }} style={{ background: "#6366f1", border: "none", borderRadius: 10, padding: "7px 15px", fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer" }}>+ 추가</button> : null}
           </div>
