@@ -367,7 +367,8 @@ function NoticeBanner(props) {
 }
 
 function AuthScreen(props) {
-  const { onLogin, users, onRegister, adminPasswordHash, onUpgradeUser } = props;
+  const { t, isDark } = useTheme();
+  const { onLogin, users, onRegister, adminPasswordHash, onUpgradeUser, onToggleDark } = props;
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState({ name: "", password: "", dept: "", rank: "", position: "", officePhone: "", mobile: "" });
   const [err, setErr] = useState("");
@@ -435,20 +436,26 @@ function AuthScreen(props) {
     setErr(""); setMode("login"); setForm({ name: "", password: "", dept: "", rank: "", position: "", officePhone: "", mobile: "" });
     alert("가입 신청 완료! 관리자 승인 후 로그인 가능합니다.");
   };
-  const inpStyle = { width: "100%", background: "#1f2937", border: "1px solid #374151", borderRadius: 12, padding: "10px 14px", fontSize: 13, color: "#f9fafb", boxSizing: "border-box", outline: "none", marginBottom: 10 };
+  const inpStyle = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 12, padding: "10px 14px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none", marginBottom: 10 };
   return (
-    <div style={{ minHeight: "100vh", background: "#0d1117", display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" }}>
-      <div style={{ width: 390, background: "#111827", borderRadius: 20, padding: "32px 32px 28px", border: "1px solid #1f2937", boxShadow: "0 24px 64px #000c" }}>
+    <div style={{ minHeight: "100vh", background: t.bg, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", position: "relative" }}>
+      {onToggleDark ? (
+        <div style={{ position: "absolute", top: 20, right: 20, display: "flex", alignItems: "center", background: t.surface2, borderRadius: 10, padding: 3, gap: 2 }}>
+          <button onClick={function () { onToggleDark(false); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: !isDark ? "#fff" : "transparent", color: !isDark ? "#1e293b" : t.text4, fontWeight: !isDark ? 700 : 500, fontSize: 12 }}>일반</button>
+          <button onClick={function () { onToggleDark(true); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: isDark ? "#1e293b" : "transparent", color: isDark ? "#818cf8" : t.text4, fontWeight: isDark ? 700 : 500, fontSize: 12 }}>다크</button>
+        </div>
+      ) : null}
+      <div style={{ width: 390, background: t.surface, borderRadius: 20, padding: "32px 32px 28px", border: "1px solid " + t.border, boxShadow: "0 24px 64px #0006" }}>
         <div style={{ textAlign: "center", marginBottom: 24 }}>
           <div style={{ fontSize: 13, fontWeight: 900, color: "#818cf8", letterSpacing: "2px", marginBottom: 4 }}>TIMBEL</div>
-          <div style={{ fontSize: 18, fontWeight: 800, color: "#f9fafb" }}>업무 스케줄러</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: t.text }}>업무 스케줄러</div>
           <div style={{ fontSize: 11, color: "#34d399", marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
             <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#34d399" }} />실시간 동기화
           </div>
         </div>
-        <div style={{ display: "flex", background: "#0d1117", borderRadius: 12, padding: 3, marginBottom: 20, border: "1px solid #1f2937" }}>
+        <div style={{ display: "flex", background: t.bg, borderRadius: 12, padding: 3, marginBottom: 20, border: "1px solid " + t.border }}>
           {[["login", "로그인"], ["register", "회원가입"]].map(function (item) {
-            return <button key={item[0]} onClick={function () { setMode(item[0]); setErr(""); }} style={{ flex: 1, padding: "8px 0", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: mode === item[0] ? 700 : 500, fontSize: 13, background: mode === item[0] ? "#6366f1" : "transparent", color: mode === item[0] ? "#fff" : "#6b7280" }}>{item[1]}</button>;
+            return <button key={item[0]} onClick={function () { setMode(item[0]); setErr(""); }} style={{ flex: 1, padding: "8px 0", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: mode === item[0] ? 700 : 500, fontSize: 13, background: mode === item[0] ? "#6366f1" : "transparent", color: mode === item[0] ? "#fff" : t.text4 }}>{item[1]}</button>;
           })}
         </div>
         {mode === "login" ? (
@@ -467,7 +474,7 @@ function AuthScreen(props) {
               })}
             </div>
             <input placeholder="비밀번호 *" type="password" value={form.password} onChange={function (e) { set("password", e.target.value); }} style={inpStyle} />
-            <div style={{ fontSize: 11, color: "#4b5563", marginBottom: 10 }}>* 이름이 아이디로 사용됩니다. 가입 후 관리자 승인이 필요합니다.</div>
+            <div style={{ fontSize: 11, color: t.text5, marginBottom: 10 }}>* 이름이 아이디로 사용됩니다. 가입 후 관리자 승인이 필요합니다.</div>
             {err ? <div style={{ fontSize: 12, color: "#f87171", marginBottom: 10, textAlign: "center" }}>{err}</div> : null}
             <button onClick={handleRegister} style={{ width: "100%", background: "#6366f1", border: "none", borderRadius: 12, padding: "11px 0", fontWeight: 700, fontSize: 14, color: "#fff", cursor: "pointer" }}>가입 신청</button>
           </div>
@@ -3175,7 +3182,7 @@ export default function App() {
   if (!currentUser) {
     return (
       <ThemeCtx.Provider value={{ t: t, isDark: isDark }}>
-        <AuthScreen onLogin={setCurrentUser} users={users} onRegister={async function (u) { await setUsersRaw(users.concat([u])); }} adminPasswordHash={adminAuth ? adminAuth.password : DEFAULT_ADMIN_PASSWORD_HASH} onUpgradeUser={function (u) { setUsersRaw(users.map(function (x) { return x.id === u.id ? u : x; })); }} />
+        <AuthScreen onLogin={setCurrentUser} users={users} onRegister={async function (u) { await setUsersRaw(users.concat([u])); }} adminPasswordHash={adminAuth ? adminAuth.password : DEFAULT_ADMIN_PASSWORD_HASH} onUpgradeUser={function (u) { setUsersRaw(users.map(function (x) { return x.id === u.id ? u : x; })); }} onToggleDark={setIsDark} />
       </ThemeCtx.Provider>
     );
   }
