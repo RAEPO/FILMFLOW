@@ -2022,7 +2022,7 @@ function AdAnalysisPanel(props) {
   const setF = function (k, v) { setFormState(function (f) { return Object.assign({}, f, { [k]: v }); }); };
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState(null);
-  const CHANNELS = ["유튜브", "인스타그램", "페이스북", "틱톡", "기타"];
+  const CHANNELS = ["유튜브", "인스타그램", "페이스북", "틱톡", "네이버", "기타"];
   const analyze = async function () {
     let info;
     if (mode === "list" && selAd) info = { content: selAd.content || "광고", channel: "미입력", target: "미입력", goal: selAd.workStatus || "미입력" };
