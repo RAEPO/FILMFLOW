@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, createContext, useContext } from "react";
+import { Home, LayoutGrid, Calendar, CalendarDays, Palette, Kanban, Megaphone, BarChart3, Settings, MessageCircle, Bot, Shield, Clock, History } from "lucide-react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set as dbSet } from "firebase/database";
 
@@ -121,8 +122,8 @@ const CONFIRM_COLOR = { "대기": "#6b7280", "컨펌중": "#fbbf24", "컨펌완�
 const WORK_COLOR = { "대기": "#6b7280", "기획중": "#818cf8", "작업중": "#fb923c", "작업완료": "#34d399", "수정중": "#f87171" };
 const AVATAR_COLORS = ["#6366f1", "#ec4899", "#fb923c", "#34d399", "#38bdf8", "#c084fc", "#f87171"];
 const ALL_TABS = [
-  { id: "home", label: "🏠 홈" }, { id: "unified", label: "🗂️ 통합 캘린더" }, { id: "calendar", label: "📅 영상 캘린더" }, { id: "adCalendar", label: "🗓️ 마케팅 캘린더" }, { id: "designCalendar", label: "🎨 디자인 캘린더" }, { id: "board", label: "🎞️ 제작 보드" },
-  { id: "ad", label: "📢 광고 관리" }, { id: "stats", label: "📊 통계" }, { id: "overtime", label: "⏰ 야근 기록" }, { id: "messages", label: "💬 메시지(메모)" }, { id: "ai", label: "🤖 AI 분석" }, { id: "activity", label: "🗂️ 활동 로그" },
+  { id: "home", icon: Home, text: "홈" }, { id: "unified", icon: LayoutGrid, text: "통합 캘린더" }, { id: "calendar", icon: Calendar, text: "영상 캘린더" }, { id: "adCalendar", icon: CalendarDays, text: "마케팅 캘린더" }, { id: "designCalendar", icon: Palette, text: "디자인 캘린더" }, { id: "board", icon: Kanban, text: "제작 보드" },
+  { id: "ad", icon: Megaphone, text: "광고 관리" }, { id: "stats", icon: BarChart3, text: "통계" }, { id: "overtime", icon: Clock, text: "야근 기록" }, { id: "messages", icon: MessageCircle, text: "메시지(메모)" }, { id: "ai", icon: Bot, text: "AI 분석" }, { id: "activity", icon: History, text: "활동 로그" },
 ];
 const ADMIN_USER = { id: "admin", name: "admin", dept: "경영진", rank: "대표", position: "관리자", officePhone: "", mobile: "", role: "admin", approved: true };
 const ROLE_COLOR = { "admin": "#f87171", "manager": "#fbbf24", "member": "#34d399", "viewer": "#94a3b8" };
@@ -630,7 +631,7 @@ function AdminPanel(props) {
             const active = visibleTabs.includes(tab.id);
             return (
               <div key={tab.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "13px 16px", borderBottom: "1px solid " + t.border }}>
-                <div style={{ fontSize: 13, color: t.text, fontWeight: 500 }}>{tab.label}</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: t.text, fontWeight: 500 }}><tab.icon size={16} strokeWidth={1.75} />{tab.text}</div>
                 <div onClick={function () { setVisibleTabs(active ? visibleTabs.filter(function (v) { return v !== tab.id; }) : visibleTabs.concat([tab.id])); }} style={{ width: 44, height: 24, borderRadius: 99, background: active ? "#6366f1" : t.surface2, border: "1px solid " + (active ? "#6366f1" : t.border), cursor: "pointer", position: "relative" }}>
                   <div style={{ position: "absolute", top: 3, left: active ? 22 : 3, width: 16, height: 16, borderRadius: "50%", background: "#fff" }} />
                 </div>
@@ -2934,8 +2935,8 @@ export default function App() {
               <button onClick={function () { setIsDark(true); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: isDark ? "#1e293b" : "transparent", color: isDark ? "#818cf8" : t.text4, fontWeight: isDark ? 700 : 500, fontSize: 12 }}>🌙 다크</button>
             </div>
             {displayTabs.some(function (tp) { return tp.id === "messages"; }) ? (
-              <button onClick={function () { setTab("messages"); }} style={{ position: "relative", background: tab === "messages" ? "#6366f1" : t.surface2, border: "none", borderRadius: 20, padding: "8px 11px", cursor: "pointer", fontSize: 15, color: tab === "messages" ? "#fff" : t.text3 }} title="메시지(메모)">
-                💬
+              <button onClick={function () { setTab("messages"); }} style={{ position: "relative", background: tab === "messages" ? "#6366f1" : t.surface2, border: "none", borderRadius: 20, padding: "8px 11px", cursor: "pointer", fontSize: 15, color: tab === "messages" ? "#fff" : t.text3, display: "flex", alignItems: "center" }} title="메시지(메모)">
+                <MessageCircle size={16} strokeWidth={1.75} />
                 {myUnreadMessages > 0 ? <span style={{ position: "absolute", top: -4, right: -4, background: "#f87171", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 99, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}
               </button>
             ) : null}
@@ -2961,12 +2962,12 @@ export default function App() {
           const opsActive = OPS_TAB_IDS.indexOf(tab) !== -1;
           const activeCalendarTab = calendarTabs.find(function (tp) { return tp.id === tab; });
           const activeOpsTab = opsTabs.find(function (tp) { return tp.id === tab; });
-          const tabBtnStyle = function (active, color) { return { position: "relative", flexShrink: 0, padding: "9px 16px", background: active ? (color || "#6366f1") + "16" : "none", border: "none", borderRadius: 20, cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: 13, color: active ? (color || "#818cf8") : t.text4, whiteSpace: "nowrap", transition: "background .15s" }; };
+          const tabBtnStyle = function (active, color) { return { position: "relative", flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", background: active ? (color || "#6366f1") + "16" : "none", border: "none", borderRadius: 20, cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: 13, color: active ? (color || "#818cf8") : t.text4, whiteSpace: "nowrap", transition: "background .15s" }; };
           return (
             <div style={{ boxShadow: "0 1px 0 " + t.border, padding: "8px clamp(6px,3vw,24px)", background: t.headerBg, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
               <div style={{ maxWidth: 1300, margin: "0 auto", display: "flex", gap: 2, justifyContent: "center", width: "max-content", minWidth: "100%" }}>
-                {isAdmin ? <button onClick={function () { setTab("admin"); }} style={tabBtnStyle(tab === "admin", "#f87171")}>🛡️ 관리자</button> : null}
-                {otherTabs.filter(function (tp) { return tp.id === "home"; }).map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}>{tp.label}</button>; })}
+                {isAdmin ? <button onClick={function () { setTab("admin"); }} style={tabBtnStyle(tab === "admin", "#f87171")}><Shield size={15} strokeWidth={1.75} />관리자</button> : null}
+                {otherTabs.filter(function (tp) { return tp.id === "home"; }).map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}><tp.icon size={15} strokeWidth={1.75} />{tp.text}</button>; })}
                 {calendarTabs.length > 0 ? (
                   <div style={{ position: "relative" }}>
                     <button ref={calendarBtnRef} onClick={function () {
@@ -2975,16 +2976,16 @@ export default function App() {
                         setCalendarMenuPos({ top: rect.bottom + 4, left: rect.left });
                       }
                       setCalendarMenuOpen(!calendarMenuOpen);
-                    }} style={tabBtnStyle(calendarActive)}>📅 {activeCalendarTab ? activeCalendarTab.label.replace(/^\S+\s/, "") : "캘린더"} ▾</button>
+                    }} style={tabBtnStyle(calendarActive)}><Calendar size={15} strokeWidth={1.75} />{activeCalendarTab ? activeCalendarTab.text : "캘린더"} ▾</button>
                     {calendarMenuOpen ? <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={function () { setCalendarMenuOpen(false); }} /> : null}
                     {calendarMenuOpen ? (
-                      <div style={{ position: "fixed", top: calendarMenuPos.top, left: calendarMenuPos.left, minWidth: 180, background: t.surface, border: "1px solid " + t.border, borderRadius: 12, boxShadow: "0 12px 32px #000a", overflow: "hidden", zIndex: 95 }}>
-                        {calendarTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); setCalendarMenuOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text3, whiteSpace: "nowrap" }}>{tp.label}</button>; })}
+                      <div style={{ position: "fixed", top: calendarMenuPos.top, left: calendarMenuPos.left, minWidth: 190, background: t.surface, border: "1px solid " + t.border, borderRadius: 12, boxShadow: "0 12px 32px #000a", overflow: "hidden", zIndex: 95 }}>
+                        {calendarTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); setCalendarMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "10px 14px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text3, whiteSpace: "nowrap" }}><tp.icon size={15} strokeWidth={1.75} />{tp.text}</button>; })}
                       </div>
                     ) : null}
                   </div>
                 ) : null}
-                {otherTabs.filter(function (tp) { return tp.id !== "home" && tp.id !== "messages"; }).map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}>{tp.label}</button>; })}
+                {otherTabs.filter(function (tp) { return tp.id !== "home" && tp.id !== "messages"; }).map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}><tp.icon size={15} strokeWidth={1.75} />{tp.text}</button>; })}
                 {opsTabs.length > 0 ? (
                   <div style={{ position: "relative" }}>
                     <button ref={opsBtnRef} onClick={function () {
@@ -2993,11 +2994,11 @@ export default function App() {
                         setOpsMenuPos({ top: rect.bottom + 4, left: rect.left });
                       }
                       setOpsMenuOpen(!opsMenuOpen);
-                    }} style={tabBtnStyle(opsActive)}>⚙️ {activeOpsTab ? activeOpsTab.label.replace(/^\S+\s/, "") : "관리 도구"} ▾</button>
+                    }} style={tabBtnStyle(opsActive)}><Settings size={15} strokeWidth={1.75} />{activeOpsTab ? activeOpsTab.text : "관리 도구"} ▾</button>
                     {opsMenuOpen ? <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={function () { setOpsMenuOpen(false); }} /> : null}
                     {opsMenuOpen ? (
-                      <div style={{ position: "fixed", top: opsMenuPos.top, left: opsMenuPos.left, minWidth: 180, background: t.surface, border: "1px solid " + t.border, borderRadius: 12, boxShadow: "0 12px 32px #000a", overflow: "hidden", zIndex: 95 }}>
-                        {opsTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); setOpsMenuOpen(false); }} style={{ display: "block", width: "100%", textAlign: "left", padding: "10px 14px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text3, whiteSpace: "nowrap" }}>{tp.label}</button>; })}
+                      <div style={{ position: "fixed", top: opsMenuPos.top, left: opsMenuPos.left, minWidth: 190, background: t.surface, border: "1px solid " + t.border, borderRadius: 12, boxShadow: "0 12px 32px #000a", overflow: "hidden", zIndex: 95 }}>
+                        {opsTabs.map(function (tp) { return <button key={tp.id} onClick={function () { setTab(tp.id); setOpsMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "10px 14px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text3, whiteSpace: "nowrap" }}><tp.icon size={15} strokeWidth={1.75} />{tp.text}</button>; })}
                       </div>
                     ) : null}
                   </div>
