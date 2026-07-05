@@ -304,13 +304,17 @@ function NotificationBell(props) {
             <div style={{ overflowY: "auto", flex: 1 }}>
               {myNotifs.length === 0 && overdueList.length === 0 ? <EmptyState icon={Bell} text="알림이 없습니다" compact /> : null}
               {overdueList.map(function (item) {
+                const isDeadline = item.alertType === "deadline";
+                const msgTail = isDeadline ? (item.isPast ? " 마감이 지났어요" : " 마감이 임박했어요") : " 시작일이 지났어요";
+                const dateLabel = isDeadline ? "마감일" : "작업 시작일";
+                const dateValue = isDeadline ? item.deadline : item.due;
                 return (
                   <div key={item.id} onClick={function () { onClickOverdue(item); setOpen(false); }} style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, cursor: "pointer", background: "#f8717112" }}>
                     <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#f87171", marginTop: 5, flexShrink: 0 }} />
+                      <Clock size={12} strokeWidth={2} color="#f87171" style={{ marginTop: 3, flexShrink: 0 }} />
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 12, color: t.text2, lineHeight: 1.5 }}>⏰ <b style={{ color: "#f87171" }}>{item.typeLabel}</b> <b style={{ color: t.text }}>{item.title}</b>의 시작일이 지났어요</div>
-                        <div style={{ fontSize: 10, color: t.text5, marginTop: 5 }}>작업 시작일 {item.due}</div>
+                        <div style={{ fontSize: 12, color: t.text2, lineHeight: 1.5 }}><b style={{ color: "#f87171" }}>{item.typeLabel}</b> <b style={{ color: t.text }}>{item.title}</b>{msgTail}</div>
+                        <div style={{ fontSize: 10, color: t.text5, marginTop: 5 }}>{dateLabel} {dateValue}</div>
                       </div>
                     </div>
                   </div>
@@ -583,7 +587,7 @@ function AdminPanel(props) {
         <div>
           {pending.length > 0 ? (
             <div style={Object.assign({}, s, { border: "1px solid #f8717140" })}>
-              <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: "#f87171", background: "#f8717110" }}>⏳ 승인 대기 ({pending.length})</div>
+              <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: "#f87171", background: "#f8717110", display: "flex", alignItems: "center", gap: 6 }}><Clock size={13} strokeWidth={2} /> 승인 대기 ({pending.length})</div>
               {pending.map(function (u) {
                 return (
                   <div key={u.id} style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px 16px", borderBottom: "1px solid " + t.border }}>
@@ -1051,7 +1055,7 @@ function TaskDetailModal(props) {
   const [mentionQuery, setMentionQuery] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [applyToSeries, setApplyToSeries] = useState(false);
-  const [editForm, setEditForm] = useState({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") });
+  const [editForm, setEditForm] = useState({ title: task.title, desc: task.desc, due: task.due, deadline: task.deadline || "", assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") });
   const idx = stageList.indexOf(task.status);
   const StageIconBadge = stageIconMap[task.status] || Circle;
   const memberNames = users.filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return u.name; });
@@ -1102,7 +1106,11 @@ function TaskDetailModal(props) {
           </div>
           <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>제목</div><input value={editForm.title} onChange={function (e) { setEF("title", e.target.value); }} style={inp} /></div>
           <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>설명</div><input value={editForm.desc} onChange={function (e) { setEF("desc", e.target.value); }} style={inp} /></div>
-          <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>작업 시작일</div><input type="date" value={editForm.due} onChange={function (e) { setEF("due", e.target.value); }} style={inp} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 11 }}>
+            <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>작업 시작일</div><input type="date" value={editForm.due} onChange={function (e) { setEF("due", e.target.value); }} style={inp} /></div>
+            <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>마감일</div><input type="date" value={editForm.deadline || ""} onChange={function (e) { setEF("deadline", e.target.value); }} style={inp} /></div>
+          </div>
+          {task.createdAt ? <div style={{ fontSize: 11, color: t.text5, marginBottom: 11, display: "flex", alignItems: "center", gap: 4 }}><Clock size={11} strokeWidth={2} /> 등록일: {new Date(task.createdAt).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })}</div> : null}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 11 }}>
             <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>담당자</div><select value={editForm.assignee} onChange={function (e) { setEF("assignee", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{memberNames.map(function (m) { return <option key={m}>{m}</option>; })}</select></div>
             <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>우선순위</div><select value={editForm.priority} onChange={function (e) { setEF("priority", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{PRIORITIES.map(function (p) { return <option key={p}>{p}</option>; })}</select></div>
@@ -1147,7 +1155,7 @@ function TaskDetailModal(props) {
             {onMove && idx > 0 ? <button onClick={function () { onMove(task.id, -1); onClose(); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 10, padding: "6px 0", fontSize: 11, cursor: "pointer", color: t.text4 }}><ArrowLeft size={11} strokeWidth={2} /> {stageList[idx - 1]}</button> : null}
             {onMove && idx < stageList.length - 1 ? <button onClick={function () { onMove(task.id, 1); onClose(); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: "#6366f120", border: "1px solid #6366f140", borderRadius: 10, padding: "6px 0", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>{stageList[idx + 1]} <ArrowRight size={11} strokeWidth={2} /></button> : null}
             {onMove && task.status !== stageList[stageList.length - 1] ? <button onClick={function () { onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1] })); onClose(); }} style={{ display: "flex", alignItems: "center", gap: 5, background: "#34d39920", border: "1px solid #34d39940", borderRadius: 10, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700, flexShrink: 0 }}><CheckCircle2 size={12} strokeWidth={2} /> 업무 완료</button> : null}
-            {onMove ? <button onClick={function () { setEditForm({ title: task.title, desc: task.desc, due: task.due, assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") }); setEditMode(true); }} style={{ display: "flex", alignItems: "center", gap: 5, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 10, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: t.text4, flexShrink: 0 }}><Pencil size={12} strokeWidth={2} /> 정보 수정</button> : null}
+            {onMove ? <button onClick={function () { setEditForm({ title: task.title, desc: task.desc, due: task.due, deadline: task.deadline || "", assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") }); setEditMode(true); }} style={{ display: "flex", alignItems: "center", gap: 5, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 10, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: t.text4, flexShrink: 0 }}><Pencil size={12} strokeWidth={2} /> 정보 수정</button> : null}
           </div>
           {onMove && currentUser && (currentUser.role === "admin" || currentUser.role === "manager") && task.status === stageList[stageList.length - 2] ? (
             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
@@ -1231,7 +1239,7 @@ function AddTaskModal(props) {
   const categoryLabel = props.categoryLabel || "플랫폼";
   const categories = props.categories || null;
   const memberNames = users.filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return u.name; });
-  const [form, setForm] = useState({ title: "", desc: "", assignee: memberNames[0] || "", priority: "중간", tag: tagList[0], due: defaultDate || "", status: stageList[0], fileUrl: "", category: categories ? categories[0] : "", repeat: "없음", repeatCount: 4 });
+  const [form, setForm] = useState({ title: "", desc: "", assignee: memberNames[0] || "", priority: "중간", tag: tagList[0], due: defaultDate || "", deadline: "", status: stageList[0], fileUrl: "", category: categories ? categories[0] : "", repeat: "없음", repeatCount: 4 });
   const set = function (k, v) { setForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
   const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "9px 12px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
   const REPEAT_OPTIONS = ["없음", "매일", "매주", "매월"];
@@ -1246,14 +1254,22 @@ function AddTaskModal(props) {
     const newTasks = [];
     for (let i = 0; i < count; i++) {
       let dueDate = form.due;
+      let deadlineDate = form.deadline;
       if (i > 0 && form.due) {
         const d = new Date(form.due + "T00:00:00");
         if (form.repeat === "매일") d.setDate(d.getDate() + i);
         else if (form.repeat === "매주") d.setDate(d.getDate() + i * 7);
         else if (form.repeat === "매월") d.setMonth(d.getMonth() + i);
         dueDate = d.getFullYear() + "-" + pad2(d.getMonth() + 1) + "-" + pad2(d.getDate());
+        if (form.deadline) {
+          const dl = new Date(form.deadline + "T00:00:00");
+          if (form.repeat === "매일") dl.setDate(dl.getDate() + i);
+          else if (form.repeat === "매주") dl.setDate(dl.getDate() + i * 7);
+          else if (form.repeat === "매월") dl.setMonth(dl.getMonth() + i);
+          deadlineDate = dl.getFullYear() + "-" + pad2(dl.getMonth() + 1) + "-" + pad2(dl.getDate());
+        }
       }
-      const extra = { due: dueDate, id: "task_" + Date.now() + "_" + i, comments: [] };
+      const extra = { due: dueDate, deadline: deadlineDate, createdAt: Date.now(), id: "task_" + Date.now() + "_" + i, comments: [] };
       if (seriesId) extra.seriesId = seriesId;
       newTasks.push(Object.assign({}, base, extra));
     }
@@ -1264,7 +1280,7 @@ function AddTaskModal(props) {
     <div style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 200, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
       <div style={{ background: t.surface, borderRadius: 20, padding: "22px 26px", width: "min(92vw, 370px)", boxShadow: "0 24px 64px #000c" }}>
         <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, color: t.text }}>{modalTitle}</div>
-        {[["제목", "title", "text"], ["설명", "desc", "text"], ["작업 시작일", "due", "date"]].map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><input type={item[2]} value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={inp} /></div>; })}
+        {[["제목", "title", "text"], ["설명", "desc", "text"], ["작업 시작일", "due", "date"], ["마감일", "deadline", "date"]].map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><input type={item[2]} value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={inp} /></div>; })}
         {[["담당자", "assignee", memberNames.length ? memberNames : ["미배정"]], ["우선순위", "priority", PRIORITIES]].concat(categories ? [["업무 종류", "category", categories]] : []).concat([[categoryLabel, "tag", tagList], ["단계", "status", stageList]]).map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><select value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{item[2].map(function (o) { return <option key={o}>{o}</option>; })}</select></div>; })}
         <div style={{ display: "grid", gridTemplateColumns: form.repeat === "없음" ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 11 }}>
           <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><Repeat size={11} strokeWidth={2} /> 반복</div><select value={form.repeat} onChange={function (e) { set("repeat", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{REPEAT_OPTIONS.map(function (o) { return <option key={o}>{o}</option>; })}</select></div>
@@ -1359,7 +1375,7 @@ function CalendarView(props) {
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 9, height: 9, borderRadius: 4, background: "#fbbf24" }} /><span style={{ fontSize: 11, color: t.text4 }}>광고 제작일</span></div>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 9, height: 9, borderRadius: 4, background: "#38bdf8" }} /><span style={{ fontSize: 11, color: t.text4 }}>광고 예상완료일</span></div>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Flag size={11} strokeWidth={2} color={t.text4} /><span style={{ fontSize: 11, color: t.text4 }}>공휴일</span></div>
-        {videoMode ? <div style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ fontSize: 11 }}>⏰</span><span style={{ fontSize: 11, color: t.text4 }}>시작 지연 (시작일 지났는데 기획 단계)</span></div> : null}
+        {videoMode ? <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Clock size={11} strokeWidth={2} color={t.text4} /><span style={{ fontSize: 11, color: t.text4 }}>시작 지연 (시작일 지났는데 기획 단계)</span></div> : null}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
         {categoryOptions ? (
@@ -1441,8 +1457,9 @@ function CalendarView(props) {
                   {getThumbnailUrl(tk.fileUrl) ? <img src={getThumbnailUrl(tk.fileUrl)} alt="" onClick={function (e) { handleEditClick(e, tk); }} style={{ width: 44, height: 30, objectFit: "cover", borderRadius: 7, flexShrink: 0, cursor: "pointer" }} /> : null}
                   <div onClick={function (e) { handleEditClick(e, tk); }} style={{ flex: 1, minWidth: 100, cursor: "pointer" }}><div style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{tk.title}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 1, display: "flex", alignItems: "center", gap: 4 }}>{(function () { const SIcon = stageIconMap[tk.status]; return <SIcon size={11} strokeWidth={2} />; })()} {tk.status} · {tk.tag}</div></div>
                   <span style={{ fontSize: 11, color: overdue ? "#f87171" : t.text4, fontWeight: overdue ? 700 : 400, flexShrink: 0 }}>{tk.due.slice(5)}</span>
+                  {tk.deadline ? <span style={{ fontSize: 10, color: tk.deadline < todayStr ? "#f87171" : "#fb923c", background: (tk.deadline < todayStr ? "#f87171" : "#fb923c") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><Clock size={10} strokeWidth={2.5} /> {tk.deadline.slice(5)}</span> : null}
                   <span style={{ fontSize: 10, color: PRIORITY_COLOR[tk.priority], background: PRIORITY_COLOR[tk.priority] + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>{tk.priority}</span>
-                  {overdue ? <span style={{ fontSize: 10, color: "#f87171", background: "#f8717120", padding: "2px 7px", borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>⏰ 시작 지연</span> : null}
+                  {overdue ? <span style={{ fontSize: 10, color: "#f87171", background: "#f8717120", padding: "2px 7px", borderRadius: 20, fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><Clock size={10} strokeWidth={2.5} /> 시작 지연</span> : null}
                 </div>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
                   {hasPrev && onMove ? <button onClick={function (e) { handleMoveClick(e, tk.id, -1); }} style={{ display: "flex", alignItems: "center", gap: 4, background: t.bg, border: "1px solid " + t.border, borderRadius: 7, padding: "6px 11px", fontSize: 11, cursor: "pointer", color: t.text4, fontWeight: 600 }}><ArrowLeft size={11} strokeWidth={2} /> 이전 단계</button> : null}
@@ -1842,7 +1859,8 @@ function BoardView(props) {
                       <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 10, color: PRIORITY_COLOR[tk.priority], background: PRIORITY_COLOR[tk.priority] + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{tk.priority}</span>
                         <span style={{ fontSize: 10, color: TAG_COLOR[tk.tag] || "#818cf8", background: (TAG_COLOR[tk.tag] || "#818cf8") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{tk.tag}</span>
-                        {overdue ? <span style={{ fontSize: 10, color: "#f87171", background: "#f8717120", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>⏰ 지연</span> : null}
+                        {tk.deadline ? <span style={{ fontSize: 10, color: tk.deadline < todayStr ? "#f87171" : "#fb923c", background: (tk.deadline < todayStr ? "#f87171" : "#fb923c") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}><Clock size={9} strokeWidth={2.5} /> {tk.deadline.slice(5)}</span> : null}
+                        {overdue ? <span style={{ fontSize: 10, color: "#f87171", background: "#f8717120", padding: "2px 7px", borderRadius: 20, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}><Clock size={9} strokeWidth={2.5} /> 지연</span> : null}
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Avatar name={tk.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text3 }}>{tk.assignee}</span></div>
@@ -1891,7 +1909,8 @@ function BoardView(props) {
                       </div>
                       <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 10, color: DESIGN_TAG_COLOR[dt.tag] || "#818cf8", background: (DESIGN_TAG_COLOR[dt.tag] || "#818cf8") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{dt.tag}</span>
-                        {overdue ? <span style={{ fontSize: 10, color: "#f87171", background: "#f8717120", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>⏰ 지연</span> : null}
+                        {dt.deadline ? <span style={{ fontSize: 10, color: dt.deadline < todayStr ? "#f87171" : "#fb923c", background: (dt.deadline < todayStr ? "#f87171" : "#fb923c") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}><Clock size={9} strokeWidth={2.5} /> {dt.deadline.slice(5)}</span> : null}
+                        {overdue ? <span style={{ fontSize: 10, color: "#f87171", background: "#f8717120", padding: "2px 7px", borderRadius: 20, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}><Clock size={9} strokeWidth={2.5} /> 지연</span> : null}
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Avatar name={dt.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text3 }}>{dt.assignee}</span></div>
@@ -1915,7 +1934,8 @@ function BoardView(props) {
                       </div>
                       <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
                         <span style={{ fontSize: 10, color: MARKETING_TAG_COLOR[mt.tag] || "#818cf8", background: (MARKETING_TAG_COLOR[mt.tag] || "#818cf8") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>{mt.tag}</span>
-                        {overdue ? <span style={{ fontSize: 10, color: "#f87171", background: "#f8717120", padding: "2px 7px", borderRadius: 20, fontWeight: 700 }}>⏰ 지연</span> : null}
+                        {mt.deadline ? <span style={{ fontSize: 10, color: mt.deadline < todayStr ? "#f87171" : "#fb923c", background: (mt.deadline < todayStr ? "#f87171" : "#fb923c") + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}><Clock size={9} strokeWidth={2.5} /> {mt.deadline.slice(5)}</span> : null}
+                        {overdue ? <span style={{ fontSize: 10, color: "#f87171", background: "#f8717120", padding: "2px 7px", borderRadius: 20, fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}><Clock size={9} strokeWidth={2.5} /> 지연</span> : null}
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Avatar name={mt.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text3 }}>{mt.assignee}</span></div>
@@ -2441,7 +2461,7 @@ function OvertimePanel(props) {
           </div>
           <div style={Object.assign({}, s, { marginBottom: 16 })}>
             <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>⏰ 야근 기록 ({myEntries.length})</span>
+              <span style={{ fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", gap: 6 }}><Clock size={13} strokeWidth={2} /> 야근 기록 ({myEntries.length})</span>
               <button onClick={function () { setShowAddEntry(true); }} style={{ background: "#6366f1", border: "none", borderRadius: 10, padding: "6px 12px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer" }}>+ 추가</button>
             </div>
             {myEntries.length === 0 ? <EmptyState icon={Clock} text="기록된 야근이 없습니다" /> : null}
@@ -2507,7 +2527,7 @@ function OvertimePanel(props) {
                   {isOpen ? (
                     <div style={{ padding: "0 16px 14px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                       <div style={{ background: t.bg, borderRadius: 11, border: "1px solid " + t.border, overflow: "hidden" }}>
-                        <div style={{ padding: "8px 12px", borderBottom: "1px solid " + t.border, fontSize: 11, fontWeight: 700, color: t.text4 }}>⏰ 야근 기록 ({personEntries.length})</div>
+                        <div style={{ padding: "8px 12px", borderBottom: "1px solid " + t.border, fontSize: 11, fontWeight: 700, color: t.text4, display: "flex", alignItems: "center", gap: 5 }}><Clock size={12} strokeWidth={2} /> 야근 기록 ({personEntries.length})</div>
                         {personEntries.length === 0 ? <div style={{ padding: "14px", textAlign: "center", color: t.text5, fontSize: 12 }}>기록 없음</div> : personEntries.map(function (e) {
                           return <div key={e.id} style={{ display: "flex", gap: 8, padding: "8px 12px", borderBottom: "1px solid " + t.border, fontSize: 12 }}><span style={{ color: t.text4, width: 76, flexShrink: 0 }}>{e.date}</span><span style={{ color: "#818cf8", fontWeight: 700, width: 40, flexShrink: 0 }}>{fmt(e.hours)}h</span><span style={{ color: t.text3, flex: 1 }}>{e.reason || "-"}</span></div>;
                         })}
@@ -2665,6 +2685,9 @@ function HomePanel(props) {
   const pendingApproval = canApprove ? all.filter(function (item) { return item.status === TYPE_INFO[item.kind].reviewStage; }) : [];
   const myActive = all.filter(function (item) { return item.assignee === currentUser.name && !isDone(item); });
   const overdueAll = all.filter(isOverdueItem);
+  const in2 = new Date(today); in2.setDate(in2.getDate() + 2);
+  const in2Str = in2.getFullYear() + "-" + pad(in2.getMonth() + 1) + "-" + pad(in2.getDate());
+  const myDeadlineAlerts = all.filter(function (item) { return item.assignee === currentUser.name && item.deadline && !isDone(item) && item.deadline <= in2Str; }).sort(function (a, b) { return a.deadline < b.deadline ? -1 : 1; });
   const upcoming = all.filter(function (item) { return item.due && item.due >= todayStr && item.due <= in7Str && !isDone(item); }).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
   const todayItems = all.filter(function (item) { return item.due === todayStr; });
   const members = users.filter(function (u) { return u.approved; });
@@ -2685,10 +2708,21 @@ function HomePanel(props) {
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
         <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#818cf8" }}>{myActive.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>내 진행중 업무</div></div>
         <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#f87171" }}>{overdueAll.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>전체 시작 지연</div></div>
+        <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#fb923c" }}>{myDeadlineAlerts.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>내 마감 임박/초과</div></div>
         <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#fbbf24" }}>{todayItems.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>오늘 시작 예정</div></div>
         <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#34d399" }}>{upcoming.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>7일 내 예정</div></div>
         {canApprove ? <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#38bdf8" }}>{pendingApproval.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>승인 대기</div></div> : null}
       </div>
+      {myDeadlineAlerts.length > 0 ? (
+        <div style={Object.assign({}, s, { border: "1px solid #fb923c40" })}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#fb923c", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}><Clock size={13} strokeWidth={2} /> 내 마감 임박/초과 업무 ({myDeadlineAlerts.length})</div>
+          {myDeadlineAlerts.slice(0, 6).map(function (item) {
+            const info = TYPE_INFO[item.kind];
+            const isPast = item.deadline < todayStr;
+            return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span><span style={{ fontSize: 11, color: isPast ? "#f87171" : "#fb923c", fontWeight: 700 }}>{isPast ? "마감 초과" : "마감 " + item.deadline.slice(5)}</span></div>;
+          })}
+        </div>
+      ) : null}
       {canApprove && pendingApproval.length > 0 ? (
         <div style={Object.assign({}, s, { border: "1px solid #38bdf840" })}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}><CheckCircle2 size={13} strokeWidth={2} /> 승인 대기 업무 ({pendingApproval.length})</div>
@@ -2700,7 +2734,7 @@ function HomePanel(props) {
       ) : null}
       {overdueAll.length > 0 ? (
         <div style={Object.assign({}, s, { border: "1px solid #f8717140" })}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#f87171", marginBottom: 10 }}>⏰ 시작 지연 업무 ({overdueAll.length})</div>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#f87171", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><Clock size={13} strokeWidth={2} /> 시작 지연 업무 ({overdueAll.length})</div>
           {overdueAll.slice(0, 6).map(function (item) {
             const info = TYPE_INFO[item.kind];
             return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span><span style={{ fontSize: 11, color: t.text4 }}>{item.assignee}</span></div>;
@@ -3110,11 +3144,19 @@ export default function App() {
   const nowForOverdue = new Date();
   const pad3 = function (n) { return String(n).padStart(2, "0"); };
   const todayStrForOverdue = nowForOverdue.getFullYear() + "-" + pad3(nowForOverdue.getMonth() + 1) + "-" + pad3(nowForOverdue.getDate());
+  const in2ForDeadline = new Date(nowForOverdue); in2ForDeadline.setDate(in2ForDeadline.getDate() + 2);
+  const in2StrForDeadline = in2ForDeadline.getFullYear() + "-" + pad3(in2ForDeadline.getMonth() + 1) + "-" + pad3(in2ForDeadline.getDate());
   const myOverdueItems = currentUser ? []
     .concat(tasks.filter(function (tk) { return tk.assignee === currentUser.name && tk.due && tk.due < todayStrForOverdue && tk.status === STAGES[0]; }).map(function (tk) { return { id: "ov_video_" + tk.id, kind: "video", typeLabel: "영상", title: tk.title, due: tk.due, ref: tk }; }))
     .concat(marketingTasks.filter(function (mt) { return mt.assignee === currentUser.name && mt.due && mt.due < todayStrForOverdue && mt.status === MARKETING_STAGES[0]; }).map(function (mt) { return { id: "ov_marketing_" + mt.id, kind: "marketing", typeLabel: "마케팅", title: mt.title, due: mt.due, ref: mt }; }))
     .concat(designTasks.filter(function (dt) { return dt.assignee === currentUser.name && dt.due && dt.due < todayStrForOverdue && dt.status === DESIGN_STAGES[0]; }).map(function (dt) { return { id: "ov_design_" + dt.id, kind: "design", typeLabel: "디자인", title: dt.title, due: dt.due, ref: dt }; }))
     : [];
+  const myDeadlineItems = currentUser ? []
+    .concat(tasks.filter(function (tk) { return tk.assignee === currentUser.name && tk.deadline && tk.status !== "업무 완료" && tk.deadline <= in2StrForDeadline; }).map(function (tk) { return { id: "dl_video_" + tk.id, kind: "video", typeLabel: "영상", title: tk.title, deadline: tk.deadline, isPast: tk.deadline < todayStrForOverdue, alertType: "deadline", ref: tk }; }))
+    .concat(marketingTasks.filter(function (mt) { return mt.assignee === currentUser.name && mt.deadline && mt.status !== "완료" && mt.deadline <= in2StrForDeadline; }).map(function (mt) { return { id: "dl_marketing_" + mt.id, kind: "marketing", typeLabel: "마케팅", title: mt.title, deadline: mt.deadline, isPast: mt.deadline < todayStrForOverdue, alertType: "deadline", ref: mt }; }))
+    .concat(designTasks.filter(function (dt) { return dt.assignee === currentUser.name && dt.deadline && dt.status !== "완료" && dt.deadline <= in2StrForDeadline; }).map(function (dt) { return { id: "dl_design_" + dt.id, kind: "design", typeLabel: "디자인", title: dt.title, deadline: dt.deadline, isPast: dt.deadline < todayStrForOverdue, alertType: "deadline", ref: dt }; }))
+    : [];
+  const allAlertItems = myOverdueItems.concat(myDeadlineItems);
   const handleOverdueClick = function (item) {
     if (item.kind === "video") { setTab("calendar"); setSelectedTask(item.ref); }
     else if (item.kind === "marketing") { setTab("adCalendar"); setSelectedMarketingTask(item.ref); }
@@ -3161,7 +3203,7 @@ export default function App() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", rowGap: 6 }}>
             <button onClick={function () { setShowSearch(true); }} style={{ background: t.surface2, border: "none", borderRadius: 20, padding: "8px 11px", cursor: "pointer", display: "flex", alignItems: "center" }}><Search size={16} strokeWidth={1.75} color={t.text3} /></button>
-            <NotificationBell notifications={notifications || []} currentUser={currentUser} onMarkRead={markNotifRead} onMarkAllRead={markAllNotifsRead} onClickNotif={handleNotifClick} overdueItems={myOverdueItems} onClickOverdue={handleOverdueClick} />
+            <NotificationBell notifications={notifications || []} currentUser={currentUser} onMarkRead={markNotifRead} onMarkAllRead={markAllNotifsRead} onClickNotif={handleNotifClick} overdueItems={allAlertItems} onClickOverdue={handleOverdueClick} />
             <div style={{ display: "flex", alignItems: "center", background: t.surface2, border: "none", borderRadius: 12, padding: 3, gap: 2 }}>
               <button onClick={function () { setIsDark(false); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: !isDark ? "#fff" : "transparent", color: !isDark ? "#1e293b" : t.text4, fontWeight: !isDark ? 700 : 500, fontSize: 12 }}><Sun size={13} strokeWidth={2} /> 일반</button>
               <button onClick={function () { setIsDark(true); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: isDark ? "#1e293b" : "transparent", color: isDark ? "#818cf8" : t.text4, fontWeight: isDark ? 700 : 500, fontSize: 12 }}><Moon size={13} strokeWidth={2} /> 다크</button>
