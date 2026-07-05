@@ -1343,7 +1343,7 @@ function CalendarView(props) {
           const holidayName = cellDateStr ? KOREAN_HOLIDAYS[cellDateStr] : null;
           const isHoliday = !!holidayName;
           return (
-            <div key={i} onClick={function () { if (cell.cur && onAddTask) onAddTask(dateStr(cell.day)); }} style={{ minHeight: 88, minWidth: 0, overflow: "hidden", background: cell.cur ? (isToday(cell.day) ? t.todayBg : t.surface) : t.bg, borderRadius: 12, padding: "7px 7px 5px", border: "1px solid " + (isToday(cell.day) ? "#6366f1" : isHoliday ? "#f8717150" : t.border), cursor: cell.cur && onAddTask ? "pointer" : "default", boxSizing: "border-box" }}>
+            <div key={i} onClick={function () { if (cell.cur && onAddTask) onAddTask(dateStr(cell.day)); }} style={{ minHeight: 92, minWidth: 0, overflow: "hidden", background: cell.cur ? (isToday(cell.day) ? t.todayBg : t.surface) : t.bg, borderRadius: 14, padding: "8px 8px 6px", border: "1px solid " + (isHoliday ? "#f8717150" : t.border), boxShadow: isToday(cell.day) ? "0 0 0 2px #6366f1" : "none", cursor: cell.cur && onAddTask ? "pointer" : "default", boxSizing: "border-box", transition: "box-shadow .15s" }}>
               <div style={{ fontSize: 12, fontWeight: isToday(cell.day) || isHoliday ? 800 : 500, color: !cell.cur ? t.border2 : isToday(cell.day) ? "#818cf8" : isHoliday ? "#f87171" : weekdayColor(colIdx), marginBottom: isHoliday ? 1 : 4, display: "flex", justifyContent: "space-between" }}>
                 <span>{cell.day}</span>
                 {isToday(cell.day) ? <span style={{ fontSize: 9, background: "#6366f1", color: "#fff", borderRadius: 99, padding: "1px 5px", fontWeight: 700, flexShrink: 0 }}>오늘</span> : null}
@@ -1351,7 +1351,7 @@ function CalendarView(props) {
               {holidayName ? <div style={{ fontSize: 9, color: "#f87171", fontWeight: 600, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>🎌 {holidayName}</div> : null}
               {dayItems.slice(0, 3).map(function (item) {
                 const overdue = item.kind === "task" && isOverdue(item);
-                return <div key={item.id} onClick={function (e) { e.stopPropagation(); if (item.kind === "task") onSelectTask(item); else if (onSelectAd) onSelectAd(item); }} style={{ background: overdue ? "#f8717130" : getItemColor(item) + "25", border: "1px solid " + (overdue ? "#f87171" : (getItemColor(item) + "40")), borderRadius: 6, padding: "2px 5px", fontSize: 10, color: overdue ? "#f87171" : getItemColor(item), fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 2, cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{overdue ? "⏰ " : ""}{getItemIcon(item)} {item.title}{getItemSuffix(item)}</div>;
+                return <div key={item.id} onClick={function (e) { e.stopPropagation(); if (item.kind === "task") onSelectTask(item); else if (onSelectAd) onSelectAd(item); }} style={{ background: overdue ? "#f8717130" : getItemColor(item) + "22", border: "none", borderRadius: 7, padding: "3px 6px", fontSize: 10, color: overdue ? "#f87171" : getItemColor(item), fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 3, cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{overdue ? "⏰ " : ""}{getItemIcon(item)} {item.title}{getItemSuffix(item)}</div>;
               })}
               {dayItems.length > 3 ? <div onClick={function (e) { e.stopPropagation(); setDayDetail({ date: dateStr(cell.day), items: dayItems }); }} style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>+{dayItems.length - 3}개 더보기</div> : null}
             </div>
@@ -1544,7 +1544,7 @@ function CombinedCalendarView(props) {
           const holidayName = cellDateStr ? KOREAN_HOLIDAYS[cellDateStr] : null;
           const isHoliday = !!holidayName;
           return (
-            <div key={i} style={{ minHeight: 88, minWidth: 0, overflow: "hidden", background: cell.cur ? (isToday(cell.day) ? t.todayBg : t.surface) : t.bg, borderRadius: 12, padding: "7px 7px 5px", border: "1px solid " + (isToday(cell.day) ? "#6366f1" : isHoliday ? "#f8717150" : t.border), boxSizing: "border-box" }}>
+            <div key={i} style={{ minHeight: 92, minWidth: 0, overflow: "hidden", background: cell.cur ? (isToday(cell.day) ? t.todayBg : t.surface) : t.bg, borderRadius: 14, padding: "8px 8px 6px", border: "1px solid " + (isHoliday ? "#f8717150" : t.border), boxShadow: isToday(cell.day) ? "0 0 0 2px #6366f1" : "none", boxSizing: "border-box" }}>
               <div style={{ fontSize: 12, fontWeight: isToday(cell.day) || isHoliday ? 800 : 500, color: !cell.cur ? t.border2 : isToday(cell.day) ? "#818cf8" : isHoliday ? "#f87171" : weekdayColor(colIdx), marginBottom: isHoliday ? 1 : 4, display: "flex", justifyContent: "space-between" }}>
                 <span>{cell.day}</span>
                 {isToday(cell.day) ? <span style={{ fontSize: 9, background: "#6366f1", color: "#fff", borderRadius: 99, padding: "1px 5px", fontWeight: 700, flexShrink: 0 }}>오늘</span> : null}
@@ -1552,7 +1552,7 @@ function CombinedCalendarView(props) {
               {holidayName ? <div style={{ fontSize: 9, color: "#f87171", fontWeight: 600, marginBottom: 3, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>🎌 {holidayName}</div> : null}
               {dayItems.slice(0, 3).map(function (item) {
                 const info = COMBINED_TYPE_INFO[item.kind];
-                return <div key={item.kind + "_" + item.id} onClick={function () { handleItemClick(item); }} style={{ background: info.color + "25", border: "1px solid " + (info.color + "40"), borderRadius: 6, padding: "2px 5px", fontSize: 10, color: info.color, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 2, cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{info.icon} {item.title}</div>;
+                return <div key={item.kind + "_" + item.id} onClick={function () { handleItemClick(item); }} style={{ background: info.color + "22", border: "none", borderRadius: 7, padding: "3px 6px", fontSize: 10, color: info.color, fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 3, cursor: "pointer", maxWidth: "100%", boxSizing: "border-box" }}>{info.icon} {item.title}</div>;
               })}
               {dayItems.length > 3 ? <div onClick={function (e) { e.stopPropagation(); setDayDetail({ date: dateStr(cell.day), items: dayItems }); }} style={{ fontSize: 10, color: "#818cf8", fontWeight: 700, cursor: "pointer", textDecoration: "underline" }}>+{dayItems.length - 3}개 더보기</div> : null}
             </div>
@@ -1755,7 +1755,7 @@ function BoardView(props) {
           const colMarketing = filteredMarketing.filter(function (mt) { return getMarketingBoardStatus(mt) === col; });
           const colTotal = colTasks.length + colAds.length + colDesign.length + colMarketing.length;
           return (
-            <div key={col} style={{ background: t.surface, borderRadius: 16, padding: "13px 10px 10px", border: "1px solid " + t.border, borderTop: "3px solid " + STAGE_COLOR[col] }}>
+            <div key={col} style={{ background: t.surface, borderRadius: 18, padding: "14px 10px 10px", boxShadow: "0 1px 3px #00000015", borderTop: "3px solid " + STAGE_COLOR[col] }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <div style={{ width: 28, height: 28, borderRadius: 11, background: STAGE_COLOR[col] + "22", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, flexShrink: 0 }}>{STAGE_ICON[col]}</div>
                 <span style={{ fontWeight: 800, fontSize: 13, color: t.text2 }}>{col}</span>
@@ -1766,7 +1766,7 @@ function BoardView(props) {
                 const overdue = isOverdueVideo(tk);
                 const checked = isSelected(tk.id, "video");
                 return (
-                  <div key={tk.id} onClick={function () { if (selectMode) toggleSelect(tk.id, "video"); else onSelectTask(tk); }} style={{ display: "flex", background: checked ? "#6366f118" : t.surface2, borderRadius: 12, marginBottom: 8, cursor: "pointer", overflow: "hidden", boxShadow: "0 1px 4px #00000030", border: "1px solid " + (checked ? "#6366f1" : overdue ? "#f8717160" : t.border) }}>
+                  <div key={tk.id} onClick={function () { if (selectMode) toggleSelect(tk.id, "video"); else onSelectTask(tk); }} style={{ display: "flex", background: checked ? "#6366f118" : t.surface2, borderRadius: 14, marginBottom: 9, cursor: "pointer", overflow: "hidden", boxShadow: checked ? "0 0 0 2px #6366f1" : overdue ? "0 0 0 2px #f8717170" : "0 1px 3px #00000020", border: "none" }}>
                     <div style={{ width: 4, background: "#818cf8", flexShrink: 0 }} />
                     {selectMode ? <div style={{ display: "flex", alignItems: "center", padding: "0 0 0 10px" }}><input type="checkbox" checked={checked} onChange={function () { toggleSelect(tk.id, "video"); }} onClick={function (e) { e.stopPropagation(); }} style={{ width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer" }} /></div> : null}
                     <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
@@ -1796,7 +1796,7 @@ function BoardView(props) {
               })}
               {colAds.map(function (ad) {
                 return (
-                  <div key={ad.id} onClick={function () { if (onSelectAd) onSelectAd(ad); }} style={{ display: "flex", background: t.surface2, borderRadius: 12, marginBottom: 8, cursor: "pointer", overflow: "hidden", boxShadow: "0 1px 4px #00000030", border: "1px solid " + t.border }}>
+                  <div key={ad.id} onClick={function () { if (onSelectAd) onSelectAd(ad); }} style={{ display: "flex", background: t.surface2, borderRadius: 14, marginBottom: 9, cursor: "pointer", overflow: "hidden", boxShadow: "0 1px 3px #00000020", border: "none" }}>
                     <div style={{ width: 4, background: "#fbbf24", flexShrink: 0 }} />
                     <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
@@ -1817,7 +1817,7 @@ function BoardView(props) {
                 const overdue = isOverdueDesign(dt);
                 const checked = isSelected(dt.id, "design");
                 return (
-                  <div key={dt.id} onClick={function () { if (selectMode) toggleSelect(dt.id, "design"); else if (onSelectDesign) onSelectDesign(dt); }} style={{ display: "flex", background: checked ? "#6366f118" : t.surface2, borderRadius: 12, marginBottom: 8, cursor: "pointer", overflow: "hidden", boxShadow: "0 1px 4px #00000030", border: "1px solid " + (checked ? "#6366f1" : overdue ? "#f8717160" : t.border) }}>
+                  <div key={dt.id} onClick={function () { if (selectMode) toggleSelect(dt.id, "design"); else if (onSelectDesign) onSelectDesign(dt); }} style={{ display: "flex", background: checked ? "#6366f118" : t.surface2, borderRadius: 14, marginBottom: 9, cursor: "pointer", overflow: "hidden", boxShadow: checked ? "0 0 0 2px #6366f1" : overdue ? "0 0 0 2px #f8717170" : "0 1px 3px #00000020", border: "none" }}>
                     <div style={{ width: 4, background: "#f87171", flexShrink: 0 }} />
                     {selectMode ? <div style={{ display: "flex", alignItems: "center", padding: "0 0 0 10px" }}><input type="checkbox" checked={checked} onChange={function () { toggleSelect(dt.id, "design"); }} onClick={function (e) { e.stopPropagation(); }} style={{ width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer" }} /></div> : null}
                     <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
@@ -1841,7 +1841,7 @@ function BoardView(props) {
                 const overdue = isOverdueMarketing(mt);
                 const checked = isSelected(mt.id, "marketing");
                 return (
-                  <div key={mt.id} onClick={function () { if (selectMode) toggleSelect(mt.id, "marketing"); else if (onSelectMarketing) onSelectMarketing(mt); }} style={{ display: "flex", background: checked ? "#6366f118" : t.surface2, borderRadius: 12, marginBottom: 8, cursor: "pointer", overflow: "hidden", boxShadow: "0 1px 4px #00000030", border: "1px solid " + (checked ? "#6366f1" : overdue ? "#f8717160" : t.border) }}>
+                  <div key={mt.id} onClick={function () { if (selectMode) toggleSelect(mt.id, "marketing"); else if (onSelectMarketing) onSelectMarketing(mt); }} style={{ display: "flex", background: checked ? "#6366f118" : t.surface2, borderRadius: 14, marginBottom: 9, cursor: "pointer", overflow: "hidden", boxShadow: checked ? "0 0 0 2px #6366f1" : overdue ? "0 0 0 2px #f8717170" : "0 1px 3px #00000020", border: "none" }}>
                     <div style={{ width: 4, background: "#fb923c", flexShrink: 0 }} />
                     {selectMode ? <div style={{ display: "flex", alignItems: "center", padding: "0 0 0 10px" }}><input type="checkbox" checked={checked} onChange={function () { toggleSelect(mt.id, "marketing"); }} onClick={function (e) { e.stopPropagation(); }} style={{ width: 15, height: 15, accentColor: "#6366f1", cursor: "pointer" }} /></div> : null}
                     <div style={{ flex: 1, padding: "10px 12px", minWidth: 0 }}>
