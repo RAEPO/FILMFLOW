@@ -263,8 +263,11 @@ function MediaPreview(props) {
   return null;
 }
 function MentionText(props) {
-  const names = (props.users || []).map(function (u) { return u.name; });
-  const parts = String(props.text || "").split(/(@\S+)/g);
+  const names = (props.users || []).map(function (u) { return u.name; }).filter(Boolean).sort(function (a, b) { return b.length - a.length; });
+  if (names.length === 0) return <span>{props.text}</span>;
+  const escaped = names.map(function (n) { return n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); });
+  const pattern = new RegExp("(@(?:" + escaped.join("|") + "))", "g");
+  const parts = String(props.text || "").split(pattern);
   return <span>{parts.map(function (part, i) {
     if (part.charAt(0) === "@" && names.indexOf(part.slice(1)) !== -1) return <span key={i} style={{ color: "#818cf8", fontWeight: 700 }}>{part}</span>;
     return <span key={i}>{part}</span>;
@@ -1041,14 +1044,18 @@ function TaskDetailModal(props) {
     onUpdate(Object.assign({}, task, { comments: comments.concat([{ id: "c_" + Date.now(), author: currentUser.name, text: trimmed, time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }]) }));
     if (onNotify && task.assignee && task.assignee !== currentUser.name) onNotify(task.assignee, currentUser.name, task.title, trimmed);
     if (onNotify) {
-      const mentionMatches = trimmed.match(/@\S+/g) || [];
-      const mentionedNames = mentionMatches.map(function (m) { return m.slice(1); });
+      const namesSorted = users.map(function (u) { return u.name; }).filter(Boolean).sort(function (a, b) { return b.length - a.length; });
       const notifiedAlready = { [currentUser.name]: true };
       if (task.assignee) notifiedAlready[task.assignee] = true;
-      mentionedNames.forEach(function (name) {
-        const match = users.find(function (u) { return u.name === name; });
-        if (match && !notifiedAlready[match.name]) { onNotify(match.name, currentUser.name, task.title, "@멘션: " + trimmed); notifiedAlready[match.name] = true; }
-      });
+      if (namesSorted.length > 0) {
+        const escaped = namesSorted.map(function (n) { return n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); });
+        const pattern = new RegExp("@(?:" + escaped.join("|") + ")", "g");
+        const found = trimmed.match(pattern) || [];
+        found.forEach(function (m) {
+          const name = m.slice(1);
+          if (!notifiedAlready[name]) { onNotify(name, currentUser.name, task.title, "@멘션: " + trimmed); notifiedAlready[name] = true; }
+        });
+      }
     }
     setComment("");
   };
