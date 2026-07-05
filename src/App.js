@@ -1239,13 +1239,17 @@ function AddTaskModal(props) {
 
 function CalendarView(props) {
   const { t } = useTheme();
-  const { tasks, onSelectTask, onAddTask, ads, onMove, onDelete, onSelectAd, onBulkDelete, onBulkAssign, users } = props;
+  const { tasks, onSelectTask, onAddTask, ads, onMove, onDelete, onSelectAd, onBulkDelete, onBulkAssign, users, currentUser } = props;
   const videoMode = props.videoMode !== false;
   const stageList = props.stages || STAGES;
   const stageColorMap = props.stageColor || STAGE_COLOR;
   const stageIconMap = props.stageIcon || STAGE_ICON;
   const taskLabel = props.taskLabel || "제작 영상";
   const taskUnitLabel = props.taskUnitLabel || "영상";
+  const categoryOptions = props.categoryOptions || null;
+  const categoryField = props.categoryField || "category";
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [myTasksOnly, setMyTasksOnly] = useState(false);
   const today = new Date();
   const [year, setYear] = useState(today.getFullYear());
   const [month, setMonth] = useState(today.getMonth());
@@ -1271,9 +1275,14 @@ function CalendarView(props) {
       if (ad.expectedDate) adItems.push({ id: "ad_exp_" + ad.id, due: ad.expectedDate, title: label, kind: "adExpected", status: ad.workStatus || "기획중" });
     }
   }
+  const filteredTasks = tasks.filter(function (tk) {
+    if (categoryFilter !== "all" && tk[categoryField] !== categoryFilter) return false;
+    if (myTasksOnly && currentUser && tk.assignee !== currentUser.name) return false;
+    return true;
+  });
   const getDayItems = function (d) {
     const ds = dateStr(d), taskItems = [];
-    for (let k = 0; k < tasks.length; k++) if (tasks[k].due === ds) { const copy = Object.assign({}, tasks[k]); copy.kind = "task"; taskItems.push(copy); }
+    for (let k = 0; k < filteredTasks.length; k++) if (filteredTasks[k].due === ds) { const copy = Object.assign({}, filteredTasks[k]); copy.kind = "task"; taskItems.push(copy); }
     const adsForDay = [];
     for (let k = 0; k < adItems.length; k++) if (adItems[k].due === ds) adsForDay.push(adItems[k]);
     return taskItems.concat(adsForDay);
@@ -1282,7 +1291,7 @@ function CalendarView(props) {
   const goPrevMonth = function () { if (month === 0) { setMonth(11); setYear(year - 1); } else setMonth(month - 1); };
   const goNextMonth = function () { if (month === 11) { setMonth(0); setYear(year + 1); } else setMonth(month + 1); };
   const monthPrefix = year + "-" + pad(month + 1);
-  const monthTasksUnsorted = tasks.filter(function (tk) { return tk.due && tk.due.indexOf(monthPrefix) === 0; });
+  const monthTasksUnsorted = filteredTasks.filter(function (tk) { return tk.due && tk.due.indexOf(monthPrefix) === 0; });
   const monthTasks = monthTasksUnsorted.slice().sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : 0; });
   const monthAdsUnsorted = adItems.filter(function (a) { return a.due && a.due.indexOf(monthPrefix) === 0; });
   const monthAds = monthAdsUnsorted.slice().sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : 0; });
@@ -1307,6 +1316,17 @@ function CalendarView(props) {
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><div style={{ width: 9, height: 9, borderRadius: 4, background: "#38bdf8" }} /><span style={{ fontSize: 11, color: t.text4 }}>광고 예상완료일</span></div>
         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ fontSize: 11 }}>🎌</span><span style={{ fontSize: 11, color: t.text4 }}>공휴일</span></div>
         {videoMode ? <div style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ fontSize: 11 }}>⏰</span><span style={{ fontSize: 11, color: t.text4 }}>시작 지연 (시작일 지났는데 기획 단계)</span></div> : null}
+      </div>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 14, flexWrap: "wrap" }}>
+        {categoryOptions ? (
+          <select value={categoryFilter} onChange={function (e) { setCategoryFilter(e.target.value); }} style={{ background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "6px 10px", fontSize: 12, color: t.text, outline: "none", cursor: "pointer" }}>
+            <option value="all">전체 업무 종류</option>
+            {categoryOptions.map(function (c) { return <option key={c} value={c}>{c}</option>; })}
+          </select>
+        ) : null}
+        {currentUser ? (
+          <button onClick={function () { setMyTasksOnly(!myTasksOnly); }} style={{ background: myTasksOnly ? "#6366f1" : t.surface2, border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: myTasksOnly ? "#fff" : t.text3, cursor: "pointer" }}>👤 내 업무만</button>
+        ) : null}
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7,minmax(0,1fr))", marginBottom: 4 }}>
         {WEEKDAYS.map(function (w, i) { return <div key={w} style={{ textAlign: "center", fontSize: 11, fontWeight: 700, padding: "6px 0", color: weekdayColor(i) }}>{w}</div>; })}
@@ -1609,10 +1629,11 @@ function CombinedCalendarView(props) {
 
 function BoardView(props) {
   const { t } = useTheme();
-  const { tasks, onSelectTask, onMove, onDelete, users, ads, onSelectAd, designTasks, onSelectDesign, marketingTasks, onSelectMarketing, onBulkDeleteTasks, onBulkAssignTasks, onBulkDeleteMarketing, onBulkAssignMarketing, onBulkDeleteDesign, onBulkAssignDesign } = props;
+  const { tasks, onSelectTask, onMove, onDelete, users, ads, onSelectAd, designTasks, onSelectDesign, marketingTasks, onSelectMarketing, onBulkDeleteTasks, onBulkAssignTasks, onBulkDeleteMarketing, onBulkAssignMarketing, onBulkDeleteDesign, onBulkAssignDesign, currentUser } = props;
   const [selectMode, setSelectMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [bulkAssignee, setBulkAssignee] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const toggleSelect = function (id, type) {
     setSelectedItems(function (prev) {
       const exists = prev.find(function (x) { return x.id === id && x.type === type; });
@@ -1632,6 +1653,7 @@ function BoardView(props) {
   const years = [...new Set(tasks.map(function (tk) { return tk.due && tk.due.slice(0, 4); }).filter(Boolean))].sort();
   if (years.indexOf(String(today.getFullYear())) === -1) years.push(String(today.getFullYear()));
   let filtered = filterMember === "전체" ? tasks : tasks.filter(function (tk) { return tk.assignee === filterMember; });
+  if (categoryFilter !== "all") filtered = filtered.filter(function (tk) { return tk.category === categoryFilter; });
   if (monthFilter === "month") { const prefix = selYear + "-" + pad(selMonth); filtered = filtered.filter(function (tk) { return tk.due && tk.due.indexOf(prefix) === 0; }); }
   let filteredAds = ads || [];
   if (filterMember !== "전체") filteredAds = filteredAds.filter(function (ad) { return ad.requester === filterMember; });
@@ -1719,8 +1741,13 @@ function BoardView(props) {
           <span style={{ fontSize: 12, color: t.text4, marginLeft: "auto" }}>{totalItems}개 항목</span>
         </div>
       </div>
-      <div style={{ display: "flex", gap: 6, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
         {memberNames.map(function (m) { return <button key={m} onClick={function () { setFilterMember(m); }} style={filterBtnStyle(filterMember === m)}>{m}</button>; })}
+        {currentUser ? <button onClick={function () { setFilterMember(filterMember === currentUser.name ? "전체" : currentUser.name); }} style={filterBtnStyle(filterMember === currentUser.name)}>👤 내 업무만</button> : null}
+        <select value={categoryFilter} onChange={function (e) { setCategoryFilter(e.target.value); }} style={{ background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "5px 10px", fontSize: 12, color: t.text, outline: "none", cursor: "pointer", marginLeft: "auto" }}>
+          <option value="all">영상 업무 종류: 전체</option>
+          {TASK_CATEGORIES.map(function (c) { return <option key={c} value={c}>{c}</option>; })}
+        </select>
       </div>
       <div style={{ overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch", paddingBottom: 4, margin: "0 -2px" }}>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(200px,1fr))", gap: 12, minWidth: 900 }}>
@@ -2411,11 +2438,13 @@ function HomePanel(props) {
   const todayStr = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
   const in7 = new Date(today); in7.setDate(in7.getDate() + 7);
   const in7Str = in7.getFullYear() + "-" + pad(in7.getMonth() + 1) + "-" + pad(in7.getDate());
-  const TYPE_INFO = { video: { icon: "🎬", label: "영상", color: "#818cf8", firstStage: STAGES[0] }, marketing: { icon: "🗓️", label: "마케팅", color: "#fb923c", firstStage: MARKETING_STAGES[0] }, design: { icon: "🎨", label: "디자인", color: "#f87171", firstStage: DESIGN_STAGES[0] } };
+  const TYPE_INFO = { video: { icon: "🎬", label: "영상", color: "#818cf8", firstStage: STAGES[0], reviewStage: STAGES[STAGES.length - 2] }, marketing: { icon: "🗓️", label: "마케팅", color: "#fb923c", firstStage: MARKETING_STAGES[0], reviewStage: MARKETING_STAGES[MARKETING_STAGES.length - 2] }, design: { icon: "🎨", label: "디자인", color: "#f87171", firstStage: DESIGN_STAGES[0], reviewStage: DESIGN_STAGES[DESIGN_STAGES.length - 2] } };
+  const canApprove = currentUser.role === "admin" || currentUser.role === "manager";
   const withKind = function (list, kind) { return list.map(function (tk) { return Object.assign({}, tk, { kind: kind }); }); };
   const all = withKind(videoTasks, "video").concat(withKind(marketingTasks, "marketing")).concat(withKind(designTasks, "design"));
   const isDone = function (item) { if (item.kind === "video") return item.status === "업무 완료"; return item.status === "완료"; };
   const isOverdueItem = function (item) { return item.due && item.due < todayStr && item.status === TYPE_INFO[item.kind].firstStage; };
+  const pendingApproval = canApprove ? all.filter(function (item) { return item.status === TYPE_INFO[item.kind].reviewStage; }) : [];
   const myActive = all.filter(function (item) { return item.assignee === currentUser.name && !isDone(item); });
   const overdueAll = all.filter(isOverdueItem);
   const upcoming = all.filter(function (item) { return item.due && item.due >= todayStr && item.due <= in7Str && !isDone(item); }).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
@@ -2440,7 +2469,17 @@ function HomePanel(props) {
         <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#f87171" }}>{overdueAll.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>전체 시작 지연</div></div>
         <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#fbbf24" }}>{todayItems.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>오늘 시작 예정</div></div>
         <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#34d399" }}>{upcoming.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>7일 내 예정</div></div>
+        {canApprove ? <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#38bdf8" }}>{pendingApproval.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>승인 대기</div></div> : null}
       </div>
+      {canApprove && pendingApproval.length > 0 ? (
+        <div style={Object.assign({}, s, { border: "1px solid #38bdf840" })}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8", marginBottom: 10 }}>✅ 승인 대기 업무 ({pendingApproval.length})</div>
+          {pendingApproval.slice(0, 6).map(function (item) {
+            const info = TYPE_INFO[item.kind];
+            return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0 }}>{info.icon} {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span><Avatar name={item.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text4 }}>{item.assignee}</span></div>;
+          })}
+        </div>
+      ) : null}
       {overdueAll.length > 0 ? (
         <div style={Object.assign({}, s, { border: "1px solid #f8717140" })}>
           <div style={{ fontSize: 12, fontWeight: 700, color: "#f87171", marginBottom: 10 }}>⏰ 시작 지연 업무 ({overdueAll.length})</div>
@@ -2972,10 +3011,10 @@ export default function App() {
           {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} visibleTabs={vt} setVisibleTabs={function (v) { setVisibleTabsRaw(v); }} tasks={tasks} onUpdateTasks={setTasksRaw} /> : null}
           {tab === "home" ? <HomePanel currentUser={currentUser} users={users} videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} /> : null}
           {tab === "unified" ? <CombinedCalendarView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onSelectAd={function () { setTab("ad"); }} users={users} onBulkDeleteVideo={isViewer ? null : bulkDeleteTasks} onBulkAssignVideo={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} /> : null}
-          {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} onSelectAd={function () { setTab("ad"); }} onBulkDelete={isViewer ? null : bulkDeleteTasks} onBulkAssign={isViewer ? null : bulkAssignTasks} users={users} /> : null}
-          {tab === "adCalendar" ? <CalendarView tasks={marketingTasks} onSelectTask={setSelectedMarketingTask} onAddTask={isViewer ? function () {} : openAddMarketing} ads={adsData} onMove={isViewer ? null : moveMarketingTask} onDelete={isViewer ? null : deleteMarketingTask} onSelectAd={function () { setTab("ad"); }} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} taskLabel="마케팅 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssign={isViewer ? null : bulkAssignMarketingTasks} users={users} /> : null}
-          {tab === "designCalendar" ? <CalendarView tasks={designTasks} onSelectTask={setSelectedDesignTask} onAddTask={isViewer ? function () {} : openAddDesign} ads={[]} onMove={isViewer ? null : moveDesignTask} onDelete={isViewer ? null : deleteDesignTask} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} taskLabel="디자인 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteDesignTasks} onBulkAssign={isViewer ? null : bulkAssignDesignTasks} users={users} /> : null}
-          {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} ads={adsData} onSelectAd={function () { setTab("ad"); }} designTasks={designTasks} onSelectDesign={setSelectedDesignTask} marketingTasks={marketingTasks} onSelectMarketing={setSelectedMarketingTask} onBulkDeleteTasks={isViewer ? null : bulkDeleteTasks} onBulkAssignTasks={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} /> : null}
+          {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} onSelectAd={function () { setTab("ad"); }} onBulkDelete={isViewer ? null : bulkDeleteTasks} onBulkAssign={isViewer ? null : bulkAssignTasks} users={users} currentUser={currentUser} categoryOptions={TASK_CATEGORIES} categoryField="category" /> : null}
+          {tab === "adCalendar" ? <CalendarView tasks={marketingTasks} onSelectTask={setSelectedMarketingTask} onAddTask={isViewer ? function () {} : openAddMarketing} ads={adsData} onMove={isViewer ? null : moveMarketingTask} onDelete={isViewer ? null : deleteMarketingTask} onSelectAd={function () { setTab("ad"); }} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} taskLabel="마케팅 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssign={isViewer ? null : bulkAssignMarketingTasks} users={users} currentUser={currentUser} categoryOptions={MARKETING_TAGS} categoryField="tag" /> : null}
+          {tab === "designCalendar" ? <CalendarView tasks={designTasks} onSelectTask={setSelectedDesignTask} onAddTask={isViewer ? function () {} : openAddDesign} ads={[]} onMove={isViewer ? null : moveDesignTask} onDelete={isViewer ? null : deleteDesignTask} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} taskLabel="디자인 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteDesignTasks} onBulkAssign={isViewer ? null : bulkAssignDesignTasks} users={users} currentUser={currentUser} categoryOptions={DESIGN_TAGS} categoryField="tag" /> : null}
+          {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} ads={adsData} onSelectAd={function () { setTab("ad"); }} designTasks={designTasks} onSelectDesign={setSelectedDesignTask} marketingTasks={marketingTasks} onSelectMarketing={setSelectedMarketingTask} onBulkDeleteTasks={isViewer ? null : bulkDeleteTasks} onBulkAssignTasks={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} currentUser={currentUser} /> : null}
           {tab === "ad" ? <AdPanel onAdsChange={setAdsData} onNewAd={sendAdNotification} currentUser={currentUser} /> : null}
           {tab === "stats" ? <div style={{ maxWidth: 760, margin: "0 auto" }}><StatsPanel videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} currentUser={currentUser} /></div> : null}
           {tab === "overtime" ? <OvertimePanel currentUser={currentUser} users={users} isAdmin={isAdmin} /> : null}
