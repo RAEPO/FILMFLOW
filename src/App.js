@@ -596,7 +596,7 @@ function AdminPanel(props) {
                     <div style={{ fontSize: 11, color: t.text4, marginTop: 2 }}>{u.dept} · {u.rank} / {u.position} · {u.mobile}</div>
                   </div>
                   <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                    <button onClick={function () { toggleRole(u.id); }} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 10, padding: "5px 10px", fontSize: 11, color: t.text3, cursor: "pointer" }}>{ROLE_LABEL[ROLE_ORDER[(ROLE_ORDER.indexOf(u.role) + 1) % ROLE_ORDER.length]]}로 변경</button>
+                    <button onClick={function () { toggleRole(u.id); }} style={{ background: t.surface2, border: "none", borderRadius: 10, padding: "5px 10px", fontSize: 11, color: t.text3, cursor: "pointer" }}>{ROLE_LABEL[ROLE_ORDER[(ROLE_ORDER.indexOf(u.role) + 1) % ROLE_ORDER.length]]}로 변경</button>
                     <button onClick={function () { resetPassword(u.id, u.name); }} style={{ background: "#fbbf2420", border: "1px solid #fbbf2440", borderRadius: 10, padding: "5px 10px", fontSize: 11, color: "#fbbf24", cursor: "pointer" }}>🔑 비밀번호 초기화</button>
                     <button onClick={function () { deleteUser(u.id); }} style={{ background: "#f8717120", border: "1px solid #f8717140", borderRadius: 10, padding: "5px 10px", fontSize: 11, color: "#f87171", cursor: "pointer" }}>삭제</button>
                   </div>
@@ -619,7 +619,7 @@ function AdminPanel(props) {
               <input type="checkbox" checked={noticeForm.active} onChange={function (e) { setNoticeForm(function (f) { return Object.assign({}, f, { active: e.target.checked }); }); }} style={{ accentColor: "#6366f1", width: 15, height: 15 }} /> 즉시 공개
             </label>
             <div style={{ display: "flex", gap: 8 }}>
-              {editNotice ? <button onClick={function () { setEditNotice(null); setNoticeForm({ title: "", content: "", active: true }); }} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border, borderRadius: 11, padding: "9px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button> : null}
+              {editNotice ? <button onClick={function () { setEditNotice(null); setNoticeForm({ title: "", content: "", active: true }); }} style={{ flex: 1, background: t.surface2, border: "none", borderRadius: 11, padding: "9px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button> : null}
               <button onClick={addNotice} style={{ flex: 1, background: "#6366f1", border: "none", borderRadius: 11, padding: "9px 0", cursor: "pointer", color: "#fff", fontWeight: 700 }}>{editNotice ? "수정 완료" : "공지 등록"}</button>
             </div>
           </div>
@@ -637,7 +637,7 @@ function AdminPanel(props) {
                     <div style={{ fontSize: 12, color: t.text4 }}>{n.content}</div>
                   </div>
                   <div style={{ display: "flex", gap: 5, flexShrink: 0 }}>
-                    <button onClick={function () { onUpdateNotices(notices.map(function (x) { return x.id === n.id ? Object.assign({}, x, { active: !x.active }) : x; })); }} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 8, padding: "4px 10px", fontSize: 11, color: t.text3, cursor: "pointer" }}>{n.active ? "숨기기" : "공개"}</button>
+                    <button onClick={function () { onUpdateNotices(notices.map(function (x) { return x.id === n.id ? Object.assign({}, x, { active: !x.active }) : x; })); }} style={{ background: t.surface2, border: "none", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: t.text3, cursor: "pointer" }}>{n.active ? "숨기기" : "공개"}</button>
                     <button onClick={function () { setEditNotice(n.id); setNoticeForm({ title: n.title, content: n.content, active: n.active }); }} style={{ background: "#6366f120", border: "1px solid #6366f140", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "#818cf8", cursor: "pointer" }}>수정</button>
                     <button onClick={function () { onUpdateNotices(notices.filter(function (x) { return x.id !== n.id; })); }} style={{ background: "#f8717120", border: "1px solid #f8717140", borderRadius: 8, padding: "4px 10px", fontSize: 11, color: "#f87171", cursor: "pointer" }}>삭제</button>
                   </div>
@@ -1097,7 +1097,7 @@ function TaskDetailModal(props) {
             </label>
           ) : null}
           <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={function () { setEditMode(false); }} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 11, padding: "10px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
+            <button onClick={function () { setEditMode(false); }} style={{ flex: 1, background: t.surface2, border: "none", borderRadius: 11, padding: "10px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
             <button onClick={saveEdit} style={{ flex: 1, background: "#6366f1", border: "none", borderRadius: 11, padding: "10px 0", cursor: "pointer", color: "#fff", fontWeight: 700 }}>저장</button>
           </div>
         </div>
@@ -1253,7 +1253,7 @@ function AddTaskModal(props) {
         {form.repeat !== "없음" ? <div style={{ fontSize: 11, color: t.text4, marginBottom: 11, background: t.bg, borderRadius: 10, padding: "7px 10px" }}>작업 시작일부터 {form.repeat}으로 {form.repeatCount || 1}개 일정이 한 번에 등록돼요.</div> : null}
         <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>📎 결과물 링크 (유튜브·피그마·구글드라이브·PDF·이미지·동영상·오디오 자동 미리보기)</div><input value={form.fileUrl} onChange={function (e) { set("fileUrl", e.target.value); }} placeholder="https://..." style={inp} /></div>
         <div style={{ display: "flex", gap: 8, marginTop: 18 }}>
-          <button onClick={onClose} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 11, padding: "10px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
+          <button onClick={onClose} style={{ flex: 1, background: t.surface2, border: "none", borderRadius: 11, padding: "10px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
           <button onClick={submit} style={{ flex: 1, background: "#6366f1", border: "none", borderRadius: 11, padding: "10px 0", cursor: "pointer", color: "#fff", fontWeight: 700 }}>추가</button>
         </div>
       </div>
@@ -2065,7 +2065,7 @@ function AdDetailModal(props) {
           {fields.map(function (item) { const l = item[0], k = item[1], tp = item[2]; return <div key={k} style={{ gridColumn: tp === "textarea" ? "1/-1" : "auto" }}>{lbl(l)}{tp === "textarea" ? <textarea value={form[k] || ""} onChange={function (e) { set(k, e.target.value); }} style={ta} /> : <input type={tp || "text"} value={form[k] || ""} onChange={function (e) { set(k, e.target.value); }} style={inp} />}</div>; })}
         </div>
         <div style={{ padding: "12px 22px 18px", borderTop: "1px solid " + t.border, display: "flex", gap: 8 }}>
-          <button onClick={onClose} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 11, padding: "9px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
+          <button onClick={onClose} style={{ flex: 1, background: t.surface2, border: "none", borderRadius: 11, padding: "9px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
           <button onClick={function () { onUpdate(form); onClose(); }} style={{ flex: 1, background: "#6366f1", border: "none", borderRadius: 11, padding: "9px 0", cursor: "pointer", color: "#fff", fontWeight: 700 }}>저장</button>
         </div>
       </div>
@@ -2166,7 +2166,7 @@ function OvertimeEntryModal(props) {
         <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{isEntry ? "야근 시간 (시간 단위, 예: 2.5)" : "사용 시간 (시간 단위, 예: 4)"}</div><input type="number" step="0.5" min="0" value={form.hours} onChange={function (e) { set("hours", e.target.value); }} placeholder="예: 2.5" style={inp} /></div>
         <div style={{ marginBottom: 18 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{isEntry ? "사유" : "메모"}</div><input value={form.note} onChange={function (e) { set("note", e.target.value); }} placeholder={isEntry ? "예: 편집 마감 대응" : "예: 반차로 사용"} style={inp} /></div>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={onClose} style={{ flex: 1, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 11, padding: "10px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
+          <button onClick={onClose} style={{ flex: 1, background: t.surface2, border: "none", borderRadius: 11, padding: "10px 0", cursor: "pointer", color: t.text3, fontWeight: 600 }}>취소</button>
           <button onClick={submit} style={{ flex: 1, background: isEntry ? "#6366f1" : "#fb923c", border: "none", borderRadius: 11, padding: "10px 0", cursor: "pointer", color: "#fff", fontWeight: 700 }}>추가</button>
         </div>
       </div>
@@ -2918,7 +2918,7 @@ export default function App() {
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", rowGap: 6 }}>
             <button onClick={function () { setShowSearch(true); }} style={{ background: t.surface2, border: "none", borderRadius: 20, padding: "8px 11px", cursor: "pointer", fontSize: 15 }}>🔍</button>
             <NotificationBell notifications={notifications || []} currentUser={currentUser} onMarkRead={markNotifRead} onMarkAllRead={markAllNotifsRead} onClickNotif={handleNotifClick} overdueItems={myOverdueItems} onClickOverdue={handleOverdueClick} />
-            <div style={{ display: "flex", alignItems: "center", background: t.surface2, border: "1px solid " + t.border, borderRadius: 12, padding: 3, gap: 2 }}>
+            <div style={{ display: "flex", alignItems: "center", background: t.surface2, border: "none", borderRadius: 12, padding: 3, gap: 2 }}>
               <button onClick={function () { setIsDark(false); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: !isDark ? "#fff" : "transparent", color: !isDark ? "#1e293b" : t.text4, fontWeight: !isDark ? 700 : 500, fontSize: 12 }}>☀️ 일반</button>
               <button onClick={function () { setIsDark(true); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: isDark ? "#1e293b" : "transparent", color: isDark ? "#818cf8" : t.text4, fontWeight: isDark ? 700 : 500, fontSize: 12 }}>🌙 다크</button>
             </div>
@@ -2928,12 +2928,12 @@ export default function App() {
                 {myUnreadMessages > 0 ? <span style={{ position: "absolute", top: -4, right: -4, background: "#f87171", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 99, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}
               </button>
             ) : null}
-            <div style={{ display: "flex", alignItems: "center", gap: 7, background: t.surface2, border: "1px solid " + t.border, borderRadius: 12, padding: "5px 12px" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, background: t.surface2, border: "none", borderRadius: 12, padding: "5px 12px" }}>
               <Avatar name={currentUser.name} size={22} users={users} />
               <div><div style={{ fontSize: 12, fontWeight: 700, color: t.text }}>{currentUser.name}</div><div style={{ fontSize: 10, color: t.text4 }}>{currentUser.rank} · {currentUser.position}</div></div>
             </div>
-            <button onClick={function () { setShowProfile(true); }} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 10, padding: "7px 12px", fontSize: 12, color: t.text4, cursor: "pointer" }}>⚙️ 내 정보</button>
-            <button onClick={function () { setCurrentUser(null); }} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 10, padding: "7px 12px", fontSize: 12, color: t.text4, cursor: "pointer" }}>로그아웃</button>
+            <button onClick={function () { setShowProfile(true); }} style={{ background: t.surface2, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, color: t.text4, cursor: "pointer" }}>⚙️ 내 정보</button>
+            <button onClick={function () { setCurrentUser(null); }} style={{ background: t.surface2, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, color: t.text4, cursor: "pointer" }}>로그아웃</button>
             {!isAdmin && !isViewer ? <button onClick={function () { openAdd(); }} style={{ background: "#6366f1", border: "none", borderRadius: 10, padding: "7px 15px", fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer" }}>+ 추가</button> : null}
           </div>
         </div>
