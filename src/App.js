@@ -169,34 +169,6 @@ function downloadCSV(filename, rows) {
   URL.revokeObjectURL(url);
 }
 
-function downloadICS(filename, events) {
-  if (!events || events.length === 0) { alert("내보낼 일정이 없습니다."); return; }
-  const escapeText = function (s) { return String(s || "").replace(/[\n\r]/g, " ").replace(/([,;])/g, "\\$1"); };
-  const lines = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//TIMBEL//Scheduler//KO", "CALSCALE:GREGORIAN"];
-  events.forEach(function (ev, i) {
-    const d = (ev.date || "").replace(/-/g, "");
-    if (!d) return;
-    lines.push("BEGIN:VEVENT");
-    lines.push("UID:" + i + "-" + Date.now() + "@timbel-scheduler");
-    lines.push("DTSTAMP:" + new Date().toISOString().replace(/[-:]/g, "").split(".")[0] + "Z");
-    lines.push("DTSTART;VALUE=DATE:" + d);
-    lines.push("DTEND;VALUE=DATE:" + d);
-    lines.push("SUMMARY:" + escapeText(ev.title));
-    if (ev.description) lines.push("DESCRIPTION:" + escapeText(ev.description));
-    lines.push("END:VEVENT");
-  });
-  lines.push("END:VCALENDAR");
-  const blob = new Blob([lines.join("\r\n")], { type: "text/calendar;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = filename;
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  URL.revokeObjectURL(url);
-}
-
 function useFirebaseData(path, defaultVal) {
   const [data, setData] = useState(defaultVal);
   const [ready, setReady] = useState(false);
@@ -2459,14 +2431,9 @@ function HomePanel(props) {
   const s = { background: t.surface, borderRadius: 15, padding: "15px 17px", border: "1px solid " + t.border };
   return (
     <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ background: "linear-gradient(135deg,#6366f1,#818cf8)", borderRadius: 16, padding: "18px 22px", display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10 }}>
-        <div>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>안녕하세요, {currentUser.name}님 👋</div>
-          <div style={{ fontSize: 12, color: "#ffffffcc", marginTop: 3 }}>{today.getFullYear()}년 {today.getMonth() + 1}월 {today.getDate()}일 오늘의 업무 현황이에요</div>
-        </div>
-        <button onClick={function () {
-          downloadICS("내_업무_일정.ics", myActive.map(function (item) { return { title: "[" + TYPE_INFO[item.kind].label + "] " + item.title, date: item.due, description: (item.desc || "") + " (담당: " + item.assignee + ", 단계: " + item.status + ")" }; }));
-        }} style={{ background: "#ffffff25", border: "1px solid #ffffff40", borderRadius: 11, padding: "8px 14px", fontWeight: 700, fontSize: 12, color: "#fff", cursor: "pointer", whiteSpace: "nowrap" }}>📅 내 캘린더로 내보내기 (.ics)</button>
+      <div style={{ background: "linear-gradient(135deg,#6366f1,#818cf8)", borderRadius: 16, padding: "18px 22px" }}>
+        <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>안녕하세요, {currentUser.name}님 👋</div>
+        <div style={{ fontSize: 12, color: "#ffffffcc", marginTop: 3 }}>{today.getFullYear()}년 {today.getMonth() + 1}월 {today.getDate()}일 오늘의 업무 현황이에요</div>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
         <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#818cf8" }}>{myActive.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>내 진행중 업무</div></div>
