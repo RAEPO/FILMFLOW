@@ -123,7 +123,7 @@ const WORK_COLOR = { "대기": "#6b7280", "기획중": "#818cf8", "작업중": "
 const AVATAR_COLORS = ["#6366f1", "#ec4899", "#fb923c", "#34d399", "#38bdf8", "#c084fc", "#f87171"];
 const ALL_TABS = [
   { id: "home", icon: Home, text: "홈" }, { id: "unified", icon: LayoutGrid, text: "통합 캘린더" }, { id: "calendar", icon: Calendar, text: "영상 캘린더" }, { id: "adCalendar", icon: CalendarDays, text: "마케팅 캘린더" }, { id: "designCalendar", icon: Palette, text: "디자인 캘린더" }, { id: "board", icon: Kanban, text: "제작 보드" },
-  { id: "ad", icon: Megaphone, text: "광고 관리" }, { id: "stats", icon: BarChart3, text: "통계" }, { id: "overtime", icon: Clock, text: "야근 기록" }, { id: "messages", icon: MessageCircle, text: "메시지(메모)" }, { id: "ai", icon: Bot, text: "AI 분석" }, { id: "activity", icon: History, text: "활동 로그" },
+  { id: "ad", icon: Megaphone, text: "광고 제작 관리" }, { id: "stats", icon: BarChart3, text: "통계" }, { id: "overtime", icon: Clock, text: "야근 기록" }, { id: "messages", icon: MessageCircle, text: "메시지(메모)" }, { id: "ai", icon: Bot, text: "AI 분석" }, { id: "activity", icon: History, text: "활동 로그" },
 ];
 const ADMIN_USER = { id: "admin", name: "admin", dept: "경영진", rank: "대표", position: "관리자", officePhone: "", mobile: "", role: "admin", approved: true };
 const ROLE_COLOR = { "admin": "#f87171", "manager": "#fbbf24", "member": "#34d399", "viewer": "#94a3b8" };
@@ -334,7 +334,7 @@ function NotificationBell(props) {
                       {!read ? <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#6366f1", marginTop: 5, flexShrink: 0 }} /> : null}
                       <div style={{ flex: 1 }}>
                         {n.kind === "ad" ? (
-                          <div style={{ fontSize: 12, color: t.text2, lineHeight: 1.5 }}><b style={{ color: t.text }}>{n.fromUser}</b> 님이 <b style={{ color: "#fbbf24" }}>광고 관리</b>에 새 항목을 등록했습니다</div>
+                          <div style={{ fontSize: 12, color: t.text2, lineHeight: 1.5 }}><b style={{ color: t.text }}>{n.fromUser}</b> 님이 <b style={{ color: "#fbbf24" }}>광고 제작 관리</b>에 새 항목을 등록했습니다</div>
                         ) : (
                           <div style={{ fontSize: 12, color: t.text2, lineHeight: 1.5 }}><b style={{ color: t.text }}>{n.fromUser}</b> 님이 <b style={{ color: "#818cf8" }}>{n.taskTitle}</b>에 코멘트를 남겼습니다</div>
                         )}
@@ -1818,7 +1818,7 @@ function BoardView(props) {
       <div style={{ fontSize: 11, color: t.text4, marginBottom: 10, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#818cf8" }} /><Film size={11} strokeWidth={2} /> 영상 캘린더 항목</span>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#fb923c" }} /><CalendarDays size={11} strokeWidth={2} /> 마케팅 캘린더 항목</span>
-        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#fbbf24" }} /><Megaphone size={11} strokeWidth={2} /> 광고 관리 항목</span>
+        <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#fbbf24" }} /><Megaphone size={11} strokeWidth={2} /> 광고 제작 관리 항목</span>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#f87171" }} /><Palette size={11} strokeWidth={2} /> 디자인 캘린더 항목</span>
         <span style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ display: "inline-flex", width: 10, height: 10, borderRadius: 4, background: "#f87171", border: "1px solid #fff" }} /><Clock size={11} strokeWidth={2} /> 시작 지연 (시작일 지났는데 기획 단계)</span>
       </div>
