@@ -142,6 +142,12 @@ const KOREAN_HOLIDAYS = {
   "2027-10-09": "한글날", "2027-10-11": "한글날 대체공휴일", "2027-12-25": "성탄절",
 };
 
+function isRestDay(ds) {
+  if (KOREAN_HOLIDAYS[ds]) return true;
+  const dow = new Date(ds + "T00:00:00").getDay();
+  return dow === 0 || dow === 6;
+}
+
 function trimArray(arr, maxLen) {
   if (!arr || arr.length <= maxLen) return arr || [];
   return arr.slice(arr.length - maxLen);
@@ -1359,7 +1365,7 @@ function CalendarView(props) {
     return true;
   });
   const isInDateRange = function (tk, ds) {
-    if (tk.deadline && tk.deadline > tk.due) return ds >= tk.due && ds <= tk.deadline;
+    if (tk.deadline && tk.deadline > tk.due) return ds >= tk.due && ds <= tk.deadline && !isRestDay(ds);
     return tk.due === ds;
   };
   const getDayItems = function (d) {
@@ -1603,7 +1609,7 @@ function CombinedCalendarView(props) {
   const withKind = function (list, kind) { return list.map(function (tk) { return Object.assign({}, tk, { kind: kind }); }); };
   const allItems = withKind(videoTasks, "video").concat(withKind(marketingTasks, "marketing")).concat(withKind(designTasks, "design")).concat(adItems);
   const isInDateRangeCombined = function (item, ds) {
-    if (item.deadline && item.deadline > item.due) return ds >= item.due && ds <= item.deadline;
+    if (item.deadline && item.deadline > item.due) return ds >= item.due && ds <= item.deadline && !isRestDay(ds);
     return item.due === ds;
   };
   const getDayItems = function (d) {
