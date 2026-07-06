@@ -3121,6 +3121,27 @@ export default function App() {
     if (user) setCookie("timbel_user", JSON.stringify({ id: user.id, name: user.name }), 30);
     else deleteCookie("timbel_user");
   };
+  const [mySessionId] = useState(function () { return "sess_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10); });
+  const [hasClaimedSession, setHasClaimedSession] = useState(false);
+  const [sessionInfo] = useFirebaseData(currentUser ? "sessions/" + currentUser.name : "sessions/_none_", null);
+  useEffect(function () {
+    if (!currentUser) { setHasClaimedSession(false); return; }
+    setHasClaimedSession(false);
+    const claim = async function () {
+      try {
+        await dbSet(ref(rtdb, "sessions/" + currentUser.name), { sessionId: mySessionId, device: (navigator.userAgent || "").slice(0, 80), time: Date.now() });
+      } catch (e) {}
+      setHasClaimedSession(true);
+    };
+    claim();
+  }, [currentUser ? currentUser.name : null]);
+  useEffect(function () {
+    if (!currentUser || !hasClaimedSession || !sessionInfo) return;
+    if (sessionInfo.sessionId && sessionInfo.sessionId !== mySessionId) {
+      alert("다른 기기(또는 브라우저)에서 같은 계정으로 로그인되어, 보안을 위해 이 화면은 자동으로 로그아웃됩니다.");
+      setCurrentUser(null);
+    }
+  }, [sessionInfo, hasClaimedSession]);
   useEffect(function () {
     if (!synced || authChecked) return;
     const saved = getCookie("timbel_user");
