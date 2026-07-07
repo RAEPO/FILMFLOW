@@ -374,7 +374,18 @@ function NoticeBanner(props) {
 
 function AuthScreen(props) {
   const { t, isDark } = useTheme();
-  const { onLogin, users, onRegister, adminPasswordHash, onUpgradeUser, onToggleDark } = props;
+  const { onLogin, users, onRegister, adminPasswordHash, onUpgradeUser, onToggleDark, onSubmitRequest } = props;
+  const [showReqModal, setShowReqModal] = useState(false);
+  const [reqForm, setReqForm] = useState({ requesterName: "", requesterTeam: "", title: "", desc: "", type: "영상", desiredDate: "", urgency: "중간", assignee: "" });
+  const setReq = function (k, v) { setReqForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
+  const REQ_TYPES = ["영상", "마케팅", "디자인", "광고", "기타"];
+  const submitGuestRequest = function () {
+    if (!reqForm.title.trim() || !reqForm.requesterName.trim()) return;
+    onSubmitRequest(reqForm);
+    setReqForm({ requesterName: "", requesterTeam: "", title: "", desc: "", type: "영상", desiredDate: "", urgency: "중간", assignee: "" });
+    setShowReqModal(false);
+    alert("요청이 접수됐어요. 담당팀에서 확인 후 처리할게요!");
+  };
   const [mode, setMode] = useState("login");
   const [form, setForm] = useState({ name: "", password: "", dept: "", rank: "", position: "", officePhone: "", mobile: "" });
   const [err, setErr] = useState("");
@@ -485,7 +496,36 @@ function AuthScreen(props) {
             <button onClick={handleRegister} style={{ width: "100%", background: "#6366f1", border: "none", borderRadius: 12, padding: "11px 0", fontWeight: 700, fontSize: 14, color: "#fff", cursor: "pointer" }}>가입 신청</button>
           </div>
         )}
+        {onSubmitRequest ? (
+          <div style={{ textAlign: "center", marginTop: 18, paddingTop: 16, borderTop: "1px solid " + t.border }}>
+            <button onClick={function () { setShowReqModal(true); }} style={{ background: "none", border: "none", color: t.text3, fontSize: 12, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 5 }}><Inbox size={13} strokeWidth={2} /> 로그인 없이 업무 요청하기</button>
+          </div>
+        ) : null}
       </div>
+      {showReqModal ? (
+        <div onClick={function () { setShowReqModal(false); }} style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 500, display: "flex", alignItems: "center", justifyContent: "center", padding: 20 }}>
+          <div onClick={function (e) { e.stopPropagation(); }} style={{ width: "min(92vw, 440px)", maxHeight: "88vh", overflowY: "auto", background: t.surface, borderRadius: 20, padding: "26px 26px 22px", border: "1px solid " + t.border, boxShadow: "0 24px 64px #0006" }}>
+            <div style={{ fontSize: 16, fontWeight: 800, color: t.text, marginBottom: 4 }}>업무 요청하기</div>
+            <div style={{ fontSize: 12, color: t.text4, marginBottom: 18 }}>로그인 없이도 영상·마케팅·디자인·광고 제작을 요청할 수 있어요.</div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 10 }}>
+              <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>이름 *</div><input value={reqForm.requesterName} onChange={function (e) { setReq("requesterName", e.target.value); }} style={inpStyle} /></div>
+              <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>소속(팀)</div><input value={reqForm.requesterTeam} onChange={function (e) { setReq("requesterTeam", e.target.value); }} style={inpStyle} /></div>
+            </div>
+            <div style={{ marginBottom: 10 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>요청 제목 *</div><input value={reqForm.title} onChange={function (e) { setReq("title", e.target.value); }} style={inpStyle} /></div>
+            <div style={{ marginBottom: 10 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>상세 내용</div><input value={reqForm.desc} onChange={function (e) { setReq("desc", e.target.value); }} style={inpStyle} /></div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
+              <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>종류</div><select value={reqForm.type} onChange={function (e) { setReq("type", e.target.value); }} style={Object.assign({}, inpStyle, { cursor: "pointer" })}>{REQ_TYPES.map(function (r) { return <option key={r}>{r}</option>; })}</select></div>
+              <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>희망일</div><input type="date" value={reqForm.desiredDate} onChange={function (e) { setReq("desiredDate", e.target.value); }} style={inpStyle} /></div>
+              <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>긴급도</div><select value={reqForm.urgency} onChange={function (e) { setReq("urgency", e.target.value); }} style={Object.assign({}, inpStyle, { cursor: "pointer" })}>{["낮음", "중간", "높음"].map(function (u) { return <option key={u}>{u}</option>; })}</select></div>
+            </div>
+            <div style={{ marginBottom: 6 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>담당자 지정 (선택, 그 담당자에게도 알림이 가요)</div><select value={reqForm.assignee} onChange={function (e) { setReq("assignee", e.target.value); }} style={Object.assign({}, inpStyle, { cursor: "pointer" })}><option value="">지정 안 함 (관리자에게만 전달)</option>{users.filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return <option key={u.name} value={u.name}>{u.name}</option>; })}</select></div>
+            <div style={{ display: "flex", gap: 8, marginTop: 14 }}>
+              <button onClick={function () { setShowReqModal(false); }} style={{ flex: 1, background: t.surface2, border: "none", borderRadius: 12, padding: "10px 0", color: t.text3, fontWeight: 600, cursor: "pointer" }}>취소</button>
+              <button onClick={submitGuestRequest} style={{ flex: 1, background: "#6366f1", border: "none", borderRadius: 12, padding: "10px 0", color: "#fff", fontWeight: 700, cursor: "pointer" }}>요청 제출</button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -2889,18 +2929,24 @@ function MessagesPanel(props) {
 
 function RequestsPanel(props) {
   const { t } = useTheme();
-  const { requests, setRequests, currentUser, isManager } = props;
+  const { requests, setRequests, currentUser, isManager, users, onNotify } = props;
   const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ title: "", desc: "", type: "영상", desiredDate: "", urgency: "중간" });
+  const [form, setForm] = useState({ title: "", desc: "", type: "영상", desiredDate: "", urgency: "중간", assignee: "" });
   const set = function (k, v) { setForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
   const REQ_TYPES = ["영상", "마케팅", "디자인", "광고", "기타"];
   const STATUS_COLOR = { "대기": "#fbbf24", "처리중": "#818cf8", "완료": "#34d399", "반려": "#f87171" };
   const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "9px 12px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
+  const memberNames = (users || []).filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return u.name; });
   const submit = function () {
     if (!form.title.trim()) return;
     const newReq = Object.assign({}, form, { id: "req_" + Date.now(), requester: currentUser.name, status: "대기", createdAt: Date.now() });
     setRequests((requests || []).concat([newReq]));
-    setForm({ title: "", desc: "", type: "영상", desiredDate: "", urgency: "중간" });
+    if (onNotify) {
+      const notifText = form.title + " (" + form.type + ") 새 업무 요청이 접수됐어요";
+      if (currentUser.name !== "admin") onNotify("admin", currentUser.name, form.title, notifText);
+      if (form.assignee && form.assignee !== currentUser.name) onNotify(form.assignee, currentUser.name, form.title, notifText);
+    }
+    setForm({ title: "", desc: "", type: "영상", desiredDate: "", urgency: "중간", assignee: "" });
     setShowForm(false);
   };
   const updateStatus = function (id, status) { setRequests((requests || []).map(function (r) { return r.id === id ? Object.assign({}, r, { status: status }) : r; })); };
@@ -2917,11 +2963,12 @@ function RequestsPanel(props) {
         <div style={Object.assign({}, s, { padding: "16px 18px", marginBottom: 16 })}>
           <div style={{ marginBottom: 10 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>요청 제목</div><input value={form.title} onChange={function (e) { set("title", e.target.value); }} style={inp} /></div>
           <div style={{ marginBottom: 10 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>상세 내용</div><input value={form.desc} onChange={function (e) { set("desc", e.target.value); }} style={inp} /></div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
             <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>종류</div><select value={form.type} onChange={function (e) { set("type", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{REQ_TYPES.map(function (r) { return <option key={r}>{r}</option>; })}</select></div>
             <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>희망일</div><input type="date" value={form.desiredDate} onChange={function (e) { set("desiredDate", e.target.value); }} style={inp} /></div>
             <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>긴급도</div><select value={form.urgency} onChange={function (e) { set("urgency", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{["낮음", "중간", "높음"].map(function (u) { return <option key={u}>{u}</option>; })}</select></div>
           </div>
+          <div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><User size={11} strokeWidth={2} /> 담당자 지정 (선택 시 그 담당자에게도 알림이 가요)</div><select value={form.assignee} onChange={function (e) { set("assignee", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}><option value="">지정 안 함 (관리자에게만 전달)</option>{memberNames.map(function (n) { return <option key={n} value={n}>{n}</option>; })}</select></div>
           <div style={{ display: "flex", gap: 8 }}>
             <button onClick={function () { setShowForm(false); }} style={{ flex: 1, background: t.surface2, border: "none", borderRadius: 11, padding: "10px 0", color: t.text3, fontWeight: 600, cursor: "pointer" }}>취소</button>
             <button onClick={submit} style={{ flex: 1, background: "#6366f1", border: "none", borderRadius: 11, padding: "10px 0", color: "#fff", fontWeight: 700, cursor: "pointer" }}>제출</button>
@@ -2942,7 +2989,7 @@ function RequestsPanel(props) {
               </div>
               {r.desc ? <div style={{ fontSize: 12, color: t.text3, marginBottom: 6 }}>{r.desc}</div> : null}
               <div style={{ fontSize: 11, color: t.text4, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <span>요청자: {r.requester}</span>{r.desiredDate ? <span>희망일: {r.desiredDate}</span> : null}
+                <span>요청자: {r.requester}</span>{r.assignee ? <span>담당자: {r.assignee}</span> : null}{r.desiredDate ? <span>희망일: {r.desiredDate}</span> : null}
                 {isManager ? (
                   <div style={{ marginLeft: "auto", display: "flex", gap: 5 }}>
                     <select value={r.status} onChange={function (e) { updateStatus(r.id, e.target.value); }} style={{ background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: t.text, outline: "none", cursor: "pointer" }}>{["대기", "처리중", "완료", "반려"].map(function (st) { return <option key={st}>{st}</option>; })}</select>
@@ -3533,7 +3580,14 @@ export default function App() {
   if (!currentUser) {
     return (
       <ThemeCtx.Provider value={{ t: t, isDark: isDark }}>
-        <AuthScreen onLogin={setCurrentUser} users={users} onRegister={async function (u) { await setUsersRaw(users.concat([u])); }} adminPasswordHash={adminAuth ? adminAuth.password : DEFAULT_ADMIN_PASSWORD_HASH} onUpgradeUser={function (u) { setUsersRaw(users.map(function (x) { return x.id === u.id ? u : x; })); }} onToggleDark={setIsDark} />
+        <AuthScreen onLogin={setCurrentUser} users={users} onRegister={async function (u) { await setUsersRaw(users.concat([u])); }} adminPasswordHash={adminAuth ? adminAuth.password : DEFAULT_ADMIN_PASSWORD_HASH} onUpgradeUser={function (u) { setUsersRaw(users.map(function (x) { return x.id === u.id ? u : x; })); }} onToggleDark={setIsDark} onSubmitRequest={function (reqForm) {
+          const requesterLabel = reqForm.requesterName + (reqForm.requesterTeam ? " (" + reqForm.requesterTeam + ")" : "") + " · 비회원";
+          const newReq = { id: "req_" + Date.now(), title: reqForm.title, desc: reqForm.desc, type: reqForm.type, desiredDate: reqForm.desiredDate, urgency: reqForm.urgency, assignee: reqForm.assignee, requester: requesterLabel, status: "대기", createdAt: Date.now() };
+          setRequestsRaw((requests || []).concat([newReq]));
+          const notifText = reqForm.title + " (" + reqForm.type + ") 비회원 업무 요청이 접수됐어요";
+          sendNotification("admin", requesterLabel, reqForm.title, notifText);
+          if (reqForm.assignee) sendNotification(reqForm.assignee, requesterLabel, reqForm.title, notifText);
+        }} />
       </ThemeCtx.Provider>
     );
   }
@@ -3655,7 +3709,7 @@ export default function App() {
           {tab === "messages" ? <MessagesPanel currentUser={currentUser} users={users} isAdmin={isAdmin} messages={directMessages} setMessages={setDirectMessagesRaw} /> : null}
           {tab === "ai" ? <AIPanel tasks={tasks} users={users} ads={adsData} designTasks={designTasks} /> : null}
           {tab === "activity" ? <ActivityLogPanel log={activityLog} onRestore={restoreDeletedItem} onCleanup={cleanupActivityLog} isAdmin={isAdmin} /> : null}
-          {tab === "requests" ? <RequestsPanel requests={requests} setRequests={setRequestsRaw} currentUser={currentUser} isManager={isManager || isAdmin} /> : null}
+          {tab === "requests" ? <RequestsPanel requests={requests} setRequests={setRequestsRaw} currentUser={currentUser} isManager={isManager || isAdmin} users={users} onNotify={sendNotification} /> : null}
         </div>
       </div>
     </ThemeCtx.Provider>
