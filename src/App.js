@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, createContext, useContext } from "react";
-import { Home, LayoutGrid, Calendar, CalendarDays, Palette, Kanban, Megaphone, BarChart3, Settings, MessageCircle, Bot, Shield, Clock, History, Search, Pencil, Film, Lightbulb, CheckCircle2, Users, ClipboardList, Flag, Upload, Paperclip, Palmtree, Repeat, AlertTriangle, User, Image as ImageIcon, Zap, Rocket, Bell, Folder, Trash2, Eye, Heart, TrendingUp, Hand, Sparkles, Video, Scissors, Inbox, Lock, Key, Plus, Tag, Circle, CornerUpLeft, Download, RefreshCw, FileText, Mic, Mail, Smile, RotateCcw, SearchX, Sun, Moon, X, Check, ArrowLeft, ArrowRight, Send, LogOut, UserCog } from "lucide-react";
+import { Home, LayoutGrid, Calendar, CalendarDays, Palette, Kanban, Megaphone, BarChart3, Settings, MessageCircle, Bot, Shield, Clock, History, Search, Pencil, Film, Lightbulb, CheckCircle2, Users, ClipboardList, Flag, Upload, Paperclip, Palmtree, Repeat, AlertTriangle, User, Image as ImageIcon, Zap, Rocket, Bell, Folder, Trash2, Eye, Heart, TrendingUp, Hand, Sparkles, Video, Scissors, Inbox, Lock, Key, Plus, Tag, Circle, CornerUpLeft, Download, RefreshCw, FileText, Mic, Mail, Smile, RotateCcw, SearchX, Sun, Moon, X, Check, ArrowLeft, ArrowRight, Send, LogOut, UserCog, GanttChart, Link } from "lucide-react";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set as dbSet } from "firebase/database";
 
@@ -122,8 +122,8 @@ const CONFIRM_COLOR = { "대기": "#6b7280", "컨펌중": "#fbbf24", "컨펌완�
 const WORK_COLOR = { "대기": "#6b7280", "기획중": "#818cf8", "작업중": "#fb923c", "작업완료": "#34d399", "수정중": "#f87171" };
 const AVATAR_COLORS = ["#6366f1", "#ec4899", "#fb923c", "#34d399", "#38bdf8", "#c084fc", "#f87171"];
 const ALL_TABS = [
-  { id: "home", icon: Home, text: "홈" }, { id: "unified", icon: LayoutGrid, text: "통합 캘린더" }, { id: "calendar", icon: Calendar, text: "영상 캘린더" }, { id: "adCalendar", icon: CalendarDays, text: "마케팅 캘린더" }, { id: "designCalendar", icon: Palette, text: "디자인 캘린더" }, { id: "board", icon: Kanban, text: "제작 보드" },
-  { id: "ad", icon: Megaphone, text: "광고 제작 관리" }, { id: "stats", icon: BarChart3, text: "통계" }, { id: "overtime", icon: Clock, text: "야근 기록" }, { id: "messages", icon: MessageCircle, text: "메시지(메모)" }, { id: "ai", icon: Bot, text: "AI 분석" }, { id: "activity", icon: History, text: "활동 로그" },
+  { id: "home", icon: Home, text: "홈" }, { id: "unified", icon: LayoutGrid, text: "통합 캘린더" }, { id: "calendar", icon: Calendar, text: "영상 캘린더" }, { id: "adCalendar", icon: CalendarDays, text: "마케팅 캘린더" }, { id: "designCalendar", icon: Palette, text: "디자인 캘린더" }, { id: "timeline", icon: GanttChart, text: "타임라인" }, { id: "board", icon: Kanban, text: "제작 보드" },
+  { id: "ad", icon: Megaphone, text: "광고 제작 관리" }, { id: "stats", icon: BarChart3, text: "통계" }, { id: "overtime", icon: Clock, text: "야근 기록" }, { id: "messages", icon: MessageCircle, text: "메시지(메모)" }, { id: "ai", icon: Bot, text: "AI 분석" }, { id: "activity", icon: History, text: "활동 로그" }, { id: "requests", icon: Inbox, text: "업무 요청함" },
 ];
 const ADMIN_USER = { id: "admin", name: "admin", dept: "경영진", rank: "대표", position: "관리자", officePhone: "", mobile: "", role: "admin", approved: true };
 const ROLE_COLOR = { "admin": "#f87171", "manager": "#fbbf24", "member": "#34d399", "viewer": "#94a3b8" };
@@ -559,7 +559,7 @@ function ProfileModal(props) {
 
 function AdminPanel(props) {
   const { t } = useTheme();
-  const { users, onUpdateUsers, notices, onUpdateNotices, rolePermissions, setRolePermissions, tasks, onUpdateTasks } = props;
+  const { users, onUpdateUsers, notices, onUpdateNotices, rolePermissions, setRolePermissions, tasks, onUpdateTasks, staleDays, setStaleDays, wipLimits, setWipLimits } = props;
   const [aTab, setATab] = useState("users");
   const [noticeForm, setNoticeForm] = useState({ title: "", content: "", active: true });
   const [editNotice, setEditNotice] = useState(null);
@@ -591,7 +591,7 @@ function AdminPanel(props) {
         {pending.length > 0 ? <div style={{ marginLeft: "auto", background: "#f87171", borderRadius: 20, padding: "3px 12px", fontSize: 12, fontWeight: 700, color: "#fff" }}>승인 대기 {pending.length}명</div> : null}
       </div>
       <div style={{ display: "flex", gap: 2, marginBottom: 20, borderBottom: "1px solid " + t.border }}>
-        {[["users", Users, "회원 관리"], ["notices", Megaphone, "공지사항"], ["tabs", Folder, "탭 설정"], ["schedule", ClipboardList, "스케줄 조율"]].map(function (item) {
+        {[["users", Users, "회원 관리"], ["notices", Megaphone, "공지사항"], ["tabs", Folder, "탭 설정"], ["automation", Zap, "자동화 설정"], ["schedule", ClipboardList, "스케줄 조율"]].map(function (item) {
           const TabIcon = item[1];
           return <button key={item[0]} onClick={function () { setATab(item[0]); }} style={Object.assign({}, aTabStyle(item[0]), { display: "inline-flex", alignItems: "center", gap: 6 })}><TabIcon size={14} strokeWidth={2} />{item[2]}</button>;
         })}
@@ -708,6 +708,31 @@ function AdminPanel(props) {
             );
           })}
           <div style={{ padding: "12px 16px", fontSize: 11, color: t.text4 }}>※ 관리자는 모든 탭에 항상 접근 가능합니다.</div>
+        </div>
+      ) : null}
+      {aTab === "automation" ? (
+        <div style={s}>
+          <div style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>자동화 설정</div>
+          <div style={{ padding: "16px", borderBottom: "1px solid " + t.border }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>정체 업무 알림 기준</div>
+            <div style={{ fontSize: 11, color: t.text4, marginBottom: 10 }}>같은 단계에서 이 일수 이상 변화가 없으면 홈 화면에 "정체된 업무"로 표시돼요.</div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input type="number" min="1" value={staleDays} onChange={function (e) { setStaleDays(Number(e.target.value) || 1); }} style={{ width: 90, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "7px 10px", fontSize: 13, color: t.text, outline: "none" }} />
+              <span style={{ fontSize: 12, color: t.text4 }}>일 이상</span>
+            </div>
+          </div>
+          <div style={{ padding: "16px" }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: t.text, marginBottom: 4 }}>제작 보드 단계별 인원 제한 (WIP)</div>
+            <div style={{ fontSize: 11, color: t.text4, marginBottom: 10 }}>단계에 업무가 몰리는 걸 막기 위한 제한이에요. 비워두면 제한이 없어요.</div>
+            {STAGES.map(function (stg) {
+              return (
+                <div key={stg} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                  <span style={{ fontSize: 12, color: t.text3, width: 90 }}>{stg}</span>
+                  <input type="number" min="0" placeholder="제한 없음" value={wipLimits && wipLimits[stg] ? wipLimits[stg] : ""} onChange={function (e) { const v = Number(e.target.value); const next = Object.assign({}, wipLimits); if (v > 0) next[stg] = v; else delete next[stg]; setWipLimits(next); }} style={{ width: 110, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "6px 10px", fontSize: 12, color: t.text, outline: "none" }} />
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : null}
       {aTab === "schedule" ? (
@@ -1079,13 +1104,31 @@ function TaskDetailModal(props) {
   const [mentionQuery, setMentionQuery] = useState(null);
   const [editMode, setEditMode] = useState(false);
   const [applyToSeries, setApplyToSeries] = useState(false);
-  const [editForm, setEditForm] = useState({ title: task.title, desc: task.desc, due: task.due, deadline: task.deadline || "", assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") });
+  const [editForm, setEditForm] = useState({ title: task.title, desc: task.desc, due: task.due, deadline: task.deadline || "", assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : ""), dependsOn: task.dependsOn || "" });
   const idx = stageList.indexOf(task.status);
   const StageIconBadge = stageIconMap[task.status] || Circle;
   const memberNames = users.filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return u.name; });
   const setEF = function (k, v) { setEditForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
   const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "8px 11px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
   const seriesCount = task.seriesId && allTasks ? allTasks.filter(function (tk) { return tk.seriesId === task.seriesId; }).length : 0;
+  const subtasks = task.subtasks || [];
+  const [newSubtask, setNewSubtask] = useState("");
+  const [timeInput, setTimeInput] = useState("");
+  const dependencyTask = task.dependsOn && allTasks ? allTasks.find(function (tk) { return tk.id === task.dependsOn; }) : null;
+  const dependencyBlocked = !!(dependencyTask && dependencyTask.status !== stageList[stageList.length - 1]);
+  const addSubtask = function () {
+    if (!newSubtask.trim()) return;
+    onUpdate(Object.assign({}, task, { subtasks: subtasks.concat([{ id: "sub_" + Date.now(), text: newSubtask.trim(), done: false }]) }));
+    setNewSubtask("");
+  };
+  const toggleSubtask = function (id) { onUpdate(Object.assign({}, task, { subtasks: subtasks.map(function (s) { return s.id === id ? Object.assign({}, s, { done: !s.done }) : s; }) })); };
+  const deleteSubtask = function (id) { onUpdate(Object.assign({}, task, { subtasks: subtasks.filter(function (s) { return s.id !== id; }) })); };
+  const logTime = function () {
+    const hrs = Number(timeInput);
+    if (!hrs || hrs <= 0) return;
+    onUpdate(Object.assign({}, task, { timeSpent: (task.timeSpent || 0) + hrs }));
+    setTimeInput("");
+  };
   const addComment = function () {
     if (!comment.trim()) return;
     const trimmed = comment.trim();
@@ -1113,6 +1156,7 @@ function TaskDetailModal(props) {
     if (applyToSeries && seriesCount > 1 && onUpdateSeries) {
       const seriesChanges = Object.assign({}, editForm);
       delete seriesChanges.due;
+      delete seriesChanges.dependsOn;
       onUpdateSeries(task.seriesId, seriesChanges);
     } else {
       onUpdate(Object.assign({}, task, editForm));
@@ -1135,6 +1179,7 @@ function TaskDetailModal(props) {
             <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>마감일</div><input type="date" value={editForm.deadline || ""} onChange={function (e) { setEF("deadline", e.target.value); }} style={inp} /></div>
           </div>
           {task.createdAt ? <div style={{ fontSize: 11, color: t.text5, marginBottom: 11, display: "flex", alignItems: "center", gap: 4 }}><Clock size={11} strokeWidth={2} /> 등록일: {new Date(task.createdAt).toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })}</div> : null}
+          {allTasks ? <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><Link size={11} strokeWidth={2} /> 선행 업무</div><select value={editForm.dependsOn || ""} onChange={function (e) { setEF("dependsOn", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}><option value="">없음</option>{allTasks.filter(function (tk) { return tk.id !== task.id; }).map(function (tk) { return <option key={tk.id} value={tk.id}>{tk.title}</option>; })}</select></div> : null}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 11 }}>
             <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>담당자</div><select value={editForm.assignee} onChange={function (e) { setEF("assignee", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{memberNames.map(function (m) { return <option key={m}>{m}</option>; })}</select></div>
             <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>우선순위</div><select value={editForm.priority} onChange={function (e) { setEF("priority", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{PRIORITIES.map(function (p) { return <option key={p}>{p}</option>; })}</select></div>
@@ -1172,31 +1217,56 @@ function TaskDetailModal(props) {
               <div style={{ fontSize: 12, color: t.text4, marginTop: 3 }}>{task.desc}</div>
               <div style={{ display: "flex", gap: 14, marginTop: 10 }}><div style={{ display: "flex", alignItems: "center", gap: 6 }}><Avatar name={task.assignee} size={18} users={users} /><span style={{ fontSize: 12, color: t.text3 }}>{task.assignee}</span></div><span style={{ fontSize: 12, color: t.text4, display: "inline-flex", alignItems: "center", gap: 4 }}><Calendar size={12} strokeWidth={2} /> {task.due}</span></div>
               {task.fileUrl ? <div style={{ marginTop: 12 }}><MediaPreview url={task.fileUrl} /><a href={task.fileUrl} target="_blank" rel="noreferrer" style={{ display: "inline-flex", alignItems: "center", gap: 6, marginTop: 8, fontSize: 12, color: "#818cf8", background: "#818cf818", border: "1px solid #818cf830", borderRadius: 10, padding: "5px 10px", textDecoration: "none" }}><Paperclip size={12} strokeWidth={2} /> 원본 링크에서 열기 <ArrowRight size={11} strokeWidth={2.5} /></a></div> : null}
+              {dependencyTask ? <div style={{ marginTop: 12, display: "flex", alignItems: "center", gap: 6, background: dependencyBlocked ? "#f8717118" : "#34d39918", border: "1px solid " + (dependencyBlocked ? "#f8717140" : "#34d39940"), borderRadius: 10, padding: "7px 11px", fontSize: 11.5, color: dependencyBlocked ? "#f87171" : "#34d399" }}><Link size={12} strokeWidth={2} /> 선행 업무 "{dependencyTask.title}"{dependencyBlocked ? " 아직 완료되지 않았어요" : " 완료됨"}</div> : null}
             </div>
             <button onClick={onClose} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 20, padding: 0, marginLeft: 12 }}>×</button>
           </div>
           <div style={{ display: "flex", gap: 6, marginTop: 12, flexWrap: "wrap" }}>
             {onMove && idx > 0 ? <button onClick={function () { onMove(task.id, -1); onClose(); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 10, padding: "6px 0", fontSize: 11, cursor: "pointer", color: t.text4 }}><ArrowLeft size={11} strokeWidth={2} /> {stageList[idx - 1]}</button> : null}
-            {onMove && idx < stageList.length - 1 ? <button onClick={function () { onMove(task.id, 1); onClose(); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: "#6366f120", border: "1px solid #6366f140", borderRadius: 10, padding: "6px 0", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>{stageList[idx + 1]} <ArrowRight size={11} strokeWidth={2} /></button> : null}
-            {onMove && task.status !== stageList[stageList.length - 1] ? <button onClick={function () { onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1] })); onClose(); }} style={{ display: "flex", alignItems: "center", gap: 5, background: "#34d39920", border: "1px solid #34d39940", borderRadius: 10, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700, flexShrink: 0 }}><CheckCircle2 size={12} strokeWidth={2} /> 업무 완료</button> : null}
+            {onMove && idx < stageList.length - 1 ? <button onClick={function () { if (dependencyBlocked && !window.confirm("선행 업무 \"" + dependencyTask.title + "\"가 아직 완료되지 않았어요. 그래도 다음 단계로 넘길까요?")) return; onMove(task.id, 1); onClose(); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, background: "#6366f120", border: "1px solid #6366f140", borderRadius: 10, padding: "6px 0", fontSize: 11, cursor: "pointer", color: "#818cf8", fontWeight: 700 }}>{stageList[idx + 1]} <ArrowRight size={11} strokeWidth={2} /></button> : null}
+            {onMove && task.status !== stageList[stageList.length - 1] ? <button onClick={function () { if (dependencyBlocked && !window.confirm("선행 업무 \"" + dependencyTask.title + "\"가 아직 완료되지 않았어요. 그래도 완료 처리할까요?")) return; onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1], statusChangedAt: Date.now() })); onClose(); }} style={{ display: "flex", alignItems: "center", gap: 5, background: "#34d39920", border: "1px solid #34d39940", borderRadius: 10, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700, flexShrink: 0 }}><CheckCircle2 size={12} strokeWidth={2} /> 업무 완료</button> : null}
             {onMove ? <button onClick={function () { setEditForm({ title: task.title, desc: task.desc, due: task.due, deadline: task.deadline || "", assignee: task.assignee, priority: task.priority, tag: task.tag, fileUrl: task.fileUrl || "", category: task.category || (categories ? categories[0] : "") }); setEditMode(true); }} style={{ display: "flex", alignItems: "center", gap: 5, background: t.surface2, border: "1px solid " + t.border2, borderRadius: 10, padding: "6px 12px", fontSize: 11, cursor: "pointer", color: t.text4, flexShrink: 0 }}><Pencil size={12} strokeWidth={2} /> 정보 수정</button> : null}
           </div>
           {onMove && currentUser && (currentUser.role === "admin" || currentUser.role === "manager") && task.status === stageList[stageList.length - 2] ? (
             <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
-              <button onClick={function () { onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1] })); onClose(); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: "#34d39920", border: "1px solid #34d39940", borderRadius: 10, padding: "7px 0", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700 }}><CheckCircle2 size={12} strokeWidth={2} /> 승인 (완료 처리)</button>
+              <button onClick={function () { onUpdate(Object.assign({}, task, { status: stageList[stageList.length - 1], statusChangedAt: Date.now() })); onClose(); }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: "#34d39920", border: "1px solid #34d39940", borderRadius: 10, padding: "7px 0", fontSize: 11, cursor: "pointer", color: "#34d399", fontWeight: 700 }}><CheckCircle2 size={12} strokeWidth={2} /> 승인 (완료 처리)</button>
               <button onClick={function () {
                 const reason = window.prompt("수정 요청 사유를 입력해주세요");
                 if (!reason) return;
                 const newComments = (task.comments || []).concat([{ id: "c_" + Date.now(), author: currentUser.name, text: "수정 요청: " + reason, time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }]);
                 const backStageIdx = Math.max(0, stageList.length - 3);
-                onUpdate(Object.assign({}, task, { status: stageList[backStageIdx], comments: newComments }));
+                onUpdate(Object.assign({}, task, { status: stageList[backStageIdx], comments: newComments, statusChangedAt: Date.now() }));
                 if (onNotify && task.assignee && task.assignee !== currentUser.name) onNotify(task.assignee, currentUser.name, task.title, "수정 요청: " + reason);
               }} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: "#f8717120", border: "1px solid #f8717140", borderRadius: 10, padding: "7px 0", fontSize: 11, cursor: "pointer", color: "#f87171", fontWeight: 700 }}><CornerUpLeft size={12} strokeWidth={2} /> 수정 요청</button>
             </div>
           ) : null}
         </div>
         <div style={{ flex: 1, overflowY: "auto", padding: "14px 22px" }}>
-          <div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 12, textTransform: "uppercase", letterSpacing: ".5px" }}>코멘트 {(task.comments || []).length > 0 ? "· " + (task.comments || []).length : ""}</div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>체크리스트 {subtasks.length > 0 ? "· " + subtasks.filter(function (s) { return s.done; }).length + "/" + subtasks.length : ""}</div>
+          </div>
+          {subtasks.length > 0 ? <div style={{ background: t.bg, borderRadius: 99, height: 4, marginBottom: 10 }}><div style={{ width: (subtasks.filter(function (s) { return s.done; }).length / subtasks.length * 100) + "%", background: "#34d399", height: "100%", borderRadius: 99 }} /></div> : null}
+          {subtasks.map(function (s) {
+            return (
+              <div key={s.id} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0" }}>
+                <input type="checkbox" checked={s.done} onChange={function () { toggleSubtask(s.id); }} style={{ width: 15, height: 15, accentColor: "#34d399", cursor: "pointer", flexShrink: 0 }} />
+                <span style={{ flex: 1, fontSize: 13, color: s.done ? t.text5 : t.text2, textDecoration: s.done ? "line-through" : "none" }}>{s.text}</span>
+                <button onClick={function () { deleteSubtask(s.id); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 14, padding: 0 }}>×</button>
+              </div>
+            );
+          })}
+          <div style={{ display: "flex", gap: 6, marginTop: subtasks.length > 0 ? 8 : 0, marginBottom: 18 }}>
+            <input value={newSubtask} onChange={function (e) { setNewSubtask(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") addSubtask(); }} placeholder="세부 할 일 추가..." style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "7px 11px", fontSize: 12.5, color: t.text, outline: "none" }} />
+            <button onClick={addSubtask} style={{ background: t.surface2, border: "none", borderRadius: 9, padding: "0 12px", color: t.text3, cursor: "pointer" }}><Plus size={14} strokeWidth={2} /></button>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10, paddingTop: 14, borderTop: "1px solid " + t.border }}>
+            <div style={{ fontSize: 11, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", gap: 5 }}><Clock size={12} strokeWidth={2} /> 누적 작업 시간 {task.timeSpent ? "· " + task.timeSpent + "시간" : ""}</div>
+            <div style={{ display: "flex", gap: 6 }}>
+              <input value={timeInput} onChange={function (e) { setTimeInput(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") logTime(); }} type="number" step="0.5" min="0" placeholder="시간" style={{ width: 70, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 9, padding: "6px 9px", fontSize: 12, color: t.text, outline: "none" }} />
+              <button onClick={logTime} style={{ background: t.surface2, border: "none", borderRadius: 9, padding: "0 12px", color: t.text3, cursor: "pointer", fontSize: 12 }}>기록</button>
+            </div>
+          </div>
+          <div style={{ fontSize: 11, fontWeight: 700, color: t.text4, marginBottom: 12, textTransform: "uppercase", letterSpacing: ".5px", paddingTop: 14, borderTop: "1px solid " + t.border }}>코멘트 {(task.comments || []).length > 0 ? "· " + (task.comments || []).length : ""}</div>
           {(task.comments || []).length === 0 ? <EmptyState icon={MessageCircle} text="아직 코멘트가 없습니다" compact /> : null}
           {(task.comments || []).map(function (c) {
             return (
@@ -1256,14 +1326,14 @@ function TaskDetailModal(props) {
 
 function AddTaskModal(props) {
   const { t } = useTheme();
-  const { onAdd, onClose, defaultDate, users } = props;
+  const { onAdd, onClose, defaultDate, users, allTasks } = props;
   const tagList = props.tags || TAGS;
   const stageList = props.stages || STAGES;
   const modalTitle = props.title || "새 영상 추가";
   const categoryLabel = props.categoryLabel || "플랫폼";
   const categories = props.categories || null;
   const memberNames = users.filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return u.name; });
-  const [form, setForm] = useState({ title: "", desc: "", assignee: memberNames[0] || "", priority: "중간", tag: tagList[0], due: defaultDate || "", deadline: "", status: stageList[0], fileUrl: "", category: categories ? categories[0] : "", repeat: "없음", repeatCount: 4 });
+  const [form, setForm] = useState({ title: "", desc: "", assignee: memberNames[0] || "", priority: "중간", tag: tagList[0], due: defaultDate || "", deadline: "", status: stageList[0], fileUrl: "", category: categories ? categories[0] : "", repeat: "없음", repeatCount: 4, dependsOn: "" });
   const set = function (k, v) { setForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
   const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "9px 12px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
   const REPEAT_OPTIONS = ["없음", "매일", "매주", "매월"];
@@ -1293,7 +1363,7 @@ function AddTaskModal(props) {
           deadlineDate = dl.getFullYear() + "-" + pad2(dl.getMonth() + 1) + "-" + pad2(dl.getDate());
         }
       }
-      const extra = { due: dueDate, deadline: deadlineDate, createdAt: Date.now(), id: "task_" + Date.now() + "_" + i, comments: [] };
+      const extra = { due: dueDate, deadline: deadlineDate, createdAt: Date.now(), statusChangedAt: Date.now(), id: "task_" + Date.now() + "_" + i, comments: [], subtasks: [], timeSpent: 0 };
       if (seriesId) extra.seriesId = seriesId;
       newTasks.push(Object.assign({}, base, extra));
     }
@@ -1305,6 +1375,7 @@ function AddTaskModal(props) {
       <div style={{ background: t.surface, borderRadius: 20, padding: "22px 26px", width: "min(92vw, 370px)", boxShadow: "0 24px 64px #000c" }}>
         <div style={{ fontWeight: 800, fontSize: 15, marginBottom: 18, color: t.text }}>{modalTitle}</div>
         {[["제목", "title", "text"], ["설명", "desc", "text"], ["작업 시작일", "due", "date"], ["마감일", "deadline", "date"]].map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><input type={item[2]} value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={inp} /></div>; })}
+        {allTasks ? <div style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><Link size={11} strokeWidth={2} /> 선행 업무 (이 업무가 끝나야 시작, 선택)</div><select value={form.dependsOn} onChange={function (e) { set("dependsOn", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}><option value="">없음</option>{allTasks.map(function (tk) { return <option key={tk.id} value={tk.id}>{tk.title}</option>; })}</select></div> : null}
         {[["담당자", "assignee", memberNames.length ? memberNames : ["미배정"]], ["우선순위", "priority", PRIORITIES]].concat(categories ? [["업무 종류", "category", categories]] : []).concat([[categoryLabel, "tag", tagList], ["단계", "status", stageList]]).map(function (item) { return <div key={item[1]} style={{ marginBottom: 11 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>{item[0]}</div><select value={form[item[1]]} onChange={function (e) { set(item[1], e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{item[2].map(function (o) { return <option key={o}>{o}</option>; })}</select></div>; })}
         <div style={{ display: "grid", gridTemplateColumns: form.repeat === "없음" ? "1fr" : "1fr 1fr", gap: 10, marginBottom: 11 }}>
           <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><Repeat size={11} strokeWidth={2} /> 반복</div><select value={form.repeat} onChange={function (e) { set("repeat", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{REPEAT_OPTIONS.map(function (o) { return <option key={o}>{o}</option>; })}</select></div>
@@ -1572,6 +1643,97 @@ function getMarketingBoardStatus(mt) {
   return "기획";
 }
 
+function TimelineView(props) {
+  const { t } = useTheme();
+  const { videoTasks, marketingTasks, designTasks, onSelectVideo, onSelectMarketing, onSelectDesign, users, currentUser } = props;
+  const today = new Date();
+  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(today.getMonth());
+  const [myOnly, setMyOnly] = useState(false);
+  const pad = function (n) { return String(n).padStart(2, "0"); };
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const monthStart = year + "-" + pad(month + 1) + "-01";
+  const monthEnd = year + "-" + pad(month + 1) + "-" + pad(daysInMonth);
+  const todayStr = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
+  const TYPE_INFO = { video: { color: "#818cf8", label: "영상" }, marketing: { color: "#fb923c", label: "마케팅" }, design: { color: "#f87171", label: "디자인" } };
+  const withKind = function (list, kind) { return list.map(function (tk) { return Object.assign({}, tk, { kind: kind }); }); };
+  let all = withKind(videoTasks, "video").concat(withKind(marketingTasks, "marketing")).concat(withKind(designTasks, "design"));
+  all = all.filter(function (item) {
+    if (!item.due) return false;
+    const s = item.due, e = item.deadline && item.deadline > item.due ? item.deadline : item.due;
+    return s <= monthEnd && e >= monthStart;
+  });
+  if (myOnly && currentUser) all = all.filter(function (item) { return item.assignee === currentUser.name; });
+  all.sort(function (a, b) { return a.due < b.due ? -1 : a.due > b.due ? 1 : 0; });
+  const dayToCol = function (ds) {
+    const d = new Date(ds + "T00:00:00");
+    if (d.getFullYear() === year && d.getMonth() === month) return d.getDate();
+    return ds < monthStart ? 1 : daysInMonth;
+  };
+  const handleClick = function (item) {
+    if (item.kind === "video") onSelectVideo(item);
+    else if (item.kind === "marketing") onSelectMarketing(item);
+    else onSelectDesign(item);
+  };
+  const goPrev = function () { if (month === 0) { setMonth(11); setYear(year - 1); } else setMonth(month - 1); };
+  const goNext = function () { if (month === 11) { setMonth(0); setYear(year + 1); } else setMonth(month + 1); };
+  const rowH = 34;
+  const dayColW = 26;
+  return (
+    <div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <button onClick={goPrev} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 9, width: 32, height: 32, cursor: "pointer", color: t.text3, display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowLeft size={14} strokeWidth={2} /></button>
+          <div style={{ fontSize: 16, fontWeight: 800, color: t.text }}>{year}년 {month + 1}월 타임라인</div>
+          <button onClick={goNext} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 9, width: 32, height: 32, cursor: "pointer", color: t.text3, display: "flex", alignItems: "center", justifyContent: "center" }}><ArrowRight size={14} strokeWidth={2} /></button>
+        </div>
+        {currentUser ? <button onClick={function () { setMyOnly(!myOnly); }} style={{ display: "inline-flex", alignItems: "center", gap: 5, background: myOnly ? "#6366f1" : t.surface2, border: "none", borderRadius: 20, padding: "6px 14px", fontSize: 12, fontWeight: 700, color: myOnly ? "#fff" : t.text3, cursor: "pointer" }}><User size={12} strokeWidth={2} /> 내 업무만</button> : null}
+      </div>
+      <div style={{ display: "flex", gap: 14, marginBottom: 12, fontSize: 11, color: t.text4, flexWrap: "wrap" }}>
+        {Object.keys(TYPE_INFO).map(function (k) { return <span key={k} style={{ display: "flex", alignItems: "center", gap: 5 }}><span style={{ width: 9, height: 9, borderRadius: 3, background: TYPE_INFO[k].color }} />{TYPE_INFO[k].label}</span>; })}
+      </div>
+      {all.length === 0 ? <EmptyState icon={Calendar} text="이번 달 표시할 일정이 없습니다" /> : (
+        <div style={{ overflowX: "auto", border: "1px solid " + t.border, borderRadius: 14, background: t.surface }}>
+          <div style={{ minWidth: 200 + daysInMonth * dayColW }}>
+            <div style={{ display: "flex", borderBottom: "1px solid " + t.border, position: "sticky", top: 0, background: t.surface, zIndex: 2 }}>
+              <div style={{ width: 200, flexShrink: 0, padding: "8px 12px", fontSize: 10, fontWeight: 700, color: t.text4, textTransform: "uppercase" }}>업무</div>
+              {Array.from({ length: daysInMonth }, function (_, i) { return i + 1; }).map(function (dnum) {
+                const ds = year + "-" + pad(month + 1) + "-" + pad(dnum);
+                const isToday = ds === todayStr;
+                const dow = new Date(ds + "T00:00:00").getDay();
+                return <div key={dnum} style={{ width: dayColW, flexShrink: 0, textAlign: "center", padding: "8px 0", fontSize: 9.5, fontWeight: isToday ? 800 : 500, color: isToday ? "#818cf8" : (dow === 0 || dow === 6) ? "#f87171" : t.text4, background: isToday ? "#6366f118" : "transparent" }}>{dnum}</div>;
+              })}
+            </div>
+            {all.map(function (item, ri) {
+              const info = TYPE_INFO[item.kind];
+              const startCol = dayToCol(item.due);
+              const endCol = item.deadline && item.deadline > item.due ? dayToCol(item.deadline) : startCol;
+              const overdue = item.due < todayStr && ((item.kind === "video" && item.status === STAGES[0]) || (item.kind !== "video" && item.status === (item.kind === "marketing" ? MARKETING_STAGES[0] : DESIGN_STAGES[0])));
+              return (
+                <div key={item.kind + "_" + item.id} style={{ display: "flex", alignItems: "center", borderBottom: ri === all.length - 1 ? "none" : "1px solid " + t.border, height: rowH }}>
+                  <div onClick={function () { handleClick(item); }} style={{ width: 200, flexShrink: 0, padding: "0 12px", fontSize: 12, color: t.text2, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", cursor: "pointer", display: "flex", alignItems: "center", gap: 6 }}>
+                    <Avatar name={item.assignee} size={16} users={users} /><span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span>
+                  </div>
+                  <div style={{ position: "relative", height: "100%", flex: 1, display: "flex" }}>
+                    {Array.from({ length: daysInMonth }, function (_, i) { return i + 1; }).map(function (dnum) {
+                      const ds = year + "-" + pad(month + 1) + "-" + pad(dnum);
+                      const dow = new Date(ds + "T00:00:00").getDay();
+                      return <div key={dnum} style={{ width: dayColW, flexShrink: 0, height: "100%", borderRight: "1px solid " + t.border, background: (dow === 0 || dow === 6) ? t.bg : "transparent" }} />;
+                    })}
+                    <div onClick={function () { handleClick(item); }} title={item.title} style={{ position: "absolute", left: (startCol - 1) * dayColW + 3, width: (endCol - startCol + 1) * dayColW - 6, top: 7, height: rowH - 14, borderRadius: 7, background: overdue ? "#f87171" : info.color, cursor: "pointer", display: "flex", alignItems: "center", paddingLeft: 8, boxShadow: "0 1px 3px #00000030" }}>
+                      <span style={{ fontSize: 10, color: "#fff", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.status}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function CombinedCalendarView(props) {
   const { t } = useTheme();
   const { videoTasks, marketingTasks, designTasks, ads, onSelectVideo, onSelectMarketing, onSelectDesign, onSelectAd, users, onBulkDeleteVideo, onBulkAssignVideo, onBulkDeleteMarketing, onBulkAssignMarketing, onBulkDeleteDesign, onBulkAssignDesign } = props;
@@ -1748,7 +1910,7 @@ function CombinedCalendarView(props) {
 
 function BoardView(props) {
   const { t } = useTheme();
-  const { tasks, onSelectTask, onMove, onDelete, users, ads, onSelectAd, designTasks, onSelectDesign, marketingTasks, onSelectMarketing, onBulkDeleteTasks, onBulkAssignTasks, onBulkDeleteMarketing, onBulkAssignMarketing, onBulkDeleteDesign, onBulkAssignDesign, currentUser } = props;
+  const { tasks, onSelectTask, onMove, onDelete, users, ads, onSelectAd, designTasks, onSelectDesign, marketingTasks, onSelectMarketing, onBulkDeleteTasks, onBulkAssignTasks, onBulkDeleteMarketing, onBulkAssignMarketing, onBulkDeleteDesign, onBulkAssignDesign, currentUser, wipLimits } = props;
   const [selectMode, setSelectMode] = useState(false);
   const [selectedItems, setSelectedItems] = useState([]);
   const [bulkAssignee, setBulkAssignee] = useState("");
@@ -1892,8 +2054,13 @@ function BoardView(props) {
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <div style={{ width: 28, height: 28, borderRadius: 11, background: STAGE_COLOR[col] + "22", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{(function () { const SIcon = STAGE_ICON[col]; return <SIcon size={15} strokeWidth={2} color={STAGE_COLOR[col]} />; })()}</div>
                 <span style={{ fontWeight: 800, fontSize: 13, color: t.text2 }}>{col}</span>
-                <span style={{ marginLeft: "auto", background: STAGE_COLOR[col], color: "#fff", borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 800 }}>{colTotal}</span>
+                {wipLimits && wipLimits[col] ? (
+                  <span style={{ marginLeft: "auto", background: colTotal > wipLimits[col] ? "#f87171" : STAGE_COLOR[col], color: "#fff", borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 800, display: "flex", alignItems: "center", gap: 3 }}>{colTotal > wipLimits[col] ? <AlertTriangle size={10} strokeWidth={2.5} /> : null}{colTotal}/{wipLimits[col]}</span>
+                ) : (
+                  <span style={{ marginLeft: "auto", background: STAGE_COLOR[col], color: "#fff", borderRadius: 99, padding: "2px 9px", fontSize: 11, fontWeight: 800 }}>{colTotal}</span>
+                )}
               </div>
+              {wipLimits && wipLimits[col] && colTotal > wipLimits[col] ? <div style={{ fontSize: 10, color: "#f87171", marginBottom: 8, display: "flex", alignItems: "center", gap: 4 }}><AlertTriangle size={10} strokeWidth={2} /> 제한 인원({wipLimits[col]}개)을 초과했어요</div> : null}
               <div style={{ background: t.bg, borderRadius: 99, height: 4, marginBottom: 12 }}><div style={{ width: totalItems ? (colTotal / totalItems * 100) + "%" : "0%", background: STAGE_COLOR[col], height: "100%", borderRadius: 99 }} /></div>
               {colTasks.map(function (tk) {
                 const overdue = isOverdueVideo(tk);
@@ -1916,7 +2083,7 @@ function BoardView(props) {
                       </div>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 5 }}><Avatar name={tk.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text3 }}>{tk.assignee}</span></div>
-                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>{(tk.comments || []).length > 0 ? <span style={{ fontSize: 10, color: t.text4, display: "flex", alignItems: "center", gap: 2 }}><MessageCircle size={10} strokeWidth={2} />{tk.comments.length}</span> : null}{tk.fileUrl ? <Paperclip size={10} strokeWidth={2} color={t.text4} /> : null}<span style={{ fontSize: 10, color: overdue ? "#f87171" : t.text4, fontWeight: overdue ? 700 : 400 }}>{tk.due && tk.due.slice(5)}</span></div>
+                        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>{(tk.subtasks || []).length > 0 ? <span style={{ fontSize: 10, color: t.text4, display: "flex", alignItems: "center", gap: 2 }}><CheckCircle2 size={10} strokeWidth={2} />{tk.subtasks.filter(function (s) { return s.done; }).length}/{tk.subtasks.length}</span> : null}{(tk.comments || []).length > 0 ? <span style={{ fontSize: 10, color: t.text4, display: "flex", alignItems: "center", gap: 2 }}><MessageCircle size={10} strokeWidth={2} />{tk.comments.length}</span> : null}{tk.fileUrl ? <Paperclip size={10} strokeWidth={2} color={t.text4} /> : null}<span style={{ fontSize: 10, color: overdue ? "#f87171" : t.text4, fontWeight: overdue ? 700 : 400 }}>{tk.due && tk.due.slice(5)}</span></div>
                       </div>
                       {onMove && !selectMode ? (
                         <div style={{ display: "flex", gap: 5 }} onClick={function (e) { e.stopPropagation(); }}>
@@ -2720,9 +2887,80 @@ function MessagesPanel(props) {
   );
 }
 
+function RequestsPanel(props) {
+  const { t } = useTheme();
+  const { requests, setRequests, currentUser, isManager } = props;
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ title: "", desc: "", type: "영상", desiredDate: "", urgency: "중간" });
+  const set = function (k, v) { setForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
+  const REQ_TYPES = ["영상", "마케팅", "디자인", "광고", "기타"];
+  const STATUS_COLOR = { "대기": "#fbbf24", "처리중": "#818cf8", "완료": "#34d399", "반려": "#f87171" };
+  const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "9px 12px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
+  const submit = function () {
+    if (!form.title.trim()) return;
+    const newReq = Object.assign({}, form, { id: "req_" + Date.now(), requester: currentUser.name, status: "대기", createdAt: Date.now() });
+    setRequests((requests || []).concat([newReq]));
+    setForm({ title: "", desc: "", type: "영상", desiredDate: "", urgency: "중간" });
+    setShowForm(false);
+  };
+  const updateStatus = function (id, status) { setRequests((requests || []).map(function (r) { return r.id === id ? Object.assign({}, r, { status: status }) : r; })); };
+  const deleteReq = function (id) { setRequests((requests || []).filter(function (r) { return r.id !== id; })); };
+  const sorted = (requests || []).slice().sort(function (a, b) { return b.createdAt - a.createdAt; });
+  const s = { background: t.surface, borderRadius: 15, border: "1px solid " + t.border };
+  return (
+    <div style={{ maxWidth: 800, margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ fontSize: 13, color: t.text4 }}>다른 팀·담당자가 영상·마케팅·디자인·광고 제작을 요청할 수 있는 접수함이에요.</div>
+        <button onClick={function () { setShowForm(true); }} style={{ display: "flex", alignItems: "center", gap: 5, background: "#6366f1", border: "none", borderRadius: 10, padding: "8px 16px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", flexShrink: 0 }}><Plus size={13} strokeWidth={2} /> 새 요청</button>
+      </div>
+      {showForm ? (
+        <div style={Object.assign({}, s, { padding: "16px 18px", marginBottom: 16 })}>
+          <div style={{ marginBottom: 10 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>요청 제목</div><input value={form.title} onChange={function (e) { set("title", e.target.value); }} style={inp} /></div>
+          <div style={{ marginBottom: 10 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>상세 내용</div><input value={form.desc} onChange={function (e) { set("desc", e.target.value); }} style={inp} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 14 }}>
+            <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>종류</div><select value={form.type} onChange={function (e) { set("type", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{REQ_TYPES.map(function (r) { return <option key={r}>{r}</option>; })}</select></div>
+            <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>희망일</div><input type="date" value={form.desiredDate} onChange={function (e) { set("desiredDate", e.target.value); }} style={inp} /></div>
+            <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>긴급도</div><select value={form.urgency} onChange={function (e) { set("urgency", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{["낮음", "중간", "높음"].map(function (u) { return <option key={u}>{u}</option>; })}</select></div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={function () { setShowForm(false); }} style={{ flex: 1, background: t.surface2, border: "none", borderRadius: 11, padding: "10px 0", color: t.text3, fontWeight: 600, cursor: "pointer" }}>취소</button>
+            <button onClick={submit} style={{ flex: 1, background: "#6366f1", border: "none", borderRadius: 11, padding: "10px 0", color: "#fff", fontWeight: 700, cursor: "pointer" }}>제출</button>
+          </div>
+        </div>
+      ) : null}
+      <div style={s}>
+        <div style={{ padding: "12px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 요청 ({sorted.length})</div>
+        {sorted.length === 0 ? <EmptyState icon={Inbox} text="접수된 요청이 없습니다" /> : null}
+        {sorted.map(function (r) {
+          return (
+            <div key={r.id} style={{ padding: "13px 18px", borderBottom: "1px solid " + t.border }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 10, background: STATUS_COLOR[r.status] + "20", color: STATUS_COLOR[r.status], borderRadius: 20, padding: "2px 8px", fontWeight: 700 }}>{r.status}</span>
+                <span style={{ fontSize: 10, color: t.text4, background: t.bg, borderRadius: 20, padding: "2px 8px" }}>{r.type}</span>
+                <span style={{ fontSize: 10, color: PRIORITY_COLOR[r.urgency] || t.text4, background: (PRIORITY_COLOR[r.urgency] || t.text4) + "18", borderRadius: 20, padding: "2px 8px", fontWeight: 700 }}>{r.urgency}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{r.title}</span>
+              </div>
+              {r.desc ? <div style={{ fontSize: 12, color: t.text3, marginBottom: 6 }}>{r.desc}</div> : null}
+              <div style={{ fontSize: 11, color: t.text4, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <span>요청자: {r.requester}</span>{r.desiredDate ? <span>희망일: {r.desiredDate}</span> : null}
+                {isManager ? (
+                  <div style={{ marginLeft: "auto", display: "flex", gap: 5 }}>
+                    <select value={r.status} onChange={function (e) { updateStatus(r.id, e.target.value); }} style={{ background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: t.text, outline: "none", cursor: "pointer" }}>{["대기", "처리중", "완료", "반려"].map(function (st) { return <option key={st}>{st}</option>; })}</select>
+                    <button onClick={function () { deleteReq(r.id); }} style={{ background: "#f8717118", border: "none", borderRadius: 8, padding: "3px 8px", fontSize: 11, color: "#f87171", cursor: "pointer" }}><Trash2 size={11} strokeWidth={2} /></button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function HomePanel(props) {
   const { t } = useTheme();
-  const { currentUser, users, videoTasks, marketingTasks, designTasks, onSelectVideo, onSelectMarketing, onSelectDesign } = props;
+  const { currentUser, users, videoTasks, marketingTasks, designTasks, onSelectVideo, onSelectMarketing, onSelectDesign, staleDays } = props;
   const today = new Date();
   const pad = function (n) { return String(n).padStart(2, "0"); };
   const todayStr = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
@@ -2740,6 +2978,8 @@ function HomePanel(props) {
   const in2 = new Date(today); in2.setDate(in2.getDate() + 2);
   const in2Str = in2.getFullYear() + "-" + pad(in2.getMonth() + 1) + "-" + pad(in2.getDate());
   const myDeadlineAlerts = all.filter(function (item) { return item.assignee === currentUser.name && item.deadline && !isDone(item) && item.deadline <= in2Str; }).sort(function (a, b) { return a.deadline < b.deadline ? -1 : 1; });
+  const staleThreshold = (staleDays || 3) * 24 * 60 * 60 * 1000;
+  const staleTasks = all.filter(function (item) { return !isDone(item) && Date.now() - (item.statusChangedAt || item.createdAt || 0) > staleThreshold; }).sort(function (a, b) { return (a.statusChangedAt || 0) - (b.statusChangedAt || 0); });
   const upcoming = all.filter(function (item) { return item.due && item.due >= todayStr && item.due <= in7Str && !isDone(item); }).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
   const todayItems = all.filter(function (item) { return item.due === todayStr; });
   const members = users.filter(function (u) { return u.approved; });
@@ -2757,6 +2997,32 @@ function HomePanel(props) {
         <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>안녕하세요, {currentUser.name}님</div>
         <div style={{ fontSize: 12, color: "#ffffffcc", marginTop: 3 }}>{today.getFullYear()}년 {today.getMonth() + 1}월 {today.getDate()}일 오늘의 업무 현황이에요</div>
       </div>
+      {(function () {
+        const priorityWeight = { 높음: 0, 중간: 1, 낮음: 2 };
+        const myTodo = myActive.slice().sort(function (a, b) {
+          const pw = (priorityWeight[a.priority] || 1) - (priorityWeight[b.priority] || 1);
+          if (pw !== 0) return pw;
+          const ad = a.deadline || a.due || "9999", bd = b.deadline || b.due || "9999";
+          return ad < bd ? -1 : ad > bd ? 1 : 0;
+        });
+        return (
+          <div style={s}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: t.text4, marginBottom: 10, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", gap: 6 }}><CheckCircle2 size={13} strokeWidth={2} /> 오늘 내가 할 일 ({myTodo.length})</div>
+            {myTodo.length === 0 ? <EmptyState icon={CheckCircle2} text="진행중인 업무가 없어요" compact /> : null}
+            {myTodo.slice(0, 8).map(function (item) {
+              const info = TYPE_INFO[item.kind];
+              return (
+                <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}>
+                  <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span>
+                  <span style={{ fontSize: 10, color: PRIORITY_COLOR[item.priority], background: PRIORITY_COLOR[item.priority] + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>{item.priority}</span>
+                  <span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span>
+                  <span style={{ fontSize: 11, color: t.text4, flexShrink: 0 }}>{item.status}</span>
+                </div>
+              );
+            })}
+          </div>
+        );
+      })()}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
         <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#818cf8" }}>{myActive.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>내 진행중 업무</div></div>
         <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#f87171" }}>{overdueAll.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>전체 시작 지연</div></div>
@@ -2781,6 +3047,16 @@ function HomePanel(props) {
           {pendingApproval.slice(0, 6).map(function (item) {
             const info = TYPE_INFO[item.kind];
             return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span><Avatar name={item.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text4 }}>{item.assignee}</span></div>;
+          })}
+        </div>
+      ) : null}
+      {canApprove && staleTasks.length > 0 ? (
+        <div style={Object.assign({}, s, { border: "1px solid #a78bfa40" })}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}><RefreshCw size={13} strokeWidth={2} /> 정체된 업무 · {staleDays || 3}일 이상 단계 변경 없음 ({staleTasks.length})</div>
+          {staleTasks.slice(0, 6).map(function (item) {
+            const info = TYPE_INFO[item.kind];
+            const daysStuck = Math.floor((Date.now() - (item.statusChangedAt || item.createdAt || 0)) / (24 * 60 * 60 * 1000));
+            return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title} · {item.status}</span><span style={{ fontSize: 11, color: "#a78bfa", fontWeight: 700 }}>{daysStuck}일째</span></div>;
           })}
         </div>
       ) : null}
@@ -3071,6 +3347,9 @@ export default function App() {
     manager: ALL_TABS.map(function (t) { return t.id; }),
   };
   const [rolePermissions, setRolePermissionsRaw] = useFirebaseData("settings/rolePermissions", DEFAULT_ROLE_PERMISSIONS);
+  const [staleDays, setStaleDaysRaw] = useFirebaseData("settings/staleDays", 3);
+  const [wipLimits, setWipLimitsRaw] = useFirebaseData("settings/wipLimits", {});
+  const [requests, setRequestsRaw] = useFirebaseData("requests", []);
   const synced = usersReady && tasksReady && noticesReady && marketingTasksReady && designTasksReady;
 
   useEffect(function () {
@@ -3159,19 +3438,19 @@ export default function App() {
     const entry = Object.assign({ id: "log_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), actor: currentUser ? currentUser.name : "?", action: action, detail: detail, createdAt: Date.now(), time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }, extra || {});
     setActivityLogRaw((activityLog || []).concat([entry]));
   };
-  const moveTask = function (id, dir) { const tk0 = tasks.find(function (tk) { return tk.id === id; }); setTasksRaw(tasks.map(function (tk) { return tk.id === id ? Object.assign({}, tk, { status: STAGES[STAGES.indexOf(tk.status) + dir] }) : tk; })); if (tk0) logActivity("단계 변경", "영상 업무 \"" + tk0.title + "\" → " + STAGES[STAGES.indexOf(tk0.status) + dir]); };
+  const moveTask = function (id, dir) { const tk0 = tasks.find(function (tk) { return tk.id === id; }); setTasksRaw(tasks.map(function (tk) { return tk.id === id ? Object.assign({}, tk, { status: STAGES[STAGES.indexOf(tk.status) + dir], statusChangedAt: Date.now() }) : tk; })); if (tk0) logActivity("단계 변경", "영상 업무 \"" + tk0.title + "\" → " + STAGES[STAGES.indexOf(tk0.status) + dir]); };
   const deleteTask = function (id) { const tk0 = tasks.find(function (tk) { return tk.id === id; }); setTasksRaw(tasks.filter(function (tk) { return tk.id !== id; })); if (tk0) logActivity("삭제", "영상 업무 \"" + tk0.title + "\" 삭제", { restoreType: "video", snapshot: tk0 }); };
   const addTask = function (payload) { setTasksRaw(tasks.concat(payload)); logActivity("생성", (Array.isArray(payload) ? payload : [payload]).length > 1 ? "영상 업무 " + payload.length + "건 등록 (반복)" : "영상 업무 \"" + (Array.isArray(payload) ? payload[0].title : payload.title) + "\" 등록"); };
   const updateTask = function (u) { setTasksRaw(tasks.map(function (tk) { return tk.id === u.id ? u : tk; })); setSelectedTask(u); };
   const updateTaskSeries = function (seriesId, changes) { setTasksRaw(tasks.map(function (tk) { return tk.seriesId === seriesId ? Object.assign({}, tk, changes) : tk; })); setSelectedTask(function (prev) { return Object.assign({}, prev, changes); }); logActivity("일괄 변경", "영상 반복 시리즈 정보 일괄 수정"); };
   const openAdd = function (date) { setAddDate(date || ""); setShowAdd(true); };
-  const moveMarketingTask = function (id, dir) { const tk0 = marketingTasks.find(function (tk) { return tk.id === id; }); setMarketingTasksRaw(marketingTasks.map(function (tk) { return tk.id === id ? Object.assign({}, tk, { status: MARKETING_STAGES[MARKETING_STAGES.indexOf(tk.status) + dir] }) : tk; })); if (tk0) logActivity("단계 변경", "마케팅 업무 \"" + tk0.title + "\" → " + MARKETING_STAGES[MARKETING_STAGES.indexOf(tk0.status) + dir]); };
+  const moveMarketingTask = function (id, dir) { const tk0 = marketingTasks.find(function (tk) { return tk.id === id; }); setMarketingTasksRaw(marketingTasks.map(function (tk) { return tk.id === id ? Object.assign({}, tk, { status: MARKETING_STAGES[MARKETING_STAGES.indexOf(tk.status) + dir], statusChangedAt: Date.now() }) : tk; })); if (tk0) logActivity("단계 변경", "마케팅 업무 \"" + tk0.title + "\" → " + MARKETING_STAGES[MARKETING_STAGES.indexOf(tk0.status) + dir]); };
   const deleteMarketingTask = function (id) { const tk0 = marketingTasks.find(function (tk) { return tk.id === id; }); setMarketingTasksRaw(marketingTasks.filter(function (tk) { return tk.id !== id; })); if (tk0) logActivity("삭제", "마케팅 업무 \"" + tk0.title + "\" 삭제", { restoreType: "marketing", snapshot: tk0 }); };
   const addMarketingTask = function (payload) { setMarketingTasksRaw(marketingTasks.concat(payload)); logActivity("생성", (Array.isArray(payload) ? payload : [payload]).length > 1 ? "마케팅 업무 " + payload.length + "건 등록 (반복)" : "마케팅 업무 \"" + (Array.isArray(payload) ? payload[0].title : payload.title) + "\" 등록"); };
   const updateMarketingTask = function (u) { setMarketingTasksRaw(marketingTasks.map(function (tk) { return tk.id === u.id ? u : tk; })); setSelectedMarketingTask(u); };
   const updateMarketingTaskSeries = function (seriesId, changes) { setMarketingTasksRaw(marketingTasks.map(function (tk) { return tk.seriesId === seriesId ? Object.assign({}, tk, changes) : tk; })); setSelectedMarketingTask(function (prev) { return Object.assign({}, prev, changes); }); logActivity("일괄 변경", "마케팅 반복 시리즈 정보 일괄 수정"); };
   const openAddMarketing = function (date) { setAddMarketingDate(date || ""); setShowAddMarketing(true); };
-  const moveDesignTask = function (id, dir) { const tk0 = designTasks.find(function (tk) { return tk.id === id; }); setDesignTasksRaw(designTasks.map(function (tk) { return tk.id === id ? Object.assign({}, tk, { status: DESIGN_STAGES[DESIGN_STAGES.indexOf(tk.status) + dir] }) : tk; })); if (tk0) logActivity("단계 변경", "디자인 업무 \"" + tk0.title + "\" → " + DESIGN_STAGES[DESIGN_STAGES.indexOf(tk0.status) + dir]); };
+  const moveDesignTask = function (id, dir) { const tk0 = designTasks.find(function (tk) { return tk.id === id; }); setDesignTasksRaw(designTasks.map(function (tk) { return tk.id === id ? Object.assign({}, tk, { status: DESIGN_STAGES[DESIGN_STAGES.indexOf(tk.status) + dir], statusChangedAt: Date.now() }) : tk; })); if (tk0) logActivity("단계 변경", "디자인 업무 \"" + tk0.title + "\" → " + DESIGN_STAGES[DESIGN_STAGES.indexOf(tk0.status) + dir]); };
   const deleteDesignTask = function (id) { const tk0 = designTasks.find(function (tk) { return tk.id === id; }); setDesignTasksRaw(designTasks.filter(function (tk) { return tk.id !== id; })); if (tk0) logActivity("삭제", "디자인 업무 \"" + tk0.title + "\" 삭제", { restoreType: "design", snapshot: tk0 }); };
   const addDesignTask = function (payload) { setDesignTasksRaw(designTasks.concat(payload)); logActivity("생성", (Array.isArray(payload) ? payload : [payload]).length > 1 ? "디자인 업무 " + payload.length + "건 등록 (반복)" : "디자인 업무 \"" + (Array.isArray(payload) ? payload[0].title : payload.title) + "\" 등록"); };
   const updateDesignTask = function (u) { setDesignTasksRaw(designTasks.map(function (tk) { return tk.id === u.id ? u : tk; })); setSelectedDesignTask(u); };
@@ -3264,11 +3543,11 @@ export default function App() {
       <div style={{ minHeight: "100vh", background: t.bg, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", color: t.text }}>
         <style dangerouslySetInnerHTML={{ __html: "button:not(:disabled){transition:opacity .15s ease,transform .1s ease,box-shadow .15s ease;} button:not(:disabled):hover{opacity:.85;} button:not(:disabled):active{transform:scale(0.97);} input,select,textarea{transition:border-color .15s ease,box-shadow .15s ease;} input:focus,select:focus,textarea:focus{outline:none;border-color:#6366f1 !important;box-shadow:0 0 0 3px rgba(99,102,241,0.16);}" }} />
         <FloatingChatWidget tasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} />
-        {showAdd ? <AddTaskModal onAdd={addTask} onClose={function () { setShowAdd(false); }} defaultDate={addDate} users={users} title="업무 추가" categories={TASK_CATEGORIES} /> : null}
+        {showAdd ? <AddTaskModal onAdd={addTask} onClose={function () { setShowAdd(false); }} defaultDate={addDate} users={users} title="업무 추가" categories={TASK_CATEGORIES} allTasks={tasks} /> : null}
         {selectedTask ? <TaskDetailModal task={selectedTask} onClose={function () { setSelectedTask(null); }} onUpdate={updateTask} onMove={isViewer ? null : function (id, dir) { moveTask(id, dir); setSelectedTask(function (prev) { return Object.assign({}, prev, { status: STAGES[STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} editTitle="업무 정보 수정" categories={TASK_CATEGORIES} allTasks={tasks} onUpdateSeries={isViewer ? null : updateTaskSeries} /> : null}
-        {showAddMarketing ? <AddTaskModal onAdd={addMarketingTask} onClose={function () { setShowAddMarketing(false); }} defaultDate={addMarketingDate} users={users} stages={MARKETING_STAGES} tags={MARKETING_TAGS} title="새 마케팅 업무 추가" categoryLabel="카테고리" /> : null}
+        {showAddMarketing ? <AddTaskModal onAdd={addMarketingTask} onClose={function () { setShowAddMarketing(false); }} defaultDate={addMarketingDate} users={users} stages={MARKETING_STAGES} tags={MARKETING_TAGS} title="새 마케팅 업무 추가" categoryLabel="카테고리" allTasks={marketingTasks} /> : null}
         {selectedMarketingTask ? <TaskDetailModal task={selectedMarketingTask} onClose={function () { setSelectedMarketingTask(null); }} onUpdate={updateMarketingTask} onMove={isViewer ? null : function (id, dir) { moveMarketingTask(id, dir); setSelectedMarketingTask(function (prev) { return Object.assign({}, prev, { status: MARKETING_STAGES[MARKETING_STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} tags={MARKETING_TAGS} categoryLabel="카테고리" editTitle="마케팅 업무 수정" allTasks={marketingTasks} onUpdateSeries={isViewer ? null : updateMarketingTaskSeries} /> : null}
-        {showAddDesign ? <AddTaskModal onAdd={addDesignTask} onClose={function () { setShowAddDesign(false); }} defaultDate={addDesignDate} users={users} stages={DESIGN_STAGES} tags={DESIGN_TAGS} title="새 디자인 업무 추가" categoryLabel="카테고리" /> : null}
+        {showAddDesign ? <AddTaskModal onAdd={addDesignTask} onClose={function () { setShowAddDesign(false); }} defaultDate={addDesignDate} users={users} stages={DESIGN_STAGES} tags={DESIGN_TAGS} title="새 디자인 업무 추가" categoryLabel="카테고리" allTasks={designTasks} /> : null}
         {showSearch ? <SearchModal videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onNavigateTab={setTab} onClose={function () { setShowSearch(false); }} /> : null}
         {selectedDesignTask ? <TaskDetailModal task={selectedDesignTask} onClose={function () { setSelectedDesignTask(null); }} onUpdate={updateDesignTask} onMove={isViewer ? null : function (id, dir) { moveDesignTask(id, dir); setSelectedDesignTask(function (prev) { return Object.assign({}, prev, { status: DESIGN_STAGES[DESIGN_STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} tags={DESIGN_TAGS} categoryLabel="카테고리" editTitle="디자인 업무 수정" allTasks={designTasks} onUpdateSeries={isViewer ? null : updateDesignTaskSeries} /> : null}
         {showProfile ? <ProfileModal currentUser={currentUser} onClose={function () { setShowProfile(false); }} onUpdate={function (updated) { if (isAdmin) { setAdminAuthRaw({ password: updated.password }); setCurrentUser(updated); } else { setUsersRaw(users.map(function (u) { return u.id === updated.id ? updated : u; })); setCurrentUser(updated); } setShowProfile(false); }} /> : null}
@@ -3306,7 +3585,7 @@ export default function App() {
         <NoticeBanner notices={notices} />
 
         {(function () {
-          const CALENDAR_TAB_IDS = ["unified", "calendar", "adCalendar", "designCalendar"];
+          const CALENDAR_TAB_IDS = ["unified", "calendar", "adCalendar", "designCalendar", "timeline"];
           const OPS_TAB_IDS = ["overtime", "activity"];
           const calendarTabs = displayTabs.filter(function (tp) { return CALENDAR_TAB_IDS.indexOf(tp.id) !== -1; });
           const opsTabs = displayTabs.filter(function (tp) { return OPS_TAB_IDS.indexOf(tp.id) !== -1; });
@@ -3362,19 +3641,21 @@ export default function App() {
         })()}
 
         <div style={{ maxWidth: 1300, margin: "0 auto", padding: "clamp(10px,4vw,20px)", minWidth: 0, boxSizing: "border-box" }}>
-          {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} rolePermissions={rolePermissions || DEFAULT_ROLE_PERMISSIONS} setRolePermissions={setRolePermissions} tasks={tasks} onUpdateTasks={setTasksRaw} /> : null}
-          {tab === "home" ? <HomePanel currentUser={currentUser} users={users} videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} /> : null}
+          {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} rolePermissions={rolePermissions || DEFAULT_ROLE_PERMISSIONS} setRolePermissions={setRolePermissions} tasks={tasks} onUpdateTasks={setTasksRaw} staleDays={staleDays} setStaleDays={setStaleDaysRaw} wipLimits={wipLimits} setWipLimits={setWipLimitsRaw} /> : null}
+          {tab === "home" ? <HomePanel currentUser={currentUser} users={users} videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} staleDays={staleDays} /> : null}
           {tab === "unified" ? <CombinedCalendarView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onSelectAd={function () { setTab("ad"); }} users={users} onBulkDeleteVideo={isViewer ? null : bulkDeleteTasks} onBulkAssignVideo={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} /> : null}
           {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} onSelectAd={function () { setTab("ad"); }} onBulkDelete={isViewer ? null : bulkDeleteTasks} onBulkAssign={isViewer ? null : bulkAssignTasks} users={users} currentUser={currentUser} categoryOptions={TASK_CATEGORIES} categoryField="category" /> : null}
           {tab === "adCalendar" ? <CalendarView tasks={marketingTasks} onSelectTask={setSelectedMarketingTask} onAddTask={isViewer ? function () {} : openAddMarketing} ads={adsData} onMove={isViewer ? null : moveMarketingTask} onDelete={isViewer ? null : deleteMarketingTask} onSelectAd={function () { setTab("ad"); }} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} taskLabel="마케팅 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssign={isViewer ? null : bulkAssignMarketingTasks} users={users} currentUser={currentUser} categoryOptions={MARKETING_TAGS} categoryField="tag" /> : null}
           {tab === "designCalendar" ? <CalendarView tasks={designTasks} onSelectTask={setSelectedDesignTask} onAddTask={isViewer ? function () {} : openAddDesign} ads={[]} onMove={isViewer ? null : moveDesignTask} onDelete={isViewer ? null : deleteDesignTask} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} taskLabel="디자인 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteDesignTasks} onBulkAssign={isViewer ? null : bulkAssignDesignTasks} users={users} currentUser={currentUser} categoryOptions={DESIGN_TAGS} categoryField="tag" /> : null}
-          {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} ads={adsData} onSelectAd={function () { setTab("ad"); }} designTasks={designTasks} onSelectDesign={setSelectedDesignTask} marketingTasks={marketingTasks} onSelectMarketing={setSelectedMarketingTask} onBulkDeleteTasks={isViewer ? null : bulkDeleteTasks} onBulkAssignTasks={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} currentUser={currentUser} /> : null}
+          {tab === "timeline" ? <TimelineView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} users={users} currentUser={currentUser} /> : null}
+          {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} ads={adsData} onSelectAd={function () { setTab("ad"); }} designTasks={designTasks} onSelectDesign={setSelectedDesignTask} marketingTasks={marketingTasks} onSelectMarketing={setSelectedMarketingTask} onBulkDeleteTasks={isViewer ? null : bulkDeleteTasks} onBulkAssignTasks={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} currentUser={currentUser} wipLimits={wipLimits} /> : null}
           {tab === "ad" ? <AdPanel aiAds={aiAds} setAiAds={setAiAds} intAds={intAds} setIntAds={setIntAds} onNewAd={sendAdNotification} currentUser={currentUser} /> : null}
           {tab === "stats" ? <div style={{ maxWidth: 760, margin: "0 auto" }}><StatsPanel videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} currentUser={currentUser} /></div> : null}
           {tab === "overtime" ? <OvertimePanel currentUser={currentUser} users={users} isAdmin={isAdmin} /> : null}
           {tab === "messages" ? <MessagesPanel currentUser={currentUser} users={users} isAdmin={isAdmin} messages={directMessages} setMessages={setDirectMessagesRaw} /> : null}
           {tab === "ai" ? <AIPanel tasks={tasks} users={users} ads={adsData} designTasks={designTasks} /> : null}
           {tab === "activity" ? <ActivityLogPanel log={activityLog} onRestore={restoreDeletedItem} onCleanup={cleanupActivityLog} isAdmin={isAdmin} /> : null}
+          {tab === "requests" ? <RequestsPanel requests={requests} setRequests={setRequestsRaw} currentUser={currentUser} isManager={isManager || isAdmin} /> : null}
         </div>
       </div>
     </ThemeCtx.Provider>
