@@ -3447,8 +3447,8 @@ function CharacterSprite(props) {
       {/* 몸체 이미지 */}
       <div style={{ position: "absolute", left: 0, bottom: 4, width: CHAR_W, transform: facing === "left" ? "scaleX(-1)" : "none" }}>
         <div style={{ position: "relative", width: CHAR_W, animation: bodyAnim, transformOrigin: "50% 100%" }}>
-          <img src={HANDY_IMG} alt="핸디" draggable={false} style={{ display: "block", width: CHAR_W, height: "auto", opacity: walking ? 0 : lipsync ? (mouthOpen ? 0 : 1) : (pointing || emotion === "happy" || emotion === "thinking") ? 0 : 1, transition: "opacity 0.18s ease", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.25))", pointerEvents: "none", userSelect: "none" }} />
-          <img src={HANDY_IMG_HAPPY} alt="" draggable={false} style={{ position: "absolute", left: 0, top: 0, display: "block", width: CHAR_W, height: "auto", opacity: walking ? 0 : lipsync ? (mouthOpen ? 1 : 0) : (!pointing && emotion === "happy") ? 1 : 0, transition: "opacity 0.18s ease", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.25))", pointerEvents: "none", userSelect: "none" }} />
+          <img src={HANDY_IMG} alt="핸디" draggable={false} style={{ display: "block", width: CHAR_W, height: "auto", opacity: walking ? 0 : lipsync ? (mouthOpen ? 0 : 1) : (pointing || emotion === "happy" || emotion === "thinking") ? 0 : 1, transition: lipsync ? "none" : "opacity 0.18s ease", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.25))", pointerEvents: "none", userSelect: "none" }} />
+          <img src={HANDY_IMG_HAPPY} alt="" draggable={false} style={{ position: "absolute", left: 0, top: 0, display: "block", width: CHAR_W, height: "auto", opacity: walking ? 0 : lipsync ? (mouthOpen ? 1 : 0) : (!pointing && emotion === "happy") ? 1 : 0, transition: lipsync ? "none" : "opacity 0.18s ease", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.25))", pointerEvents: "none", userSelect: "none" }} />
           <img src={HANDY_IMG_THINKING} alt="" draggable={false} style={{ position: "absolute", left: 0, top: 0, display: "block", width: CHAR_W, height: "auto", opacity: !walking && !lipsync && !pointing && emotion === "thinking" ? 1 : 0, transition: "opacity 0.18s ease", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.25))", pointerEvents: "none", userSelect: "none" }} />
         </div>
       </div>
@@ -3483,6 +3483,11 @@ function TimbelAssistant(props) {
   const [hidden, setHidden] = useState(false);
   const [voiceOn, setVoiceOn] = useState(function () { return getCookie("timbel_handy_voice") !== "off"; });
   const [speaking, setSpeaking] = useState(false);
+  const [voiceList, setVoiceList] = useState([]);
+  const [voiceName, setVoiceName] = useState(function () { return getCookie("timbel_handy_voice_name") || ""; });
+  const [voiceRate, setVoiceRate] = useState(function () { return Number(getCookie("timbel_handy_voice_rate")) || 1.05; });
+  const [voicePitch, setVoicePitch] = useState(function () { return Number(getCookie("timbel_handy_voice_pitch")) || 1.25; });
+  const [voiceSetOpen, setVoiceSetOpen] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState([{ role: "assistant", content: "안녕하세요, 핸디예요! 업무 현황이든 사용법이든 무엇이든 물어보세요. 저를 끌어서 원하는 자리에 둘 수도 있어요." }]);
@@ -3580,12 +3585,30 @@ function TimbelAssistant(props) {
   const voiceOnRef = useRef(voiceOn);
   const speakTimer = useRef(null);
   voiceOnRef.current = voiceOn;
+  const voiceNameRef = useRef(voiceName); voiceNameRef.current = voiceName;
+  const voiceRateRef = useRef(voiceRate); voiceRateRef.current = voiceRate;
+  const voicePitchRef = useRef(voicePitch); voicePitchRef.current = voicePitch;
   const getKoVoice = function () {
     if (!window.speechSynthesis) return null;
     const vs = window.speechSynthesis.getVoices();
+    if (voiceNameRef.current) {
+      const chosen = vs.find(function (v) { return v.name === voiceNameRef.current; });
+      if (chosen) return chosen;
+    }
     return vs.find(function (v) { return v.lang === "ko-KR" && /Google/i.test(v.name); }) ||
       vs.find(function (v) { return v.lang && v.lang.indexOf("ko") === 0; }) || null;
   };
+  const refreshVoiceList = function () {
+    if (!window.speechSynthesis) return;
+    const vs = window.speechSynthesis.getVoices();
+    const ko = vs.filter(function (v) { return v.lang && v.lang.replace("_", "-").indexOf("ko") === 0; });
+    setVoiceList(ko);
+  };
+  useEffect(function () {
+    refreshVoiceList();
+    if (window.speechSynthesis) window.speechSynthesis.addEventListener("voiceschanged", refreshVoiceList);
+    return function () { if (window.speechSynthesis) window.speechSynthesis.removeEventListener("voiceschanged", refreshVoiceList); };
+  }, []);
   const speakVoice = function (text) {
     if (!voiceOnRef.current || !window.speechSynthesis || !text) return;
     window.speechSynthesis.cancel();
@@ -3595,8 +3618,8 @@ function TimbelAssistant(props) {
     u.lang = "ko-KR";
     const v = getKoVoice();
     if (v) u.voice = v;
-    u.rate = 1.05;   // 말 속도
-    u.pitch = 1.25;  // 톤 (귀엽게 살짝 높임)
+    u.rate = voiceRateRef.current;
+    u.pitch = voicePitchRef.current;
     setSpeaking(true); // 즉시 립싱크 시작 (onstart 지연/누락 대비)
     if (speakTimer.current) clearTimeout(speakTimer.current);
     const estMs = Math.min(30000, plain.length * 120 + 1800); // 예상 발화 시간 (안전장치)
@@ -3796,11 +3819,34 @@ function TimbelAssistant(props) {
               <div style={{ fontSize: 13.5, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>핸디</div>
               <div style={{ fontSize: 10, color: "#ffffffbb" }}>업무 현황·사용법 무엇이든 물어보세요</div>
             </div>
+            <button onClick={function () { setVoiceSetOpen(!voiceSetOpen); }} title="목소리 설정" style={{ background: voiceSetOpen ? "#ffffff40" : "#ffffff26", border: "none", borderRadius: 9, padding: "5px 9px", color: "#fff", cursor: "pointer", fontSize: 12 }}>⚙️</button>
             <button onClick={function () { const nv = !voiceOn; setVoiceOn(nv); setCookie("timbel_handy_voice", nv ? "on" : "off", 365); if (!nv) stopVoice(); }} title={voiceOn ? "목소리 끄기" : "목소리 켜기"} style={{ background: "#ffffff26", border: "none", borderRadius: 9, padding: "5px 9px", color: "#fff", cursor: "pointer", fontSize: 12 }}>{voiceOn ? "🔊" : "🔇"}</button>
             <button onClick={function () { startTour(); }} title="스케줄러 투어" style={{ background: "#ffffff26", border: "none", borderRadius: 9, padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>투어</button>
             <button onClick={function () { stopVoice(); setChatOpen(false); setHidden(true); }} title="핸디 숨기기" style={{ background: "#ffffff26", border: "none", borderRadius: 9, padding: "5px 8px", color: "#fff", cursor: "pointer", fontSize: 11 }}>숨기기</button>
             <button onClick={function () { setChatOpen(false); }} style={{ background: "none", border: "none", color: "#ffffffcc", cursor: "pointer", fontSize: 17, padding: 0, lineHeight: 1 }}>×</button>
           </div>
+          {voiceSetOpen ? (
+            <div style={{ padding: "11px 14px", borderBottom: "1px solid " + t.border, background: t.surface2, display: "flex", flexDirection: "column", gap: 9 }}>
+              <div>
+                <div style={{ fontSize: 10.5, color: t.text4, fontWeight: 700, marginBottom: 4 }}>목소리 선택 {voiceList.length === 0 ? "(이 브라우저엔 한국어 음성이 없어요)" : "(" + voiceList.length + "개 사용 가능)"}</div>
+                <select value={voiceName} onChange={function (e) { setVoiceName(e.target.value); setCookie("timbel_handy_voice_name", e.target.value, 365); }} style={{ width: "100%", background: t.inputBg, border: "1px solid " + t.border, borderRadius: 9, padding: "7px 9px", fontSize: 12, color: t.text, outline: "none", cursor: "pointer" }}>
+                  <option value="">자동 선택</option>
+                  {voiceList.map(function (v) { return <option key={v.name} value={v.name}>{v.name.replace(/Microsoft |Google /, "")}{v.localService ? "" : " ☁️"}</option>; })}
+                </select>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <div style={{ fontSize: 10.5, color: t.text4, fontWeight: 700, marginBottom: 3 }}>속도 {voiceRate.toFixed(2)}</div>
+                  <input type="range" min="0.6" max="1.6" step="0.05" value={voiceRate} onChange={function (e) { const v = Number(e.target.value); setVoiceRate(v); setCookie("timbel_handy_voice_rate", String(v), 365); }} style={{ width: "100%", accentColor: "#6366f1" }} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 10.5, color: t.text4, fontWeight: 700, marginBottom: 3 }}>톤 {voicePitch.toFixed(2)}</div>
+                  <input type="range" min="0.6" max="1.8" step="0.05" value={voicePitch} onChange={function (e) { const v = Number(e.target.value); setVoicePitch(v); setCookie("timbel_handy_voice_pitch", String(v), 365); }} style={{ width: "100%", accentColor: "#6366f1" }} />
+                </div>
+              </div>
+              <button onClick={function () { speakVoice("안녕하세요, 핸디예요! 이 목소리 어때요?"); }} style={{ background: "#6366f1", border: "none", borderRadius: 9, padding: "7px 0", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer" }}>🔊 미리듣기</button>
+            </div>
+          ) : null}
           <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: "13px 13px", display: "flex", flexDirection: "column", gap: 9 }}>
             {messages.map(function (m, i) {
               const mine = m.role === "user";
