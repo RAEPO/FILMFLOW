@@ -3404,13 +3404,23 @@ const TOUR_STEPS = [
 // ── 이동/연출 상수 ──
 const CHAR_W = 88;
 const CHAR_H = 106;
-const WALK_SPEED = 4.2; // px per frame
-const IDLE_WANDER_MS = 14000;
+const WALK_SPEED = 4.2; // px per frame (투어/안내 이동 시에만 사용)
 
 function clampPos(x, y) {
   const maxX = window.innerWidth - CHAR_W - 8;
   const maxY = window.innerHeight - CHAR_H - 8;
   return { x: Math.max(8, Math.min(maxX, x)), y: Math.max(56, Math.min(maxY, y)) };
+}
+
+function loadSavedPos() {
+  try {
+    const raw = getCookie("timbel_timbi_pos");
+    if (raw) {
+      const p = JSON.parse(raw);
+      if (typeof p.x === "number" && typeof p.y === "number") return clampPos(p.x, p.y);
+    }
+  } catch (e) {}
+  return clampPos(window.innerWidth - 130, window.innerHeight - 140);
 }
 
 // ── 캐릭터 본체 (마스코트 "핸디" 이미지 스프라이트) ──
@@ -3445,14 +3455,15 @@ function CharacterSprite(props) {
 
 // ── 메인 컴포넌트 ──
 function TimbelAssistant(props) {
-  const { isDark, onNavigateTab, currentUser, tasksSummary } = props;
+  const { isDark, onNavigateTab, currentUser, tasks, marketingTasks, designTasks } = props;
   const t = isDark !== false
-    ? { surface: "#111827", border: "#374151", text: "#f9fafb", text2: "#d1d5db", inputBg: "#1f2937" }
-    : { surface: "#ffffff", border: "#cbd5e1", text: "#0f172a", text2: "#334155", inputBg: "#f8fafc" };
+    ? { surface: "#111827", surface2: "#1f2937", border: "#374151", text: "#f9fafb", text2: "#d1d5db", text4: "#9ca3af", inputBg: "#1f2937" }
+    : { surface: "#ffffff", surface2: "#f8fafc", border: "#cbd5e1", text: "#0f172a", text2: "#334155", text4: "#64748b", inputBg: "#f8fafc" };
 
-  const [pos, setPos] = useState(function () { return clampPos(window.innerWidth - 140, window.innerHeight - 130); });
+  const [pos, setPos] = useState(loadSavedPos);
   const [facing, setFacing] = useState("left");
   const [walking, setWalking] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const [pointing, setPointing] = useState(false);
   const [emotion, setEmotion] = useState("normal");
   const [bubble, setBubble] = useState("");
@@ -3460,21 +3471,32 @@ function TimbelAssistant(props) {
   const [hidden, setHidden] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [history, setHistory] = useState([]);
+  const [messages, setMessages] = useState([{ role: "assistant", content: "안녕하세요, 팀비예요! 업무 현황이든 사용법이든 무엇이든 물어보세요. 저를 끌어서 원하는 자리에 둘 수도 있어요." }]);
 
   const posRef = useRef(pos);
-  const targetRef = useRef(null); // { x, y, cb }
+  const homeRef = useRef(pos); // 사용자가 정한 자리 (투어 후 복귀 지점)
+  const targetRef = useRef(null);
   const rafRef = useRef(null);
   const bubbleTimer = useRef(null);
-  const idleTimer = useRef(null);
   const tourRef = useRef({ active: false, step: 0 });
+  const dragRef = useRef({ down: false, moved: false, offX: 0, offY: 0 });
+  const listRef = useRef(null);
   posRef.current = pos;
 
-  // ── 이동 엔진 (requestAnimationFrame) ──
+  useEffect(function () { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [messages.length, chatOpen, loading]);
+
+  // 창 크기 변경 시 화면 밖으로 나가지 않게 보정
+  useEffect(function () {
+    const onResize = function () { setPos(function (p) { return clampPos(p.x, p.y); }); };
+    window.addEventListener("resize", onResize);
+    return function () { window.removeEventListener("resize", onResize); };
+  }, []);
+
+  // ── 이동 엔진 (투어/안내 시에만 걷기) ──
   useEffect(function () {
     const tick = function () {
       const tgt = targetRef.current;
-      if (tgt) {
+      if (tgt && !dragRef.current.down) {
         const cur = posRef.current;
         const dx = tgt.x - cur.x, dy = tgt.y - cur.y;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -3502,7 +3524,44 @@ function TimbelAssistant(props) {
     targetRef.current = { x: c.x, y: c.y, cb: cb || null };
   };
 
-  // ── 말하기 ──
+  const savePos = function (p) { homeRef.current = p; setCookie("timbel_timbi_pos", JSON.stringify(p), 365); };
+
+  // ── 드래그로 위치 지정 ──
+  const onPointerDown = function (e) {
+    e.preventDefault();
+    targetRef.current = null; // 진행 중 이동 취소
+    setWalking(false);
+    dragRef.current = { down: true, moved: false, offX: e.clientX - posRef.current.x, offY: e.clientY - posRef.current.y };
+    if (e.currentTarget.setPointerCapture) e.currentTarget.setPointerCapture(e.pointerId);
+  };
+  const onPointerMove = function (e) {
+    const d = dragRef.current;
+    if (!d.down) return;
+    const nx = e.clientX - d.offX, ny = e.clientY - d.offY;
+    if (!d.moved) {
+      const dx = nx - posRef.current.x, dy = ny - posRef.current.y;
+      if (Math.sqrt(dx * dx + dy * dy) > 6) { d.moved = true; setDragging(true); setBubble(""); }
+      else return;
+    }
+    setPos(clampPos(nx, ny));
+  };
+  const onPointerUp = function () {
+    const d = dragRef.current;
+    if (!d.down) return;
+    dragRef.current.down = false;
+    setDragging(false);
+    if (d.moved) {
+      savePos(posRef.current);
+    } else {
+      // 클릭 → 채팅 토글
+      setChatOpen(function (v) { return !v; });
+      setBubble("");
+      setPointing(false);
+      stopTour();
+    }
+  };
+
+  // ── 말하기 (말풍선) ──
   const speak = function (text, opts) {
     setBubble(text);
     if (bubbleTimer.current) clearTimeout(bubbleTimer.current);
@@ -3523,7 +3582,6 @@ function TimbelAssistant(props) {
       walkTo(x, y, function () {
         setFacing("left");
         setPointing(true);
-        // 대상 요소 하이라이트
         const prevShadow = el.style.boxShadow, prevRadius = el.style.borderRadius;
         el.style.boxShadow = "0 0 0 3px #fbbf24, 0 0 18px #fbbf2480";
         el.style.borderRadius = el.style.borderRadius || "12px";
@@ -3534,12 +3592,12 @@ function TimbelAssistant(props) {
     }, 450);
   };
 
-  // ── 가이드 투어 ──
+  // ── 가이드 투어 (끝나면 사용자가 정한 자리로 복귀) ──
   const runTourStep = function (stepIdx) {
     if (stepIdx >= TOUR_STEPS.length) {
       tourRef.current.active = false;
       setEmotion("happy");
-      walkTo(window.innerWidth - 140, window.innerHeight - 130);
+      walkTo(homeRef.current.x, homeRef.current.y);
       return;
     }
     tourRef.current = { active: true, step: stepIdx };
@@ -3551,8 +3609,15 @@ function TimbelAssistant(props) {
       });
     }, 350);
   };
-  const startTour = function () { speak("좋아요, 스케줄러 투어를 시작할게요!", { emotion: "happy", duration: 2000 }); setTimeout(function () { runTourStep(0); }, 1400); };
-  const stopTour = function () { tourRef.current.active = false; };
+  const startTour = function () { setChatOpen(false); speak("좋아요, 스케줄러 투어를 시작할게요!", { emotion: "happy", duration: 2000 }); setTimeout(function () { runTourStep(0); }, 1400); };
+  const stopTour = function () {
+    if (tourRef.current.active) {
+      tourRef.current.active = false;
+      targetRef.current = null;
+      setWalking(false);
+      setPointing(false);
+    }
+  };
 
   // ── AI 액션 실행 ──
   const executeAction = function (res) {
@@ -3560,98 +3625,78 @@ function TimbelAssistant(props) {
     const action = res.action || "none";
     const target = res.target || "";
     const emo = res.emotion || "normal";
+    setEmotion(emo);
     if (action === "tour") { startTour(); return; }
     if (action === "open_tab" && GUIDE_MAP[target]) {
       if (onNavigateTab) onNavigateTab(target);
-      setTimeout(function () { moveToGuide("tab-" + target, speech); }, 350);
+      setChatOpen(false);
+      setTimeout(function () {
+        moveToGuide("tab-" + target, speech, function () {
+          setTimeout(function () { walkTo(homeRef.current.x, homeRef.current.y); }, 600);
+        });
+      }, 350);
       return;
     }
-    if (action === "move_to" && target) { moveToGuide(target.indexOf("tab-") === 0 ? target : "tab-" + target, speech); return; }
-    speak(speech, { emotion: emo });
   };
 
-  // ── Claude API 호출 ──
+  // ── Claude API 호출 (업무 현황 전체 + 가이드 액션 통합) ──
   const askAI = async function () {
     if (!input.trim() || loading) return;
     const q = input.trim();
     setInput("");
     stopTour();
+    const newMessages = messages.concat([{ role: "user", content: q }]);
+    setMessages(newMessages);
     setLoading(true);
     setEmotion("thinking");
-    speak("음... 잠깐만요!", { sticky: true });
-    const newHistory = history.concat([{ role: "user", content: q }]).slice(-8);
+    const fmt = function (list) { return (list || []).map(function (tk) { return "[" + tk.status + "] " + tk.title + " (담당: " + tk.assignee + ", 마감: " + tk.due + ")"; }).join("\n"); };
+    const summary = "영상 업무:\n" + fmt(tasks) + "\n\n마케팅 업무:\n" + fmt(marketingTasks) + "\n\n디자인 업무:\n" + fmt(designTasks);
     const tabList = Object.keys(GUIDE_MAP).map(function (k) { return k + ": " + GUIDE_MAP[k].label + " — " + GUIDE_MAP[k].desc; }).join("\n");
-    const system = "당신은 TIMBEL 업무 스케줄러의 마스코트 '팀비'입니다. 밝고 친근하게, 존댓말로, 2문장 이내로 짧게 답하세요.\n" +
+    const system = "당신은 TIMBEL 업무 스케줄러의 마스코트이자 AI 비서 '팀비'입니다. 밝고 친근하게, 존댓말로, 간결하게 답하세요.\n" +
       (currentUser ? "지금 대화 중인 사용자: " + currentUser.name + "\n" : "") +
       "\n[스케줄러 탭 목록]\n" + tabList + "\n" +
-      (tasksSummary ? "\n[현재 업무 현황]\n" + tasksSummary + "\n" : "") +
+      "\n[현재 업무 현황]\n" + summary + "\n" +
       "\n반드시 아래 JSON 형식으로만 응답하세요 (백틱, 설명 금지):\n" +
-      '{"speech":"말풍선에 표시할 짧은 대답","action":"none|open_tab|tour","target":"open_tab일 때 탭 id","emotion":"normal|happy|thinking"}\n' +
-      "규칙: 특정 기능/탭 위치를 묻거나 '보여줘/어디야/알려줘' 류의 질문이면 action=open_tab + 해당 탭 id. '투어/둘러보기/사용법 전체'를 원하면 action=tour. 그 외 일반 대화·업무 질문은 action=none.";
+      '{"speech":"사용자에게 보여줄 대답","action":"none|open_tab|tour","target":"open_tab일 때 탭 id","emotion":"normal|happy|thinking"}\n' +
+      "규칙: 특정 기능/탭 위치를 묻거나 '보여줘/어디야/데려가줘' 류의 요청이면 action=open_tab + 해당 탭 id. '투어/둘러보기/전체 사용법'을 원하면 action=tour. 그 외 업무 현황 질문·일반 대화는 action=none으로 두고 speech에서 충분히 답하세요.";
     try {
+      const apiMessages = newMessages.slice(-12).map(function (m) { return { role: m.role, content: m.content }; });
       const res = await fetch("https://api.anthropic.com/v1/messages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 500, system: system, messages: newHistory }),
+        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 800, system: system, messages: apiMessages }),
       });
       const data = await res.json();
       const text = data.content.map(function (c) { return c.text || ""; }).join("");
-      const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
-      setHistory(newHistory.concat([{ role: "assistant", content: text }]));
+      let parsed;
+      try { parsed = JSON.parse(text.replace(/```json|```/g, "").trim()); }
+      catch (e2) { parsed = { speech: text, action: "none", emotion: "normal" }; }
+      setMessages(newMessages.concat([{ role: "assistant", content: parsed.speech || text }]));
       executeAction(parsed);
     } catch (e) {
-      speak("앗, 지금은 대답하기 어려워요. 잠시 후 다시 시도해주세요!", { emotion: "normal" });
+      setMessages(newMessages.concat([{ role: "assistant", content: "앗, 지금은 대답하기 어려워요. 잠시 후 다시 시도해주세요!" }]));
+      setEmotion("normal");
     }
     setLoading(false);
   };
 
-  // ── 심심하면 슬쩍 돌아다니기 ──
-  useEffect(function () {
-    const wander = function () {
-      if (targetRef.current || bubble || chatOpen || tourRef.current.active || hidden) return;
-      const x = 60 + Math.random() * (window.innerWidth - 200);
-      const y = window.innerHeight - 130 - Math.random() * 40;
-      walkTo(x, y);
-    };
-    idleTimer.current = setInterval(wander, IDLE_WANDER_MS);
-    return function () { clearInterval(idleTimer.current); };
-  }, [bubble, chatOpen, hidden]);
-
-  // ── 리사이즈 시 화면 밖으로 못 나가게 ──
-  useEffect(function () {
-    const onResize = function () { setPos(function (p) { return clampPos(p.x, p.y); }); };
-    window.addEventListener("resize", onResize);
-    return function () { window.removeEventListener("resize", onResize); };
-  }, []);
-
-  // ── 첫 등장 인사 ──
-  useEffect(function () {
-    const timer = setTimeout(function () {
-      speak((currentUser ? currentUser.name + "님, " : "") + "안녕하세요! 저는 팀비예요. 클릭해서 말을 걸어보세요!", { emotion: "happy" });
-    }, 1200);
-    return function () { clearTimeout(timer); };
-  }, []);
-
+  // ── 숨김 상태 ──
   if (hidden) {
     return (
       <button onClick={function () { setHidden(false); }} title="팀비 다시 부르기"
-        style={{ position: "fixed", left: 14, bottom: 14, zIndex: 9000, width: 40, height: 40, borderRadius: "50%", border: "none", cursor: "pointer", background: "linear-gradient(135deg,#818cf8,#ec4899)", color: "#fff", fontSize: 18, boxShadow: "0 6px 18px #00000060" }}>◕‿◕</button>
+        style={{ position: "fixed", left: 14, bottom: 14, zIndex: 9000, width: 40, height: 40, borderRadius: "50%", border: "none", cursor: "pointer", background: "linear-gradient(135deg,#818cf8,#6366f1)", padding: 0, overflow: "hidden", boxShadow: "0 6px 18px #00000060" }}>
+        <img src={HANDY_IMG} alt="팀비" style={{ width: 30, height: "auto", display: "block", margin: "0 auto" }} />
+      </button>
     );
   }
 
-  const bubbleVisible = bubble || chatOpen;
+  const panelW = Math.min(360, window.innerWidth - 24);
+  const panelLeft = Math.max(8, Math.min(window.innerWidth - panelW - 8, pos.x + CHAR_W / 2 - panelW / 2));
+  const panelAbove = pos.y > window.innerHeight / 2;
+
   return (
     <div>
       <style dangerouslySetInnerHTML={{ __html: [
-        "@keyframes tbIdle {0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}",
-        "@keyframes tbWalk {0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-5px) rotate(2deg)}}",
-        "@keyframes tbBlink {0%,92%,100%{transform:scaleY(1)}95%{transform:scaleY(0.08)}}",
-        "@keyframes tbTalk {0%,100%{transform:scaleY(1)}50%{transform:scaleY(0.4)}}",
-        "@keyframes tbAntenna {0%,100%{opacity:1}50%{opacity:0.4}}",
-        "@keyframes tbFootL {0%,100%{transform:translateY(0)}50%{transform:translateY(-4px)}}",
-        "@keyframes tbFootR {0%,100%{transform:translateY(-4px)}50%{transform:translateY(0)}}",
-        "@keyframes tbPoint {0%,100%{transform:rotate(0deg)}50%{transform:rotate(-8deg)}}",
-        "@keyframes tbShadow {0%,100%{transform:scaleX(1)}50%{transform:scaleX(0.88)}}",
         "@keyframes tbBubbleIn {from{opacity:0;transform:translateY(6px) scale(0.96)}to{opacity:1;transform:translateY(0) scale(1)}}",
         "@keyframes hdIdle {0%,100%{transform:translateY(0) scale(1,1)}50%{transform:translateY(-3px) scale(0.995,1.008)}}",
         "@keyframes hdWalk {0%,100%{transform:translateY(0) rotate(-2.5deg)}25%{transform:translateY(-6px) rotate(0deg)}50%{transform:translateY(0) rotate(2.5deg)}75%{transform:translateY(-6px) rotate(0deg)}}",
@@ -3660,49 +3705,61 @@ function TimbelAssistant(props) {
         "@keyframes hdShadowWalk {0%,100%{transform:scaleX(1);opacity:0.22}25%,75%{transform:scaleX(0.82);opacity:0.14}}",
         "@keyframes hdEmote {0%,100%{transform:translateY(0);opacity:0.9}50%{transform:translateY(-5px);opacity:1}}",
         "@keyframes hdPoint {0%,100%{transform:translateX(0)}50%{transform:translateX(5px)}}",
-        ".tb-idle{animation:tbIdle 2.6s ease-in-out infinite;transform-origin:40px 76px}",
-        ".tb-walk{animation:tbWalk 0.35s ease-in-out infinite;transform-origin:40px 76px}",
-        ".tb-blink{animation:tbBlink 4s infinite;transform-origin:40px 34px}",
-        ".tb-talk{animation:tbTalk 0.3s infinite;transform-origin:40px 46px}",
-        ".tb-antenna{animation:tbAntenna 1.6s infinite}",
-        ".tb-footL{animation:tbFootL 0.35s infinite}",
-        ".tb-footR{animation:tbFootR 0.35s infinite}",
-        ".tb-point{animation:tbPoint 0.8s ease-in-out infinite;transform-origin:66px 40px}",
-        ".tb-shadow{animation:tbShadow 2.6s ease-in-out infinite;transform-origin:40px 82px}",
-        "@media (prefers-reduced-motion: reduce){.tb-idle,.tb-walk,.tb-point,.tb-shadow{animation:none}}",
+        "@media (prefers-reduced-motion: reduce) { * { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; } }",
       ].join("\n") }} />
 
-      {/* 말풍선 + 채팅 */}
-      {bubbleVisible ? (
-        <div style={{ position: "fixed", left: Math.max(8, Math.min(window.innerWidth - 268, pos.x + CHAR_W / 2 - 130)), top: Math.max(8, pos.y - (chatOpen ? 158 : 96)), zIndex: 9001, width: 260, animation: "tbBubbleIn 0.18s ease-out" }}>
+      {/* 말풍선 (투어/안내용 짧은 메시지) */}
+      {bubble && !chatOpen ? (
+        <div style={{ position: "fixed", left: Math.max(8, Math.min(window.innerWidth - 268, pos.x + CHAR_W / 2 - 130)), top: Math.max(8, pos.y - 96), zIndex: 9001, width: 260, animation: "tbBubbleIn 0.18s ease-out" }}>
           <div style={{ background: t.surface, border: "1px solid " + t.border, borderRadius: 16, padding: "11px 13px", boxShadow: "0 12px 32px #00000060", position: "relative" }}>
-            <button onClick={function () { setBubble(""); setChatOpen(false); setPointing(false); stopTour(); }} style={{ position: "absolute", top: 6, right: 9, background: "none", border: "none", color: t.text2, cursor: "pointer", fontSize: 14, lineHeight: 1 }}>×</button>
-            {bubble ? <div style={{ fontSize: 12.5, color: t.text, lineHeight: 1.65, paddingRight: 14, whiteSpace: "pre-wrap" }}>{bubble}</div> : null}
-            {loading ? <div style={{ fontSize: 11, color: "#818cf8", marginTop: 5 }}>생각하는 중...</div> : null}
-            {chatOpen ? (
-              <div style={{ marginTop: bubble ? 9 : 2 }}>
-                <div style={{ display: "flex", gap: 5 }}>
-                  <input autoFocus value={input} onChange={function (e) { setInput(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") askAI(); }} placeholder="팀비에게 물어보세요..." style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.border, borderRadius: 9, padding: "7px 10px", fontSize: 12, color: t.text, outline: "none", minWidth: 0 }} />
-                  <button onClick={askAI} disabled={loading} style={{ background: "#6366f1", border: "none", borderRadius: 9, padding: "0 11px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", flexShrink: 0 }}>→</button>
+            <button onClick={function () { setBubble(""); setPointing(false); stopTour(); }} style={{ position: "absolute", top: 6, right: 9, background: "none", border: "none", color: t.text2, cursor: "pointer", fontSize: 14, lineHeight: 1 }}>×</button>
+            <div style={{ fontSize: 12.5, color: t.text, lineHeight: 1.65, paddingRight: 14, whiteSpace: "pre-wrap" }}>{bubble}</div>
+          </div>
+          <div style={{ width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "9px solid " + t.surface, marginLeft: 120 }} />
+        </div>
+      ) : null}
+
+      {/* 채팅 패널 (기존 AI 챗봇 기능 통합) */}
+      {chatOpen ? (
+        <div style={{ position: "fixed", left: panelLeft, top: panelAbove ? Math.max(8, pos.y - 424) : Math.min(window.innerHeight - 416, pos.y + CHAR_H + 8), zIndex: 9001, width: panelW, height: 408, background: t.surface, borderRadius: 18, border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c", display: "flex", flexDirection: "column", overflow: "hidden", animation: "tbBubbleIn 0.18s ease-out" }}>
+          <div style={{ background: "linear-gradient(135deg,#6366f1,#818cf8)", padding: "11px 15px", display: "flex", alignItems: "center", gap: 9 }}>
+            <img src={HANDY_IMG} alt="" style={{ width: 24, height: "auto" }} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>팀비</div>
+              <div style={{ fontSize: 10, color: "#ffffffbb" }}>업무 현황·사용법 무엇이든 물어보세요</div>
+            </div>
+            <button onClick={function () { startTour(); }} title="스케줄러 투어" style={{ background: "#ffffff26", border: "none", borderRadius: 9, padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>투어</button>
+            <button onClick={function () { setChatOpen(false); setHidden(true); }} title="팀비 숨기기" style={{ background: "#ffffff26", border: "none", borderRadius: 9, padding: "5px 8px", color: "#fff", cursor: "pointer", fontSize: 11 }}>숨기기</button>
+            <button onClick={function () { setChatOpen(false); }} style={{ background: "none", border: "none", color: "#ffffffcc", cursor: "pointer", fontSize: 17, padding: 0, lineHeight: 1 }}>×</button>
+          </div>
+          <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: "13px 13px", display: "flex", flexDirection: "column", gap: 9 }}>
+            {messages.map(function (m, i) {
+              const mine = m.role === "user";
+              return (
+                <div key={i} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", gap: 7, alignItems: "flex-end" }}>
+                  {!mine ? <img src={HANDY_IMG} alt="" style={{ width: 20, height: "auto", flexShrink: 0, marginBottom: 2 }} /> : null}
+                  <div style={{ maxWidth: "80%", background: mine ? "#6366f1" : t.surface2, color: mine ? "#fff" : t.text, borderRadius: mine ? "13px 13px 3px 13px" : "13px 13px 13px 3px", padding: "8px 12px", fontSize: 12.5, lineHeight: 1.65, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{m.content}</div>
                 </div>
-                <div style={{ display: "flex", gap: 4, marginTop: 7, flexWrap: "wrap" }}>
-                  <button onClick={startTour} style={{ background: "#fbbf2420", border: "1px solid #fbbf2440", borderRadius: 20, padding: "3px 10px", fontSize: 10.5, color: "#fbbf24", cursor: "pointer", fontWeight: 700 }}>스케줄러 투어</button>
-                  <button onClick={function () { setInput("제작 보드는 어떻게 써?"); }} style={{ background: t.inputBg, border: "1px solid " + t.border, borderRadius: 20, padding: "3px 10px", fontSize: 10.5, color: t.text2, cursor: "pointer" }}>보드 사용법</button>
-                  <button onClick={function () { setHidden(true); setBubble(""); setChatOpen(false); }} style={{ background: t.inputBg, border: "1px solid " + t.border, borderRadius: 20, padding: "3px 10px", fontSize: 10.5, color: t.text2, cursor: "pointer" }}>잠깐 숨기기</button>
-                </div>
-              </div>
-            ) : null}
-            {/* 말풍선 꼬리 */}
-            <div style={{ position: "absolute", bottom: -7, left: "50%", marginLeft: -7, width: 14, height: 14, background: t.surface, borderRight: "1px solid " + t.border, borderBottom: "1px solid " + t.border, transform: "rotate(45deg)" }} />
+              );
+            })}
+            {loading ? <div style={{ display: "flex", gap: 7, alignItems: "flex-end" }}><img src={HANDY_IMG} alt="" style={{ width: 20, height: "auto" }} /><div style={{ background: t.surface2, borderRadius: "13px 13px 13px 3px", padding: "8px 12px", fontSize: 12.5, color: t.text4 }}>생각 중...</div></div> : null}
+          </div>
+          <div style={{ padding: "10px 11px", borderTop: "1px solid " + t.border, display: "flex", gap: 7 }}>
+            <input value={input} onChange={function (e) { setInput(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") askAI(); }} placeholder="예: 이번 주 마감 뭐 있어? / 통계 어디야?" style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.border, borderRadius: 11, padding: "9px 12px", fontSize: 13, color: t.text, outline: "none" }} />
+            <button onClick={askAI} disabled={loading} style={{ background: "#6366f1", border: "none", borderRadius: 11, padding: "0 14px", color: "#fff", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center" }}><Send size={14} strokeWidth={2} /></button>
           </div>
         </div>
       ) : null}
 
-      {/* 캐릭터 */}
-      <div onClick={function () { setChatOpen(!chatOpen); if (!chatOpen) { setEmotion("happy"); stopTour(); } }}
-        title="팀비 (클릭해서 대화)"
-        style={{ position: "fixed", left: pos.x, top: pos.y, zIndex: 9000, cursor: "pointer", userSelect: "none", WebkitTapHighlightColor: "transparent" }}>
-        <CharacterSprite emotion={emotion} walking={walking} facing={facing} talking={loading} pointing={pointing} />
+      {/* 캐릭터 (드래그로 위치 지정, 클릭으로 채팅) */}
+      <div
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerUp}
+        title={dragging ? "" : "클릭: 대화 / 드래그: 위치 이동"}
+        style={{ position: "fixed", left: pos.x, top: pos.y, zIndex: 9000, cursor: dragging ? "grabbing" : "grab", userSelect: "none", WebkitTapHighlightColor: "transparent", touchAction: "none", opacity: dragging ? 0.85 : 1, transition: dragging ? "none" : "opacity 0.15s" }}>
+        <CharacterSprite emotion={emotion} walking={walking} facing={facing} talking={loading || (chatOpen && !!bubble)} pointing={pointing} />
       </div>
     </div>
   );
@@ -3941,8 +3998,7 @@ export default function App() {
     <ThemeCtx.Provider value={{ t: t, isDark: isDark }}>
       <div style={{ minHeight: "100vh", background: t.bg, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", color: t.text }}>
         <style dangerouslySetInnerHTML={{ __html: "button:not(:disabled){transition:opacity .15s ease,transform .1s ease,box-shadow .15s ease;} button:not(:disabled):hover{opacity:.85;} button:not(:disabled):active{transform:scale(0.97);} input,select,textarea{transition:border-color .15s ease,box-shadow .15s ease;} input:focus,select:focus,textarea:focus{outline:none;border-color:#6366f1 !important;box-shadow:0 0 0 3px rgba(99,102,241,0.16);}" }} />
-        <FloatingChatWidget tasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} />
-        <TimbelAssistant isDark={isDark} onNavigateTab={setTab} currentUser={currentUser} tasksSummary={tasks.concat(marketingTasks).concat(designTasks).slice(0, 30).map(function (tk) { return "[" + tk.status + "] " + tk.title + " (담당:" + tk.assignee + ")"; }).join("\n")} />
+        <TimbelAssistant isDark={isDark} onNavigateTab={setTab} currentUser={currentUser} tasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} />
         {showAdd ? <AddTaskModal onAdd={addTask} onClose={function () { setShowAdd(false); }} defaultDate={addDate} users={users} title="업무 추가" categories={TASK_CATEGORIES} allTasks={tasks} /> : null}
         {selectedTask ? <TaskDetailModal task={selectedTask} onClose={function () { setSelectedTask(null); }} onUpdate={updateTask} onMove={isViewer ? null : function (id, dir) { moveTask(id, dir); setSelectedTask(function (prev) { return Object.assign({}, prev, { status: STAGES[STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} editTitle="업무 정보 수정" categories={TASK_CATEGORIES} allTasks={tasks} onUpdateSeries={isViewer ? null : updateTaskSeries} /> : null}
         {showAddMarketing ? <AddTaskModal onAdd={addMarketingTask} onClose={function () { setShowAddMarketing(false); }} defaultDate={addMarketingDate} users={users} stages={MARKETING_STAGES} tags={MARKETING_TAGS} title="새 마케팅 업무 추가" categoryLabel="카테고리" allTasks={marketingTasks} /> : null}
