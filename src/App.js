@@ -3364,9 +3364,9 @@ function SearchModal(props) {
 }
 
 // ============================================================================
-// TimbelAssistant.jsx — TIMBEL 스케줄러용 AI 가이드 캐릭터 (프로토타입 v1)
+// TimbelAssistant.jsx — TIMBEL 스케줄러용 AI 가이드 마스코트 "핸디"
 // ----------------------------------------------------------------------------
-// - 화면을 돌아다니는 SVG 캐릭터 "팀비" (눈 깜빡임, 걷기 바운스, 감정 표현)
+// - 마스코트 "핸디" 이미지 캐릭터 (드래그 배치, 걷기 바운스, 감정 표현)
 // - 말풍선 대화 + Claude API 연동 (응답을 액션 JSON으로 받아 실행)
 // - 액션: speak(말하기) / open_tab(탭 이동) / move_to(요소 옆으로 이동+가리키기) / tour(가이드 투어)
 // - 기존 App.jsx 하단에 붙여넣고 <TimbelAssistant ... /> 한 줄만 추가하면 동작
@@ -3398,7 +3398,7 @@ const TOUR_STEPS = [
   { tab: "board", text: "제작 보드! 업무를 기획→촬영→편집→검토→완료 단계로 옮기며 관리해요." },
   { tab: "ad", text: "광고 제작 관리 표예요. 컨펌 상태와 업로드 일정을 여기서 챙겨요." },
   { tab: "stats", text: "통계 탭이에요. 완료율을 확인하고 월간 보고서도 자동으로 만들 수 있어요." },
-  { tab: "home", text: "투어 끝! 저를 클릭하면 언제든 물어볼 수 있어요. 잘 부탁해요!" },
+  { tab: "home", text: "투어 끝! 아래 '투어 끝내기'를 누르면 제 자리로 돌아갈게요. 저를 클릭하면 언제든 물어볼 수 있어요!" },
 ];
 
 // ── 이동/연출 상수 ──
@@ -3471,7 +3471,7 @@ function TimbelAssistant(props) {
   const [hidden, setHidden] = useState(false);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState([{ role: "assistant", content: "안녕하세요, 팀비예요! 업무 현황이든 사용법이든 무엇이든 물어보세요. 저를 끌어서 원하는 자리에 둘 수도 있어요." }]);
+  const [messages, setMessages] = useState([{ role: "assistant", content: "안녕하세요, 핸디예요! 업무 현황이든 사용법이든 무엇이든 물어보세요. 저를 끌어서 원하는 자리에 둘 수도 있어요." }]);
 
   const posRef = useRef(pos);
   const homeRef = useRef(pos); // 사용자가 정한 자리 (투어 후 복귀 지점)
@@ -3479,6 +3479,7 @@ function TimbelAssistant(props) {
   const rafRef = useRef(null);
   const bubbleTimer = useRef(null);
   const tourRef = useRef({ active: false, step: 0 });
+  const [tourStepUi, setTourStepUi] = useState(-1); // -1: 투어 아님, 0~: 현재 단계
   const dragRef = useRef({ down: false, moved: false, offX: 0, offY: 0 });
   const listRef = useRef(null);
   posRef.current = pos;
@@ -3586,27 +3587,29 @@ function TimbelAssistant(props) {
         el.style.boxShadow = "0 0 0 3px #fbbf24, 0 0 18px #fbbf2480";
         el.style.borderRadius = el.style.borderRadius || "12px";
         setTimeout(function () { el.style.boxShadow = prevShadow; el.style.borderRadius = prevRadius; }, 3000);
-        if (text) speak(text, { emotion: "happy" });
+        if (text) speak(text, { emotion: "happy", sticky: tourRef.current.active });
         if (cb) setTimeout(cb, 2600);
       });
     }, 450);
   };
 
   // ── 가이드 투어 (끝나면 사용자가 정한 자리로 복귀) ──
+  const finishTour = function () {
+    tourRef.current.active = false;
+    setTourStepUi(-1);
+    setBubble("");
+    setPointing(false);
+    setEmotion("happy");
+    walkTo(homeRef.current.x, homeRef.current.y);
+  };
   const runTourStep = function (stepIdx) {
-    if (stepIdx >= TOUR_STEPS.length) {
-      tourRef.current.active = false;
-      setEmotion("happy");
-      walkTo(homeRef.current.x, homeRef.current.y);
-      return;
-    }
+    if (stepIdx >= TOUR_STEPS.length) { finishTour(); return; }
     tourRef.current = { active: true, step: stepIdx };
+    setTourStepUi(stepIdx);
     const step = TOUR_STEPS[stepIdx];
     if (onNavigateTab) onNavigateTab(step.tab);
     setTimeout(function () {
-      moveToGuide("tab-" + step.tab, step.text, function () {
-        if (tourRef.current.active) runTourStep(stepIdx + 1);
-      });
+      moveToGuide("tab-" + step.tab, step.text);
     }, 350);
   };
   const startTour = function () { setChatOpen(false); speak("좋아요, 스케줄러 투어를 시작할게요!", { emotion: "happy", duration: 2000 }); setTimeout(function () { runTourStep(0); }, 1400); };
@@ -3617,6 +3620,7 @@ function TimbelAssistant(props) {
       setWalking(false);
       setPointing(false);
     }
+    setTourStepUi(-1);
   };
 
   // ── AI 액션 실행 ──
@@ -3652,7 +3656,7 @@ function TimbelAssistant(props) {
     const fmt = function (list) { return (list || []).map(function (tk) { return "[" + tk.status + "] " + tk.title + " (담당: " + tk.assignee + ", 마감: " + tk.due + ")"; }).join("\n"); };
     const summary = "영상 업무:\n" + fmt(tasks) + "\n\n마케팅 업무:\n" + fmt(marketingTasks) + "\n\n디자인 업무:\n" + fmt(designTasks);
     const tabList = Object.keys(GUIDE_MAP).map(function (k) { return k + ": " + GUIDE_MAP[k].label + " — " + GUIDE_MAP[k].desc; }).join("\n");
-    const system = "당신은 TIMBEL 업무 스케줄러의 마스코트이자 AI 비서 '팀비'입니다. 밝고 친근하게, 존댓말로, 간결하게 답하세요.\n" +
+    const system = "당신은 TIMBEL 업무 스케줄러의 마스코트이자 AI 비서 '핸디'입니다. 밝고 친근하게, 존댓말로, 간결하게 답하세요.\n" +
       (currentUser ? "지금 대화 중인 사용자: " + currentUser.name + "\n" : "") +
       "\n[스케줄러 탭 목록]\n" + tabList + "\n" +
       "\n[현재 업무 현황]\n" + summary + "\n" +
@@ -3683,9 +3687,9 @@ function TimbelAssistant(props) {
   // ── 숨김 상태 ──
   if (hidden) {
     return (
-      <button onClick={function () { setHidden(false); }} title="팀비 다시 부르기"
+      <button onClick={function () { setHidden(false); }} title="핸디 다시 부르기"
         style={{ position: "fixed", left: 14, bottom: 14, zIndex: 9000, width: 40, height: 40, borderRadius: "50%", border: "none", cursor: "pointer", background: "linear-gradient(135deg,#818cf8,#6366f1)", padding: 0, overflow: "hidden", boxShadow: "0 6px 18px #00000060" }}>
-        <img src={HANDY_IMG} alt="팀비" style={{ width: 30, height: "auto", display: "block", margin: "0 auto" }} />
+        <img src={HANDY_IMG} alt="핸디" style={{ width: 30, height: "auto", display: "block", margin: "0 auto" }} />
       </button>
     );
   }
@@ -3712,8 +3716,16 @@ function TimbelAssistant(props) {
       {bubble && !chatOpen ? (
         <div style={{ position: "fixed", left: Math.max(8, Math.min(window.innerWidth - 268, pos.x + CHAR_W / 2 - 130)), top: Math.max(8, pos.y - 96), zIndex: 9001, width: 260, animation: "tbBubbleIn 0.18s ease-out" }}>
           <div style={{ background: t.surface, border: "1px solid " + t.border, borderRadius: 16, padding: "11px 13px", boxShadow: "0 12px 32px #00000060", position: "relative" }}>
-            <button onClick={function () { setBubble(""); setPointing(false); stopTour(); }} style={{ position: "absolute", top: 6, right: 9, background: "none", border: "none", color: t.text2, cursor: "pointer", fontSize: 14, lineHeight: 1 }}>×</button>
+            <button onClick={function () { if (tourRef.current.active) { finishTour(); } else { setBubble(""); setPointing(false); } }} style={{ position: "absolute", top: 6, right: 9, background: "none", border: "none", color: t.text2, cursor: "pointer", fontSize: 14, lineHeight: 1 }}>×</button>
             <div style={{ fontSize: 12.5, color: t.text, lineHeight: 1.65, paddingRight: 14, whiteSpace: "pre-wrap" }}>{bubble}</div>
+            {tourStepUi >= 0 ? (
+              <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 10 }}>
+                <span style={{ fontSize: 10.5, color: t.text4, fontWeight: 700 }}>{tourStepUi + 1} / {TOUR_STEPS.length}</span>
+                <span style={{ flex: 1 }} />
+                {tourStepUi > 0 ? <button onClick={function () { runTourStep(tourStepUi - 1); }} style={{ background: t.surface2, border: "1px solid " + t.border, borderRadius: 9, padding: "5px 11px", fontSize: 11.5, fontWeight: 600, color: t.text2, cursor: "pointer" }}>← 이전</button> : null}
+                <button onClick={function () { if (tourStepUi >= TOUR_STEPS.length - 1) finishTour(); else runTourStep(tourStepUi + 1); }} style={{ background: "#6366f1", border: "none", borderRadius: 9, padding: "5px 13px", fontSize: 11.5, fontWeight: 700, color: "#fff", cursor: "pointer" }}>{tourStepUi >= TOUR_STEPS.length - 1 ? "투어 끝내기" : "다음 →"}</button>
+              </div>
+            ) : null}
           </div>
           <div style={{ width: 0, height: 0, borderLeft: "8px solid transparent", borderRight: "8px solid transparent", borderTop: "9px solid " + t.surface, marginLeft: 120 }} />
         </div>
@@ -3725,11 +3737,11 @@ function TimbelAssistant(props) {
           <div style={{ background: "linear-gradient(135deg,#6366f1,#818cf8)", padding: "11px 15px", display: "flex", alignItems: "center", gap: 9 }}>
             <img src={HANDY_IMG} alt="" style={{ width: 24, height: "auto" }} />
             <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 13.5, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>팀비</div>
+              <div style={{ fontSize: 13.5, fontWeight: 800, color: "#fff", lineHeight: 1.2 }}>핸디</div>
               <div style={{ fontSize: 10, color: "#ffffffbb" }}>업무 현황·사용법 무엇이든 물어보세요</div>
             </div>
             <button onClick={function () { startTour(); }} title="스케줄러 투어" style={{ background: "#ffffff26", border: "none", borderRadius: 9, padding: "5px 10px", color: "#fff", cursor: "pointer", fontSize: 11, fontWeight: 700 }}>투어</button>
-            <button onClick={function () { setChatOpen(false); setHidden(true); }} title="팀비 숨기기" style={{ background: "#ffffff26", border: "none", borderRadius: 9, padding: "5px 8px", color: "#fff", cursor: "pointer", fontSize: 11 }}>숨기기</button>
+            <button onClick={function () { setChatOpen(false); setHidden(true); }} title="핸디 숨기기" style={{ background: "#ffffff26", border: "none", borderRadius: 9, padding: "5px 8px", color: "#fff", cursor: "pointer", fontSize: 11 }}>숨기기</button>
             <button onClick={function () { setChatOpen(false); }} style={{ background: "none", border: "none", color: "#ffffffcc", cursor: "pointer", fontSize: 17, padding: 0, lineHeight: 1 }}>×</button>
           </div>
           <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: "13px 13px", display: "flex", flexDirection: "column", gap: 9 }}>
