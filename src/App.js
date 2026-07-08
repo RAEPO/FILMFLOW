@@ -3438,7 +3438,7 @@ function CharacterSprite(props) {
     const iv = setInterval(function () { setMouthOpen(function (v) { return !v; }); }, 140);
     return function () { clearInterval(iv); };
   }, [speaking]);
-  const lipsync = speaking && !walking && !pointing && emotion !== "thinking";
+  const lipsync = speaking && !walking && emotion !== "thinking"; // 말할 땐 립싱크가 포즈보다 우선
   const bodyAnim = walking ? "hdWalk 0.4s ease-in-out infinite" : talking ? "hdTalk 0.5s ease-in-out infinite" : "hdIdle 2.8s ease-in-out infinite";
   return (
     <div style={{ position: "relative", width: CHAR_W, height: CHAR_H }}>
@@ -3447,13 +3447,13 @@ function CharacterSprite(props) {
       {/* 몸체 이미지 */}
       <div style={{ position: "absolute", left: 0, bottom: 4, width: CHAR_W, transform: facing === "left" ? "scaleX(-1)" : "none" }}>
         <div style={{ position: "relative", width: CHAR_W, animation: bodyAnim, transformOrigin: "50% 100%" }}>
-          <img src={HANDY_IMG} alt="핸디" draggable={false} style={{ display: "block", width: CHAR_W, height: "auto", opacity: walking || pointing || emotion === "happy" || emotion === "thinking" || (lipsync && mouthOpen) ? 0 : 1, transition: "opacity 0.18s ease", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.25))", pointerEvents: "none", userSelect: "none" }} />
-          <img src={HANDY_IMG_HAPPY} alt="" draggable={false} style={{ position: "absolute", left: 0, top: 0, display: "block", width: CHAR_W, height: "auto", opacity: !walking && !pointing && (emotion === "happy" || (lipsync && mouthOpen)) ? 1 : 0, transition: "opacity 0.18s ease", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.25))", pointerEvents: "none", userSelect: "none" }} />
-          <img src={HANDY_IMG_THINKING} alt="" draggable={false} style={{ position: "absolute", left: 0, top: 0, display: "block", width: CHAR_W, height: "auto", opacity: !walking && !pointing && emotion === "thinking" ? 1 : 0, transition: "opacity 0.18s ease", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.25))", pointerEvents: "none", userSelect: "none" }} />
+          <img src={HANDY_IMG} alt="핸디" draggable={false} style={{ display: "block", width: CHAR_W, height: "auto", opacity: walking ? 0 : lipsync ? (mouthOpen ? 0 : 1) : (pointing || emotion === "happy" || emotion === "thinking") ? 0 : 1, transition: "opacity 0.18s ease", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.25))", pointerEvents: "none", userSelect: "none" }} />
+          <img src={HANDY_IMG_HAPPY} alt="" draggable={false} style={{ position: "absolute", left: 0, top: 0, display: "block", width: CHAR_W, height: "auto", opacity: walking ? 0 : lipsync ? (mouthOpen ? 1 : 0) : (!pointing && emotion === "happy") ? 1 : 0, transition: "opacity 0.18s ease", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.25))", pointerEvents: "none", userSelect: "none" }} />
+          <img src={HANDY_IMG_THINKING} alt="" draggable={false} style={{ position: "absolute", left: 0, top: 0, display: "block", width: CHAR_W, height: "auto", opacity: !walking && !lipsync && !pointing && emotion === "thinking" ? 1 : 0, transition: "opacity 0.18s ease", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.25))", pointerEvents: "none", userSelect: "none" }} />
         </div>
       </div>
       {/* 가리키기 레이어 (원본 컷이 왼쪽을 가리킴 → 방향에 맞게 자동 반전) */}
-      <div style={{ position: "absolute", left: 0, bottom: 4, width: CHAR_W, transform: facing === "left" ? "none" : "scaleX(-1)", opacity: !walking && pointing ? 1 : 0, transition: "opacity 0.18s ease", pointerEvents: "none" }}>
+      <div style={{ position: "absolute", left: 0, bottom: 4, width: CHAR_W, transform: facing === "left" ? "none" : "scaleX(-1)", opacity: !walking && !lipsync && pointing ? 1 : 0, transition: "opacity 0.18s ease", pointerEvents: "none" }}>
         <img src={HANDY_IMG_POINTING} alt="" draggable={false} style={{ display: "block", width: CHAR_W, height: "auto", animation: bodyAnim, transformOrigin: "50% 100%", filter: "drop-shadow(0 3px 6px rgba(0,0,0,0.25))", userSelect: "none" }} />
       </div>
       {/* 달리기 레이어 (원본 컷이 왼쪽으로 달림 → 방향 자동 반전) */}
@@ -3578,6 +3578,7 @@ function TimbelAssistant(props) {
 
   // ── 음성 합성 (브라우저 내장 TTS) ──
   const voiceOnRef = useRef(voiceOn);
+  const speakTimer = useRef(null);
   voiceOnRef.current = voiceOn;
   const getKoVoice = function () {
     if (!window.speechSynthesis) return null;
@@ -3596,13 +3597,17 @@ function TimbelAssistant(props) {
     if (v) u.voice = v;
     u.rate = 1.05;   // 말 속도
     u.pitch = 1.25;  // 톤 (귀엽게 살짝 높임)
-    u.onstart = function () { setSpeaking(true); };
-    u.onend = function () { setSpeaking(false); };
-    u.onerror = function () { setSpeaking(false); };
+    setSpeaking(true); // 즉시 립싱크 시작 (onstart 지연/누락 대비)
+    if (speakTimer.current) clearTimeout(speakTimer.current);
+    const estMs = Math.min(30000, plain.length * 120 + 1800); // 예상 발화 시간 (안전장치)
+    speakTimer.current = setTimeout(function () { setSpeaking(false); }, estMs);
+    u.onend = function () { if (speakTimer.current) clearTimeout(speakTimer.current); setSpeaking(false); };
+    u.onerror = function () { if (speakTimer.current) clearTimeout(speakTimer.current); setSpeaking(false); };
     window.speechSynthesis.speak(u);
   };
   const stopVoice = function () {
     if (window.speechSynthesis) window.speechSynthesis.cancel();
+    if (speakTimer.current) clearTimeout(speakTimer.current);
     setSpeaking(false);
   };
   useEffect(function () {
