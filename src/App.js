@@ -2811,87 +2811,117 @@ function OvertimePanel(props) {
 
 function MessagesPanel(props) {
   const { t } = useTheme();
-  const { currentUser, users } = props;
-  const [messages, setMessages] = useFirebaseData("messages", []);
-  const [selectedUser, setSelectedUser] = useState(null);
-  const [text, setText] = useState("");
-  const listRef = useRef(null);
+  const { currentUser, users, isAdmin, messages, setMessages } = props;
+  const [selectedPartner, setSelectedPartner] = useState(null);
+  const [input, setInput] = useState("");
   const myName = currentUser.name;
-  const partners = users.filter(function (u) { return u.approved && u.name !== myName; });
-  const conv = selectedUser ? messages.filter(function (m) { return (m.from === myName && m.to === selectedUser) || (m.from === selectedUser && m.to === myName); }).slice().sort(function (a, b) { return a.createdAt - b.createdAt; }) : [];
-  const unreadFrom = function (name) { return messages.filter(function (m) { return m.from === name && m.to === myName && !m.read; }).length; };
-  useEffect(function () { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [conv.length, selectedUser]);
-  useEffect(function () {
-    if (!selectedUser) return;
-    const hasUnread = messages.some(function (m) { return m.from === selectedUser && m.to === myName && !m.read; });
-    if (hasUnread) setMessages(messages.map(function (m) { return m.from === selectedUser && m.to === myName && !m.read ? Object.assign({}, m, { read: true }) : m; }));
-  }, [selectedUser, messages.length]);
-  const send = function () {
-    if (!text.trim() || !selectedUser) return;
-    setMessages(trimArray(messages.concat([{ id: "msg_" + Date.now(), from: myName, to: selectedUser, text: text.trim(), read: false, createdAt: Date.now(), time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }]), 500));
-    setText("");
+
+  const partners = (function () {
+    const base = users.filter(function (u) { return u.approved && u.name !== myName; });
+    if (!isAdmin) base.unshift({ name: "admin", dept: "경영진", rank: "대표", position: "관리자" });
+    return base;
+  })();
+
+  const isRead = function (m) { return !!(m.readBy && m.readBy[myName]); };
+  const conversationWith = function (name) { return messages.filter(function (m) { return (m.from === myName && m.to === name) || (m.from === name && m.to === myName); }).slice().sort(function (a, b) { return a.createdAt - b.createdAt; }); };
+  const unreadFrom = function (name) { return messages.filter(function (m) { return m.from === name && m.to === myName && !isRead(m); }).length; };
+  const lastMessageWith = function (name) { const conv = conversationWith(name); return conv.length ? conv[conv.length - 1] : null; };
+  const partnersSorted = partners.slice().sort(function (a, b) {
+    const la = lastMessageWith(a.name), lb = lastMessageWith(b.name);
+    const ta = la ? la.createdAt : 0, tb = lb ? lb.createdAt : 0;
+    if (ta !== tb) return tb - ta;
+    return a.name < b.name ? -1 : 1;
+  });
+  const totalUnread = partners.reduce(function (a, p) { return a + unreadFrom(p.name); }, 0);
+
+  const markRead = function (name) {
+    let changed = false;
+    const updated = messages.map(function (m) {
+      if (m.from === name && m.to === myName && !isRead(m)) {
+        changed = true;
+        const rb = Object.assign({}, m.readBy || {});
+        rb[myName] = true;
+        return Object.assign({}, m, { readBy: rb });
+      }
+      return m;
+    });
+    if (changed) setMessages(updated);
   };
-  const deleteMsg = function (id) { setMessages(messages.filter(function (m) { return m.id !== id; })); };
+  useEffect(function () { if (selectedPartner) markRead(selectedPartner); }, [selectedPartner, messages.length]);
+
+  const send = function () {
+    if (!input.trim() || !selectedPartner) return;
+    const newMsg = { id: "msg_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7), from: myName, to: selectedPartner, text: input.trim(), createdAt: Date.now(), time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }), readBy: { [myName]: true } };
+    setMessages(messages.concat([newMsg]));
+    setInput("");
+  };
+
+  const conv = selectedPartner ? conversationWith(selectedPartner) : [];
+  const partnerInfo = selectedPartner ? partners.find(function (p) { return p.name === selectedPartner; }) : null;
+
   return (
-    <div style={{ display: "flex", gap: 14, height: "calc(100vh - 210px)", minHeight: 420 }}>
-      <div style={{ width: 220, flexShrink: 0, background: t.surface, borderRadius: 16, border: "1px solid " + t.border, overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "12px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>대화 상대</div>
-        <div style={{ flex: 1, overflowY: "auto" }}>
-          {partners.length === 0 ? <EmptyState icon={Users} text="대화 가능한 팀원이 없습니다" compact /> : null}
-          {partners.map(function (u) {
-            const unread = unreadFrom(u.name);
-            return (
-              <div key={u.name} onClick={function () { setSelectedUser(u.name); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 14px", cursor: "pointer", background: selectedUser === u.name ? "#6366f118" : "transparent", borderLeft: selectedUser === u.name ? "3px solid #6366f1" : "3px solid transparent" }}>
-                <Avatar name={u.name} size={30} users={users} />
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{u.name}</div>
-                  <div style={{ fontSize: 10, color: t.text4 }}>{u.dept} · {u.rank}</div>
-                </div>
-                {unread > 0 ? <span style={{ background: "#f87171", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 99, minWidth: 17, height: 17, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 5px" }}>{unread}</span> : null}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-      <div style={{ flex: 1, background: t.surface, borderRadius: 16, border: "1px solid " + t.border, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        {!selectedUser ? (
-          <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 8 }}>
-            <MessageCircle size={32} strokeWidth={1.5} color={t.text5} />
-            <div style={{ color: t.text5, fontSize: 13 }}>왼쪽에서 대화 상대를 선택하세요</div>
+    <div style={{ maxWidth: 900, margin: "0 auto" }}>
+      <div style={{ background: t.surface, borderRadius: 16, border: "1px solid " + t.border, display: "flex", height: 620, overflow: "hidden" }}>
+        <div style={{ width: "clamp(150px, 40vw, 250px)", flexShrink: 0, borderRight: "1px solid " + t.border, display: "flex", flexDirection: "column" }}>
+          <div style={{ padding: "14px 16px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <span style={{ display: "flex", alignItems: "center", gap: 5 }}><MessageCircle size={13} strokeWidth={2} /> 메시지(메모)</span>
+            {totalUnread > 0 ? <span style={{ fontSize: 10, background: "#f87171", color: "#fff", borderRadius: 99, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", fontWeight: 700 }}>{totalUnread > 9 ? "9+" : totalUnread}</span> : null}
           </div>
-        ) : (
-          <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
-            <div style={{ padding: "12px 18px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", gap: 10 }}>
-              <Avatar name={selectedUser} size={28} users={users} />
-              <span style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{selectedUser}</span>
-              <span style={{ fontSize: 11, color: t.text4 }}>{(users.find(function (u) { return u.name === selectedUser; }) || {}).dept || ""}</span>
-            </div>
-            <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: "14px 18px", display: "flex", flexDirection: "column", gap: 10 }}>
-              {conv.length === 0 ? <EmptyState icon={Send} text="첫 메시지를 보내보세요" compact /> : null}
-              {conv.map(function (m) {
-                const mine = m.from === myName;
-                return (
-                  <div key={m.id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", gap: 8, alignItems: "flex-end" }}>
-                    {!mine ? <Avatar name={m.from} size={24} users={users} /> : null}
-                    <div style={{ maxWidth: "70%" }}>
-                      <div style={{ background: mine ? "#6366f1" : t.surface2, color: mine ? "#fff" : t.text, borderRadius: mine ? "14px 14px 3px 14px" : "14px 14px 14px 3px", padding: "9px 13px", fontSize: 13, lineHeight: 1.6, wordBreak: "break-word", position: "relative" }}>
-                        {m.text}
-                      </div>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 3, justifyContent: mine ? "flex-end" : "flex-start" }}>
-                        <span style={{ fontSize: 9.5, color: t.text5 }}>{m.time}{mine && m.read ? " · 읽음" : ""}</span>
-                        {mine ? <button onClick={function () { deleteMsg(m.id); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 11, padding: 0 }}>삭제</button> : null}
+          <div style={{ flex: 1, overflowY: "auto" }}>
+            {partnersSorted.length === 0 ? <EmptyState icon={Users} text="대화 가능한 팀원이 없습니다" compact /> : null}
+            {partnersSorted.map(function (p) {
+              const last = lastMessageWith(p.name);
+              const unread = unreadFrom(p.name);
+              const active = selectedPartner === p.name;
+              return (
+                <div key={p.name} onClick={function () { setSelectedPartner(p.name); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 16px", cursor: "pointer", background: active ? "#6366f118" : "transparent", borderBottom: "1px solid " + t.border, borderLeft: active ? "3px solid #6366f1" : "3px solid transparent" }}>
+                  <Avatar name={p.name} size={30} users={users} />
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 6 }}>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{p.name}</span>
+                      {unread > 0 ? <span style={{ fontSize: 10, background: "#f87171", color: "#fff", borderRadius: 99, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px", fontWeight: 700, flexShrink: 0 }}>{unread > 9 ? "9+" : unread}</span> : null}
+                    </div>
+                    <div style={{ fontSize: 11, color: t.text4, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>{last ? (last.from === myName ? "나: " : "") + last.text : (p.rank || "") + (p.rank && p.position ? " · " : "") + (p.position || "")}</div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <div style={{ flex: 1, display: "flex", flexDirection: "column", minWidth: 0 }}>
+          {!selectedPartner ? (
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", color: t.text5, fontSize: 13 }}>왼쪽에서 대화할 팀원을 선택하세요</div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+              <div style={{ padding: "14px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", gap: 10 }}>
+                <Avatar name={selectedPartner} size={30} users={users} />
+                <div><div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{selectedPartner}</div><div style={{ fontSize: 11, color: t.text4 }}>{partnerInfo ? [partnerInfo.rank, partnerInfo.position].filter(Boolean).join(" · ") : ""}</div></div>
+              </div>
+              <div style={{ flex: 1, overflowY: "auto", padding: "14px 16px 8px", display: "flex", flexDirection: "column", gap: 10 }}>
+                {conv.length === 0 ? <EmptyState icon={Mail} text="아직 메시지가 없습니다. 첫 메시지를 보내보세요!" /> : null}
+                {conv.map(function (m) {
+                  const mine = m.from === myName;
+                  return (
+                    <div key={m.id} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start", gap: 8, alignItems: "flex-end" }}>
+                      {!mine ? <Avatar name={m.from} size={24} users={users} /> : null}
+                      <div style={{ maxWidth: "70%" }}>
+                        <div style={{ padding: "9px 13px", borderRadius: mine ? "14px 14px 4px 14px" : "14px 14px 14px 4px", background: mine ? "#6366f1" : t.surface2, color: mine ? "#fff" : t.text, fontSize: 13, lineHeight: 1.6, whiteSpace: "pre-wrap", border: mine ? "none" : "1px solid " + t.border }}>{m.text}</div>
+                        <div style={{ fontSize: 10, color: t.text5, marginTop: 3, textAlign: mine ? "right" : "left" }}>{m.time}</div>
                       </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+                <div ref={function (el) { if (el) el.scrollIntoView({ behavior: "smooth" }); }} />
+              </div>
+              <div style={{ padding: "10px 16px 14px", borderTop: "1px solid " + t.border }}>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <input value={input} onChange={function (e) { setInput(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter" && !e.shiftKey) send(); }} placeholder="메시지를 입력하세요..." style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 12, padding: "9px 13px", fontSize: 13, color: t.text, outline: "none" }} />
+                  <button onClick={send} disabled={!input.trim()} style={{ background: input.trim() ? "#6366f1" : t.surface2, border: "none", borderRadius: 12, padding: "0 18px", color: input.trim() ? "#fff" : t.text4, fontWeight: 700, fontSize: 13, cursor: input.trim() ? "pointer" : "not-allowed" }}>전송</button>
+                </div>
+              </div>
             </div>
-            <div style={{ padding: "12px 16px", borderTop: "1px solid " + t.border, display: "flex", gap: 8 }}>
-              <input value={text} onChange={function (e) { setText(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") send(); }} placeholder={selectedUser + "에게 메시지 보내기..."} style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "10px 14px", fontSize: 13, color: t.text, outline: "none" }} />
-              <button onClick={send} style={{ display: "flex", alignItems: "center", gap: 5, background: "#6366f1", border: "none", borderRadius: 11, padding: "0 16px", color: "#fff", fontWeight: 700, fontSize: 13, cursor: "pointer" }}><Send size={13} strokeWidth={2} /> 전송</button>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </div>
   );
@@ -2899,194 +2929,219 @@ function MessagesPanel(props) {
 
 function RequestsPanel(props) {
   const { t } = useTheme();
-  const { requests, setRequests, currentUser, users, onAccept } = props;
-  const [filter, setFilter] = useState("all");
-  const REQ_TYPE_COLOR = { "영상": "#818cf8", "마케팅": "#fb923c", "디자인": "#f87171", "광고": "#fbbf24", "기타": "#94a3b8" };
-  const URGENCY_COLOR = { "낮음": "#34d399", "중간": "#fbbf24", "높음": "#f87171" };
-  const STATUS_COLOR = { "대기": "#fbbf24", "수락됨": "#34d399", "반려": "#f87171" };
-  const canManage = currentUser.role === "admin" || currentUser.role === "manager";
-  const isMine = function (r) { return r.assignee === currentUser.name; };
-  const visible = requests.filter(function (r) {
-    if (filter === "pending") return r.status === "대기";
-    if (filter === "mine") return isMine(r);
-    return true;
-  }).slice().sort(function (a, b) { return b.createdAt - a.createdAt; });
-  const updateReq = function (id, changes) { setRequests(requests.map(function (r) { return r.id === id ? Object.assign({}, r, changes) : r; })); };
-  const filterBtn = function (v, label) { return <button key={v} onClick={function () { setFilter(v); }} style={{ padding: "6px 14px", borderRadius: 20, border: "1px solid " + (filter === v ? "#6366f1" : t.border), background: filter === v ? "#6366f120" : "transparent", cursor: "pointer", fontSize: 12, fontWeight: filter === v ? 700 : 500, color: filter === v ? "#818cf8" : t.text4 }}>{label}</button>; };
+  const { requests, setRequests, currentUser, isManager, users, onNotify } = props;
+  const [showForm, setShowForm] = useState(false);
+  const [form, setForm] = useState({ title: "", desc: "", type: "영상", desiredDate: "", urgency: "중간", assignee: "" });
+  const set = function (k, v) { setForm(function (f) { return Object.assign({}, f, { [k]: v }); }); };
+  const REQ_TYPES = ["영상", "마케팅", "디자인", "광고", "기타"];
+  const STATUS_COLOR = { "대기": "#fbbf24", "처리중": "#818cf8", "완료": "#34d399", "반려": "#f87171" };
+  const inp = { width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "9px 12px", fontSize: 13, color: t.text, boxSizing: "border-box", outline: "none" };
+  const memberNames = (users || []).filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return u.name; });
+  const submit = function () {
+    if (!form.title.trim()) return;
+    const newReq = Object.assign({}, form, { id: "req_" + Date.now(), requester: currentUser.name, status: "대기", createdAt: Date.now() });
+    setRequests((requests || []).concat([newReq]));
+    if (onNotify) {
+      const notifText = form.title + " (" + form.type + ") 새 업무 요청이 접수됐어요";
+      if (currentUser.name !== "admin") onNotify("admin", currentUser.name, form.title, notifText);
+      if (form.assignee && form.assignee !== currentUser.name) onNotify(form.assignee, currentUser.name, form.title, notifText);
+    }
+    setForm({ title: "", desc: "", type: "영상", desiredDate: "", urgency: "중간", assignee: "" });
+    setShowForm(false);
+  };
+  const updateStatus = function (id, status) { setRequests((requests || []).map(function (r) { return r.id === id ? Object.assign({}, r, { status: status }) : r; })); };
+  const deleteReq = function (id) { setRequests((requests || []).filter(function (r) { return r.id !== id; })); };
+  const sorted = (requests || []).slice().sort(function (a, b) { return b.createdAt - a.createdAt; });
+  const s = { background: t.surface, borderRadius: 15, border: "1px solid " + t.border };
   return (
-    <div style={{ maxWidth: 760, margin: "0 auto" }}>
-      <div style={{ background: "linear-gradient(135deg,#6366f1,#38bdf8)", borderRadius: 16, padding: "16px 22px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
-        <Inbox size={24} strokeWidth={1.75} color="#fff" />
-        <div><div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>업무 요청함</div><div style={{ fontSize: 12, color: "#ffffff88", marginTop: 2 }}>로그인 화면에서 접수된 타 부서 요청을 관리해요</div></div>
-        {requests.filter(function (r) { return r.status === "대기"; }).length > 0 ? <div style={{ marginLeft: "auto", background: "#ffffff30", borderRadius: 20, padding: "4px 14px", fontSize: 12, fontWeight: 700, color: "#fff" }}>대기 {requests.filter(function (r) { return r.status === "대기"; }).length}건</div> : null}
+    <div style={{ maxWidth: 800, margin: "0 auto" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+        <div style={{ fontSize: 13, color: t.text4 }}>다른 팀·담당자가 영상·마케팅·디자인·광고 제작을 요청할 수 있는 접수함이에요.</div>
+        <button onClick={function () { setShowForm(true); }} style={{ display: "flex", alignItems: "center", gap: 5, background: "#6366f1", border: "none", borderRadius: 10, padding: "8px 16px", color: "#fff", fontWeight: 700, fontSize: 12, cursor: "pointer", flexShrink: 0 }}><Plus size={13} strokeWidth={2} /> 새 요청</button>
       </div>
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
-        {filterBtn("all", "전체 (" + requests.length + ")")}
-        {filterBtn("pending", "대기 중 (" + requests.filter(function (r) { return r.status === "대기"; }).length + ")")}
-        {filterBtn("mine", "나에게 지정됨 (" + requests.filter(isMine).length + ")")}
-      </div>
-      {visible.length === 0 ? <EmptyState icon={Inbox} text="요청이 없습니다" /> : null}
-      {visible.map(function (r) {
-        return (
-          <div key={r.id} style={{ background: t.surface, borderRadius: 16, border: "1px solid " + (r.status === "대기" ? "#fbbf2440" : t.border), padding: "16px 18px", marginBottom: 12 }}>
-            <div style={{ display: "flex", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
-              <div style={{ flex: 1, minWidth: 200 }}>
-                <div style={{ display: "flex", gap: 6, marginBottom: 7, flexWrap: "wrap" }}>
-                  <span style={{ fontSize: 10, color: REQ_TYPE_COLOR[r.type] || "#94a3b8", background: (REQ_TYPE_COLOR[r.type] || "#94a3b8") + "18", padding: "2px 9px", borderRadius: 20, fontWeight: 700 }}>{r.type}</span>
-                  <span style={{ fontSize: 10, color: URGENCY_COLOR[r.urgency] || "#fbbf24", background: (URGENCY_COLOR[r.urgency] || "#fbbf24") + "18", padding: "2px 9px", borderRadius: 20, fontWeight: 700 }}>긴급도 {r.urgency}</span>
-                  <span style={{ fontSize: 10, color: STATUS_COLOR[r.status], background: STATUS_COLOR[r.status] + "18", padding: "2px 9px", borderRadius: 20, fontWeight: 700 }}>{r.status}</span>
-                  {r.assignee ? <span style={{ fontSize: 10, color: "#818cf8", background: "#818cf818", padding: "2px 9px", borderRadius: 20, fontWeight: 700 }}>담당: {r.assignee}</span> : null}
-                </div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: t.text }}>{r.title}</div>
-                {r.desc ? <div style={{ fontSize: 12, color: t.text4, marginTop: 4, lineHeight: 1.6 }}>{r.desc}</div> : null}
-                <div style={{ fontSize: 11, color: t.text5, marginTop: 8, display: "flex", gap: 12, flexWrap: "wrap" }}>
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><User size={11} strokeWidth={2} /> {r.requesterName}{r.requesterTeam ? " (" + r.requesterTeam + ")" : ""}</span>
-                  {r.desiredDate ? <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Calendar size={11} strokeWidth={2} /> 희망일 {r.desiredDate}</span> : null}
-                  <span style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><Clock size={11} strokeWidth={2} /> {new Date(r.createdAt).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
-                </div>
-              </div>
-              {canManage || isMine(r) ? (
-                <div style={{ display: "flex", flexDirection: "column", gap: 6, flexShrink: 0 }}>
-                  {r.status === "대기" ? (
-                    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                      <select value={r.assignee || ""} onChange={function (e) { updateReq(r.id, { assignee: e.target.value }); }} style={{ background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 10, padding: "6px 10px", fontSize: 12, color: t.text, outline: "none" }}>
-                        <option value="">담당자 지정</option>
-                        {users.filter(function (u) { return u.approved && u.role !== "admin"; }).map(function (u) { return <option key={u.name} value={u.name}>{u.name}</option>; })}
-                      </select>
-                      <button onClick={function () { if (!r.assignee) { alert("담당자를 먼저 지정해주세요."); return; } updateReq(r.id, { status: "수락됨" }); if (onAccept) onAccept(r); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: "#34d399", border: "none", borderRadius: 10, padding: "7px 16px", fontSize: 12, fontWeight: 700, color: "#fff", cursor: "pointer" }}><Check size={12} strokeWidth={2.5} /> 수락 → 캘린더 등록</button>
-                      <button onClick={function () { updateReq(r.id, { status: "반려" }); }} style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 5, background: "#f8717120", border: "1px solid #f8717140", borderRadius: 10, padding: "7px 16px", fontSize: 12, fontWeight: 700, color: "#f87171", cursor: "pointer" }}><X size={12} strokeWidth={2.5} /> 반려</button>
-                    </div>
-                  ) : null}
-                  {canManage ? <button onClick={function () { if (window.confirm("이 요청을 삭제할까요?")) setRequests(requests.filter(function (x) { return x.id !== r.id; })); }} style={{ background: "none", border: "none", color: t.text5, cursor: "pointer", fontSize: 11, textDecoration: "underline" }}>삭제</button> : null}
-                </div>
-              ) : null}
-            </div>
+      {showForm ? (
+        <div style={Object.assign({}, s, { padding: "16px 18px", marginBottom: 16 })}>
+          <div style={{ marginBottom: 10 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>요청 제목</div><input value={form.title} onChange={function (e) { set("title", e.target.value); }} style={inp} /></div>
+          <div style={{ marginBottom: 10 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>상세 내용</div><input value={form.desc} onChange={function (e) { set("desc", e.target.value); }} style={inp} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 10 }}>
+            <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>종류</div><select value={form.type} onChange={function (e) { set("type", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{REQ_TYPES.map(function (r) { return <option key={r}>{r}</option>; })}</select></div>
+            <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>희망일</div><input type="date" value={form.desiredDate} onChange={function (e) { set("desiredDate", e.target.value); }} style={inp} /></div>
+            <div><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600 }}>긴급도</div><select value={form.urgency} onChange={function (e) { set("urgency", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}>{["낮음", "중간", "높음"].map(function (u) { return <option key={u}>{u}</option>; })}</select></div>
           </div>
-        );
-      })}
+          <div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, color: t.text4, marginBottom: 4, fontWeight: 600, display: "flex", alignItems: "center", gap: 4 }}><User size={11} strokeWidth={2} /> 담당자 지정 (선택 시 그 담당자에게도 알림이 가요)</div><select value={form.assignee} onChange={function (e) { set("assignee", e.target.value); }} style={Object.assign({}, inp, { cursor: "pointer" })}><option value="">지정 안 함 (관리자에게만 전달)</option>{memberNames.map(function (n) { return <option key={n} value={n}>{n}</option>; })}</select></div>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={function () { setShowForm(false); }} style={{ flex: 1, background: t.surface2, border: "none", borderRadius: 11, padding: "10px 0", color: t.text3, fontWeight: 600, cursor: "pointer" }}>취소</button>
+            <button onClick={submit} style={{ flex: 1, background: "#6366f1", border: "none", borderRadius: 11, padding: "10px 0", color: "#fff", fontWeight: 700, cursor: "pointer" }}>제출</button>
+          </div>
+        </div>
+      ) : null}
+      <div style={s}>
+        <div style={{ padding: "12px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 요청 ({sorted.length})</div>
+        {sorted.length === 0 ? <EmptyState icon={Inbox} text="접수된 요청이 없습니다" /> : null}
+        {sorted.map(function (r) {
+          return (
+            <div key={r.id} style={{ padding: "13px 18px", borderBottom: "1px solid " + t.border }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
+                <span style={{ fontSize: 10, background: STATUS_COLOR[r.status] + "20", color: STATUS_COLOR[r.status], borderRadius: 20, padding: "2px 8px", fontWeight: 700 }}>{r.status}</span>
+                <span style={{ fontSize: 10, color: t.text4, background: t.bg, borderRadius: 20, padding: "2px 8px" }}>{r.type}</span>
+                <span style={{ fontSize: 10, color: PRIORITY_COLOR[r.urgency] || t.text4, background: (PRIORITY_COLOR[r.urgency] || t.text4) + "18", borderRadius: 20, padding: "2px 8px", fontWeight: 700 }}>{r.urgency}</span>
+                <span style={{ fontSize: 13, fontWeight: 600, color: t.text }}>{r.title}</span>
+              </div>
+              {r.desc ? <div style={{ fontSize: 12, color: t.text3, marginBottom: 6 }}>{r.desc}</div> : null}
+              <div style={{ fontSize: 11, color: t.text4, display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <span>요청자: {r.requester}</span>{r.assignee ? <span>담당자: {r.assignee}</span> : null}{r.desiredDate ? <span>희망일: {r.desiredDate}</span> : null}
+                {isManager ? (
+                  <div style={{ marginLeft: "auto", display: "flex", gap: 5 }}>
+                    <select value={r.status} onChange={function (e) { updateStatus(r.id, e.target.value); }} style={{ background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 8, padding: "3px 8px", fontSize: 11, color: t.text, outline: "none", cursor: "pointer" }}>{["대기", "처리중", "완료", "반려"].map(function (st) { return <option key={st}>{st}</option>; })}</select>
+                    <button onClick={function () { deleteReq(r.id); }} style={{ background: "#f8717118", border: "none", borderRadius: 8, padding: "3px 8px", fontSize: 11, color: "#f87171", cursor: "pointer" }}><Trash2 size={11} strokeWidth={2} /></button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 function HomePanel(props) {
   const { t } = useTheme();
-  const { currentUser, users, tasks, marketingTasks, designTasks, aiAds, intAds, notices, staleDays, onSelectVideo, onSelectMarketing, onSelectDesign, onGoTab } = props;
+  const { currentUser, users, videoTasks, marketingTasks, designTasks, onSelectVideo, onSelectMarketing, onSelectDesign, staleDays } = props;
   const today = new Date();
   const pad = function (n) { return String(n).padStart(2, "0"); };
   const todayStr = today.getFullYear() + "-" + pad(today.getMonth() + 1) + "-" + pad(today.getDate());
-  const in3Days = new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000);
-  const in3DaysStr = in3Days.getFullYear() + "-" + pad(in3Days.getMonth() + 1) + "-" + pad(in3Days.getDate());
-  const myName = currentUser.name;
+  const in7 = new Date(today); in7.setDate(in7.getDate() + 7);
+  const in7Str = in7.getFullYear() + "-" + pad(in7.getMonth() + 1) + "-" + pad(in7.getDate());
+  const TYPE_INFO = { video: { icon: Film, label: "영상", color: "#818cf8", firstStage: STAGES[0], reviewStage: STAGES[STAGES.length - 2] }, marketing: { icon: CalendarDays, label: "마케팅", color: "#fb923c", firstStage: MARKETING_STAGES[0], reviewStage: MARKETING_STAGES[MARKETING_STAGES.length - 2] }, design: { icon: Palette, label: "디자인", color: "#f87171", firstStage: DESIGN_STAGES[0], reviewStage: DESIGN_STAGES[DESIGN_STAGES.length - 2] } };
+  const canApprove = currentUser.role === "admin" || currentUser.role === "manager";
   const withKind = function (list, kind) { return list.map(function (tk) { return Object.assign({}, tk, { kind: kind }); }); };
-  const allWork = withKind(tasks, "video").concat(withKind(marketingTasks, "marketing")).concat(withKind(designTasks, "design"));
-  const isDone = function (item) { return item.kind === "video" ? item.status === "업무 완료" : item.status === "완료"; };
-  const kindInfo = { video: { color: "#818cf8", label: "영상", icon: Film }, marketing: { color: "#fb923c", label: "마케팅", icon: CalendarDays }, design: { color: "#f87171", label: "디자인", icon: Palette } };
-  const myToday = allWork.filter(function (item) { return item.assignee === myName && !isDone(item) && item.due && (item.deadline && item.deadline >= item.due ? (todayStr >= item.due && todayStr <= item.deadline) : item.due === todayStr); });
-  const deadline3 = allWork.filter(function (item) { const dl = item.deadline || item.due; return item.assignee === myName && !isDone(item) && dl && dl >= todayStr && dl <= in3DaysStr; }).sort(function (a, b) { const da = a.deadline || a.due, db2 = b.deadline || b.due; return da < db2 ? -1 : 1; });
-  const staleMs = (staleDays || 3) * 24 * 60 * 60 * 1000;
-  const staleTasks = allWork.filter(function (item) { return !isDone(item) && item.statusChangedAt && (Date.now() - item.statusChangedAt) > staleMs; });
-  const reviewPending = currentUser.role === "admin" || currentUser.role === "manager" ? tasks.filter(function (tk) { return tk.status === "검토"; }).concat(marketingTasks.filter(function (mt) { return mt.status === "검토"; }), designTasks.filter(function (dt) { return dt.status === "피드백"; }).map(function (dt) { return Object.assign({}, dt, { kind: "design" }); })) : [];
-  const activeNotices = notices.filter(function (n) { return n.active; });
-  const workload = users.filter(function (u) { return u.approved && u.role !== "admin" && u.role !== "viewer"; }).map(function (u) {
-    const cnt = allWork.filter(function (item) { return item.assignee === u.name && !isDone(item); }).length;
-    return { name: u.name, count: cnt };
-  }).sort(function (a, b) { return b.count - a.count; });
-  const maxLoad = Math.max(1, workload.length ? workload[0].count : 1);
-  const totalActive = allWork.filter(function (item) { return !isDone(item); }).length;
-  const totalDone = allWork.filter(isDone).length;
-  const adCount = (aiAds || []).length + (intAds || []).length;
-  const s = { background: t.surface, borderRadius: 16, border: "1px solid " + t.border, overflow: "hidden" };
-  const secTitle = function (Icon, txt, color, count) {
-    return <div style={{ padding: "12px 16px", borderBottom: "1px solid " + t.border, display: "flex", alignItems: "center", gap: 7 }}><Icon size={14} strokeWidth={2} color={color || t.text3} /><span style={{ fontSize: 12.5, fontWeight: 700, color: t.text2 }}>{txt}</span>{count !== undefined ? <span style={{ marginLeft: "auto", fontSize: 11, fontWeight: 800, color: color || t.text3, background: (color || t.text3) + "18", borderRadius: 20, padding: "1px 9px" }}>{count}</span> : null}</div>;
+  const all = withKind(videoTasks, "video").concat(withKind(marketingTasks, "marketing")).concat(withKind(designTasks, "design"));
+  const isDone = function (item) { if (item.kind === "video") return item.status === "업무 완료"; return item.status === "완료"; };
+  const isOverdueItem = function (item) { return item.due && item.due < todayStr && item.status === TYPE_INFO[item.kind].firstStage; };
+  const pendingApproval = canApprove ? all.filter(function (item) { return item.status === TYPE_INFO[item.kind].reviewStage; }) : [];
+  const myActive = all.filter(function (item) { return item.assignee === currentUser.name && !isDone(item); });
+  const overdueAll = all.filter(isOverdueItem);
+  const in2 = new Date(today); in2.setDate(in2.getDate() + 2);
+  const in2Str = in2.getFullYear() + "-" + pad(in2.getMonth() + 1) + "-" + pad(in2.getDate());
+  const myDeadlineAlerts = all.filter(function (item) { return item.assignee === currentUser.name && item.deadline && !isDone(item) && item.deadline <= in2Str; }).sort(function (a, b) { return a.deadline < b.deadline ? -1 : 1; });
+  const staleThreshold = (staleDays || 3) * 24 * 60 * 60 * 1000;
+  const staleTasks = all.filter(function (item) { return !isDone(item) && Date.now() - (item.statusChangedAt || item.createdAt || 0) > staleThreshold; }).sort(function (a, b) { return (a.statusChangedAt || 0) - (b.statusChangedAt || 0); });
+  const upcoming = all.filter(function (item) { return item.due && item.due >= todayStr && item.due <= in7Str && !isDone(item); }).sort(function (a, b) { return a.due < b.due ? -1 : 1; });
+  const todayItems = all.filter(function (item) { return item.due === todayStr; });
+  const members = users.filter(function (u) { return u.approved; });
+  const workload = members.map(function (u) { return { name: u.name, count: all.filter(function (item) { return item.assignee === u.name && !isDone(item); }).length }; }).sort(function (a, b) { return b.count - a.count; });
+  const maxWorkload = Math.max.apply(null, workload.map(function (w) { return w.count; }).concat([1]));
+  const handleClick = function (item) {
+    if (item.kind === "video") onSelectVideo(item);
+    else if (item.kind === "marketing") onSelectMarketing(item);
+    else onSelectDesign(item);
   };
-  const itemRow = function (item, onClick) {
-    const info = kindInfo[item.kind];
-    const KindIcon = info.icon;
-    const dl = item.deadline || item.due;
-    const isPastDl = dl && dl < todayStr;
-    return (
-      <div key={item.kind + "_" + item.id} onClick={onClick} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 16px", borderBottom: "1px solid " + t.border, cursor: "pointer" }}>
-        <span style={{ fontSize: 10, color: info.color, background: info.color + "18", padding: "2px 8px", borderRadius: 20, fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><KindIcon size={10} strokeWidth={2.5} /> {info.label}</span>
-        <span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span>
-        <span style={{ fontSize: 11, color: isPastDl ? "#f87171" : t.text4, fontWeight: isPastDl ? 700 : 400, flexShrink: 0 }}>{dl ? dl.slice(5) : "-"}</span>
-      </div>
-    );
-  };
-  const clickItem = function (item) { if (item.kind === "video") onSelectVideo(item); else if (item.kind === "marketing") onSelectMarketing(item); else onSelectDesign(item); };
-  const hour = today.getHours();
-  const greeting = hour < 6 ? "새벽에도 고생 많으세요" : hour < 12 ? "좋은 아침이에요" : hour < 18 ? "좋은 오후예요" : "오늘 하루도 수고했어요";
+  const s = { background: t.surface, borderRadius: 15, padding: "15px 17px", border: "1px solid " + t.border };
   return (
-    <div style={{ maxWidth: 980, margin: "0 auto" }}>
-      <div style={{ background: "linear-gradient(135deg,#6366f1,#ec4899)", borderRadius: 18, padding: "20px 24px", marginBottom: 16, display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap" }}>
-        <Avatar name={myName} size={44} users={users} />
-        <div style={{ flex: 1, minWidth: 180 }}>
-          <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>{greeting}, {myName}님!</div>
-          <div style={{ fontSize: 12, color: "#ffffffbb", marginTop: 3 }}>{today.getMonth() + 1}월 {today.getDate()}일 {WEEKDAYS[today.getDay()]}요일 · 오늘 할 일 {myToday.length}건 · 마감 임박 {deadline3.length}건</div>
-        </div>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {[["진행 중", totalActive, "#fff"], ["완료", totalDone, "#c7f9dd"], ["광고", adCount, "#fde68a"]].map(function (item) { return <div key={item[0]} style={{ background: "#ffffff22", borderRadius: 12, padding: "8px 16px", textAlign: "center" }}><div style={{ fontSize: 18, fontWeight: 900, color: item[2] }}>{item[1]}</div><div style={{ fontSize: 10, color: "#ffffffaa" }}>{item[0]}</div></div>; })}
-        </div>
+    <div style={{ maxWidth: 900, margin: "0 auto", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ background: "linear-gradient(135deg,#6366f1,#818cf8)", borderRadius: 16, padding: "18px 22px" }}>
+        <div style={{ fontSize: 17, fontWeight: 800, color: "#fff" }}>안녕하세요, {currentUser.name}님</div>
+        <div style={{ fontSize: 12, color: "#ffffffcc", marginTop: 3 }}>{today.getFullYear()}년 {today.getMonth() + 1}월 {today.getDate()}일 오늘의 업무 현황이에요</div>
       </div>
-      {activeNotices.length > 0 ? (
-        <div style={Object.assign({}, s, { marginBottom: 14, border: "1px solid #6366f130" })}>
-          {secTitle(Megaphone, "공지사항", "#818cf8", activeNotices.length)}
-          {activeNotices.map(function (n) { return <div key={n.id} style={{ padding: "11px 16px", borderBottom: "1px solid " + t.border }}><div style={{ fontSize: 13, fontWeight: 700, color: t.text }}>{n.title}</div><div style={{ fontSize: 12, color: t.text4, marginTop: 3, lineHeight: 1.6 }}>{n.content}</div></div>; })}
-        </div>
-      ) : null}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 14, marginBottom: 14 }}>
-        <div style={s}>
-          {secTitle(Sun, "오늘 할 일", "#fbbf24", myToday.length)}
-          {myToday.length === 0 ? <EmptyState icon={CheckCircle2} text="오늘 예정된 내 업무가 없어요" compact /> : myToday.map(function (item) { return itemRow(item, function () { clickItem(item); }); })}
-        </div>
-        <div style={s}>
-          {secTitle(Clock, "마감 임박 (3일 이내)", "#f87171", deadline3.length)}
-          {deadline3.length === 0 ? <EmptyState icon={Palmtree} text="임박한 마감이 없어요" compact /> : deadline3.map(function (item) { return itemRow(item, function () { clickItem(item); }); })}
-        </div>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 14, marginBottom: 14 }}>
-        {reviewPending.length > 0 ? (
+      {(function () {
+        const priorityWeight = { 높음: 0, 중간: 1, 낮음: 2 };
+        const myTodo = myActive.slice().sort(function (a, b) {
+          const pw = (priorityWeight[a.priority] || 1) - (priorityWeight[b.priority] || 1);
+          if (pw !== 0) return pw;
+          const ad = a.deadline || a.due || "9999", bd = b.deadline || b.due || "9999";
+          return ad < bd ? -1 : ad > bd ? 1 : 0;
+        });
+        return (
           <div style={s}>
-            {secTitle(Search, "승인 대기 (검토 단계)", "#c084fc", reviewPending.length)}
-            {reviewPending.map(function (item) {
-              const kind = item.kind === "design" ? "design" : (item.tag && MARKETING_TAGS.indexOf(item.tag) !== -1 && item.status === "검토" && marketingTasks.some(function (mt) { return mt.id === item.id; }) ? "marketing" : "video");
-              const fixed = Object.assign({}, item, { kind: marketingTasks.some(function (mt) { return mt.id === item.id; }) ? "marketing" : designTasks.some(function (dt) { return dt.id === item.id; }) ? "design" : "video" });
-              return itemRow(fixed, function () { clickItem(fixed); });
-            })}
-          </div>
-        ) : null}
-        {staleTasks.length > 0 ? (
-          <div style={s}>
-            {secTitle(AlertTriangle, staleDays + "일 이상 정체된 업무", "#fb923c", staleTasks.length)}
-            {staleTasks.map(function (item) { return itemRow(item, function () { clickItem(item); }); })}
-          </div>
-        ) : null}
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 300px), 1fr))", gap: 14, marginBottom: 14 }}>
-        <div style={s}>
-          {secTitle(Users, "담당자별 진행 중 업무량", "#38bdf8")}
-          <div style={{ padding: "12px 16px" }}>
-            {workload.length === 0 ? <EmptyState icon={Users} text="팀원이 없습니다" compact /> : workload.map(function (w) {
+            <div style={{ fontSize: 12, fontWeight: 700, color: t.text4, marginBottom: 10, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", gap: 6 }}><CheckCircle2 size={13} strokeWidth={2} /> 오늘 내가 할 일 ({myTodo.length})</div>
+            {myTodo.length === 0 ? <EmptyState icon={CheckCircle2} text="진행중인 업무가 없어요" compact /> : null}
+            {myTodo.slice(0, 8).map(function (item) {
+              const info = TYPE_INFO[item.kind];
               return (
-                <div key={w.name} style={{ marginBottom: 10 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                    <div style={{ display: "flex", gap: 7, alignItems: "center" }}><Avatar name={w.name} size={20} users={users} /><span style={{ fontSize: 12, color: t.text2 }}>{w.name}</span></div>
-                    <span style={{ fontSize: 11, color: w.count >= 5 ? "#f87171" : t.text4, fontWeight: w.count >= 5 ? 700 : 400 }}>{w.count}건</span>
-                  </div>
-                  <div style={{ background: t.bg, borderRadius: 99, height: 5 }}><div style={{ width: (w.count / maxLoad * 100) + "%", background: w.count >= 5 ? "#f87171" : "#38bdf8", height: "100%", borderRadius: 99 }} /></div>
+                <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}>
+                  <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span>
+                  <span style={{ fontSize: 10, color: PRIORITY_COLOR[item.priority], background: PRIORITY_COLOR[item.priority] + "18", padding: "2px 7px", borderRadius: 20, fontWeight: 700, flexShrink: 0 }}>{item.priority}</span>
+                  <span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span>
+                  <span style={{ fontSize: 11, color: t.text4, flexShrink: 0 }}>{item.status}</span>
                 </div>
               );
             })}
           </div>
+        );
+      })()}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10 }}>
+        <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#818cf8" }}>{myActive.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>내 진행중 업무</div></div>
+        <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#f87171" }}>{overdueAll.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>전체 시작 지연</div></div>
+        <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#fb923c" }}>{myDeadlineAlerts.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>내 마감 임박/초과</div></div>
+        <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#fbbf24" }}>{todayItems.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>오늘 시작 예정</div></div>
+        <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#34d399" }}>{upcoming.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>7일 내 예정</div></div>
+        {canApprove ? <div style={Object.assign({}, s, { textAlign: "center" })}><div style={{ fontSize: 24, fontWeight: 900, color: "#38bdf8" }}>{pendingApproval.length}</div><div style={{ fontSize: 11, color: t.text4, marginTop: 3 }}>승인 대기</div></div> : null}
+      </div>
+      {myDeadlineAlerts.length > 0 ? (
+        <div style={Object.assign({}, s, { border: "1px solid #fb923c40" })}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#fb923c", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}><Clock size={13} strokeWidth={2} /> 내 마감 임박/초과 업무 ({myDeadlineAlerts.length})</div>
+          {myDeadlineAlerts.slice(0, 6).map(function (item) {
+            const info = TYPE_INFO[item.kind];
+            const isPast = item.deadline < todayStr;
+            return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span><span style={{ fontSize: 11, color: isPast ? "#f87171" : "#fb923c", fontWeight: 700 }}>{isPast ? "마감 초과" : "마감 " + item.deadline.slice(5)}</span></div>;
+          })}
         </div>
-        <div style={s}>
-          {secTitle(Zap, "바로가기", "#34d399")}
-          <div style={{ padding: "14px 16px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-            {[["unified", LayoutGrid, "통합 캘린더"], ["board", Kanban, "제작 보드"], ["ad", Megaphone, "광고 관리"], ["stats", BarChart3, "통계"], ["overtime", Clock, "야근 기록"], ["ai", Bot, "AI 분석"]].map(function (item) {
-              const QIcon = item[1];
-              return <button key={item[0]} onClick={function () { onGoTab(item[0]); }} style={{ display: "flex", alignItems: "center", gap: 8, background: t.bg, border: "1px solid " + t.border, borderRadius: 12, padding: "11px 13px", cursor: "pointer", color: t.text2, fontSize: 12.5, fontWeight: 600 }}><QIcon size={15} strokeWidth={1.75} color={t.text3} /> {item[2]}</button>;
-            })}
-          </div>
+      ) : null}
+      {canApprove && pendingApproval.length > 0 ? (
+        <div style={Object.assign({}, s, { border: "1px solid #38bdf840" })}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}><CheckCircle2 size={13} strokeWidth={2} /> 승인 대기 업무 ({pendingApproval.length})</div>
+          {pendingApproval.slice(0, 6).map(function (item) {
+            const info = TYPE_INFO[item.kind];
+            return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span><Avatar name={item.assignee} size={18} users={users} /><span style={{ fontSize: 11, color: t.text4 }}>{item.assignee}</span></div>;
+          })}
         </div>
+      ) : null}
+      {canApprove && staleTasks.length > 0 ? (
+        <div style={Object.assign({}, s, { border: "1px solid #a78bfa40" })}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#a78bfa", marginBottom: 10, display: "flex", alignItems: "center", gap: 5 }}><RefreshCw size={13} strokeWidth={2} /> 정체된 업무 · {staleDays || 3}일 이상 단계 변경 없음 ({staleTasks.length})</div>
+          {staleTasks.slice(0, 6).map(function (item) {
+            const info = TYPE_INFO[item.kind];
+            const daysStuck = Math.floor((Date.now() - (item.statusChangedAt || item.createdAt || 0)) / (24 * 60 * 60 * 1000));
+            return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title} · {item.status}</span><span style={{ fontSize: 11, color: "#a78bfa", fontWeight: 700 }}>{daysStuck}일째</span></div>;
+          })}
+        </div>
+      ) : null}
+      {overdueAll.length > 0 ? (
+        <div style={Object.assign({}, s, { border: "1px solid #f8717140" })}>
+          <div style={{ fontSize: 12, fontWeight: 700, color: "#f87171", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}><Clock size={13} strokeWidth={2} /> 시작 지연 업무 ({overdueAll.length})</div>
+          {overdueAll.slice(0, 6).map(function (item) {
+            const info = TYPE_INFO[item.kind];
+            return <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}><span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span><span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span><span style={{ fontSize: 11, color: t.text4 }}>{item.assignee}</span></div>;
+          })}
+        </div>
+      ) : null}
+      <div style={s}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: t.text4, marginBottom: 10, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", gap: 6 }}><Calendar size={13} strokeWidth={2} /> 다가오는 일정 (7일 이내)</div>
+        {upcoming.length === 0 ? <EmptyState icon={Calendar} text="예정된 일정이 없습니다" compact /> : null}
+        {upcoming.slice(0, 10).map(function (item) {
+          const info = TYPE_INFO[item.kind];
+          return (
+            <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 0", borderBottom: "1px solid " + t.border, cursor: "pointer" }}>
+              <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span>
+              <span style={{ fontSize: 13, color: t.text, flex: 1, minWidth: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</span>
+              <Avatar name={item.assignee} size={18} users={users} />
+              <span style={{ fontSize: 11, color: t.text4, width: 60, flexShrink: 0, textAlign: "right" }}>{item.due.slice(5)}</span>
+            </div>
+          );
+        })}
+      </div>
+      <div style={s}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: t.text4, marginBottom: 12, textTransform: "uppercase", letterSpacing: ".5px", display: "flex", alignItems: "center", gap: 6 }}><Users size={13} strokeWidth={2} /> 담당자별 업무량 (진행중 기준)</div>
+        {workload.length === 0 ? <EmptyState icon={BarChart3} text="데이터가 없습니다" compact /> : null}
+        {workload.map(function (w) {
+          return (
+            <div key={w.name} style={{ marginBottom: 9 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}><div style={{ display: "flex", gap: 7, alignItems: "center" }}><Avatar name={w.name} size={20} users={users} /><span style={{ fontSize: 12, color: t.text2 }}>{w.name}</span></div><span style={{ fontSize: 11, color: t.text4 }}>{w.count}건</span></div>
+              <div style={{ background: t.bg, borderRadius: 99, height: 5 }}><div style={{ width: (w.count / maxWorkload * 100) + "%", background: w.count >= maxWorkload ? "#f87171" : "#6366f1", height: "100%", borderRadius: 99 }} /></div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -3095,107 +3150,152 @@ function HomePanel(props) {
 function FloatingChatWidget(props) {
   const { t } = useTheme();
   const { tasks, marketingTasks, designTasks } = props;
-  const [open, setOpen] = useState(false);
-  const [messages, setMessages] = useState([{ role: "assistant", content: "안녕하세요! 스케줄러 AI 챗봇이에요. 업무 현황이나 일정에 대해 무엇이든 물어보세요." }]);
+  const [isOpen, setIsOpen] = useState(false);
+  const [pos, setPos] = useState(function () {
+    const saved = getCookie("timbel_chat_pos");
+    if (!saved) return null;
+    try { const parsed = JSON.parse(saved); if (typeof parsed.x === "number" && typeof parsed.y === "number") return parsed; } catch (e) {}
+    return null;
+  });
+  const [dragging, setDragging] = useState(false);
+  const dragRef = useRef({ active: false, startX: 0, startY: 0, origX: 0, origY: 0, moved: false });
+  const btnRef = useRef(null);
+  const [messages, setMessages] = useState([{ role: "assistant", content: "안녕하세요! 무엇을 도와드릴까요?" }]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const listRef = useRef(null);
-  useEffect(function () { if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight; }, [messages.length, open]);
+
+  useEffect(function () {
+    const handleMove = function (e) {
+      if (!dragRef.current.active) return;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+      const dx = clientX - dragRef.current.startX;
+      const dy = clientY - dragRef.current.startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) dragRef.current.moved = true;
+      const w = isOpen ? 320 : 58, h = isOpen ? 440 : 58;
+      let newX = dragRef.current.origX + dx;
+      let newY = dragRef.current.origY + dy;
+      newX = Math.max(6, Math.min(window.innerWidth - w - 6, newX));
+      newY = Math.max(6, Math.min(window.innerHeight - h - 6, newY));
+      setPos({ x: newX, y: newY });
+    };
+    const handleUp = function () {
+      if (dragRef.current.active) {
+        setPos(function (p) { if (p) setCookie("timbel_chat_pos", JSON.stringify(p), 365); return p; });
+      }
+      dragRef.current.active = false;
+      setDragging(false);
+    };
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    window.addEventListener("touchmove", handleMove, { passive: false });
+    window.addEventListener("touchend", handleUp);
+    return function () {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+      window.removeEventListener("touchmove", handleMove);
+      window.removeEventListener("touchend", handleUp);
+    };
+  }, [isOpen]);
+
+  const startDrag = function (e) {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+    const rect = btnRef.current.getBoundingClientRect();
+    dragRef.current = { active: true, startX: clientX, startY: clientY, origX: rect.left, origY: rect.top, moved: false };
+    setDragging(true);
+  };
+  const handleToggle = function () {
+    if (dragRef.current.moved) { dragRef.current.moved = false; return; }
+    setIsOpen(!isOpen);
+  };
+
+  const summary = tasks.concat(marketingTasks).concat(designTasks).slice(0, 40).map(function (tk) { return "[" + tk.status + "] " + tk.title + " (담당:" + tk.assignee + ", 마감:" + tk.due + ")"; }).join("\n");
+
   const send = async function () {
     if (!input.trim() || loading) return;
-    const userMsg = input.trim();
-    setInput("");
+    const userMsg = input.trim(); setInput("");
     const newMessages = messages.concat([{ role: "user", content: userMsg }]);
-    setMessages(newMessages);
-    setLoading(true);
-    const summary = "영상 업무:\n" + tasks.map(function (tk) { return "[" + tk.status + "] " + tk.title + " (담당: " + tk.assignee + ", 마감: " + tk.due + ")"; }).join("\n") + "\n\n마케팅 업무:\n" + (marketingTasks || []).map(function (tk) { return "[" + tk.status + "] " + tk.title + " (담당: " + tk.assignee + ", 마감: " + tk.due + ")"; }).join("\n") + "\n\n디자인 업무:\n" + (designTasks || []).map(function (tk) { return "[" + tk.status + "] " + tk.title + " (담당: " + tk.assignee + ", 마감: " + tk.due + ")"; }).join("\n");
+    setMessages(newMessages); setLoading(true);
     try {
-      const apiMessages = newMessages.slice(1).map(function (m) { return { role: m.role, content: m.content }; });
-      const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 800, system: "당신은 TIMBEL 영상팀 업무 스케줄러의 AI 비서입니다. 아래는 현재 업무 현황입니다. 이 정보를 바탕으로 친절하고 간결하게 한국어로 답하세요.\n\n" + summary, messages: apiMessages }) });
+      const res = await fetch("https://api.anthropic.com/v1/messages", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 800, system: "당신은 TIMBEL 업무 스케줄러의 AI 어시스턴트입니다. 친절하고 간결하게 한국어로 답변하세요.\n\n현재 업무 현황:\n" + summary, messages: newMessages.map(function (m) { return { role: m.role, content: m.content }; }) }) });
       const data = await res.json();
-      const reply = data.content.map(function (c) { return c.text || ""; }).join("\n");
-      setMessages(newMessages.concat([{ role: "assistant", content: reply }]));
+      setMessages(function (prev) { return prev.concat([{ role: "assistant", content: data.content.map(function (c) { return c.text || ""; }).join("\n") }]); });
     } catch (e) {
-      setMessages(newMessages.concat([{ role: "assistant", content: "죄송해요, 지금은 답변할 수 없어요. 잠시 후 다시 시도해주세요." }]));
+      setMessages(function (prev) { return prev.concat([{ role: "assistant", content: "오류가 발생했습니다." }]); });
     }
     setLoading(false);
   };
+
+  const panelW = isOpen ? Math.min(320, window.innerWidth * 0.9) : 58;
+  const panelH = isOpen ? 440 : 58;
+  const clampedPos = pos ? { x: Math.max(6, Math.min(window.innerWidth - panelW - 6, pos.x)), y: Math.max(6, Math.min(window.innerHeight - panelH - 6, pos.y)) } : null;
+  const posStyle = clampedPos ? { left: clampedPos.x, top: clampedPos.y, right: "auto", bottom: "auto" } : { right: 24, bottom: 24 };
+
   return (
     <div>
-      {open ? (
-        <div style={{ position: "fixed", bottom: 90, right: "clamp(8px, 3vw, 24px)", width: "min(92vw, 360px)", height: "min(70vh, 480px)", background: t.surface, borderRadius: 20, border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c", zIndex: 9999, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-          <div style={{ background: "linear-gradient(135deg,#6366f1,#ec4899)", padding: "13px 18px", display: "flex", alignItems: "center", gap: 9 }}>
-            <Bot size={17} strokeWidth={2} color="#fff" />
-            <span style={{ fontSize: 14, fontWeight: 800, color: "#fff", flex: 1 }}>AI 챗봇</span>
-            <button onClick={function () { setOpen(false); }} style={{ background: "none", border: "none", color: "#ffffffaa", cursor: "pointer", fontSize: 18, padding: 0 }}>×</button>
+      <style dangerouslySetInnerHTML={{ __html: "@keyframes tbFloatBounce { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }" }} />
+      {!isOpen ? (
+        <button ref={btnRef} onMouseDown={startDrag} onTouchStart={startDrag} onClick={handleToggle} style={Object.assign({ position: "fixed", width: 58, height: 58, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", cursor: dragging ? "grabbing" : "grab", boxShadow: "0 8px 24px #00000060", fontSize: 26, zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center", animation: dragging ? "none" : "tbFloatBounce 3s ease-in-out infinite" }, posStyle)} title="AI 어시스턴트"><Sparkles size={24} strokeWidth={1.75} color="#fff" /></button>
+      ) : (
+        <div ref={btnRef} style={Object.assign({ position: "fixed", width: "min(90vw, 320px)", height: 440, background: t.surface, borderRadius: 18, border: "1px solid " + t.border, boxShadow: "0 16px 48px #000a", zIndex: 9999, display: "flex", flexDirection: "column", overflow: "hidden" }, posStyle)}>
+          <div onMouseDown={startDrag} onTouchStart={startDrag} style={{ padding: "12px 14px", background: "linear-gradient(135deg,#6366f1,#ec4899)", display: "flex", alignItems: "center", gap: 8, cursor: dragging ? "grabbing" : "grab", flexShrink: 0 }}>
+            <Sparkles size={17} strokeWidth={1.75} color="#fff" />
+            <span style={{ fontSize: 13, fontWeight: 700, color: "#fff", flex: 1 }}>AI 어시스턴트</span>
+            <button onClick={function () { setIsOpen(false); }} style={{ background: "none", border: "none", color: "#fff", cursor: "pointer", fontSize: 18, lineHeight: 1 }}>×</button>
           </div>
-          <div ref={listRef} style={{ flex: 1, overflowY: "auto", padding: "14px 14px", display: "flex", flexDirection: "column", gap: 10 }}>
-            {messages.map(function (m, i) {
-              const mine = m.role === "user";
-              return (
-                <div key={i} style={{ display: "flex", justifyContent: mine ? "flex-end" : "flex-start" }}>
-                  <div style={{ maxWidth: "82%", background: mine ? "#6366f1" : t.surface2, color: mine ? "#fff" : t.text, borderRadius: mine ? "14px 14px 3px 14px" : "14px 14px 14px 3px", padding: "9px 13px", fontSize: 12.5, lineHeight: 1.65, whiteSpace: "pre-wrap", wordBreak: "break-word" }}>{m.content}</div>
-                </div>
-              );
-            })}
-            {loading ? <div style={{ display: "flex" }}><div style={{ background: t.surface2, borderRadius: "14px 14px 14px 3px", padding: "9px 13px", fontSize: 12.5, color: t.text4 }}>생각 중...</div></div> : null}
+          <div style={{ flex: 1, overflowY: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+            {messages.map(function (m, i) { return <div key={i} style={{ display: "flex", justifyContent: m.role === "user" ? "flex-end" : "flex-start" }}><div style={{ maxWidth: "80%", padding: "8px 12px", borderRadius: m.role === "user" ? "12px 12px 3px 12px" : "12px 12px 12px 3px", background: m.role === "user" ? "#6366f1" : t.surface2, color: m.role === "user" ? "#fff" : t.text, fontSize: 12.5, lineHeight: 1.5, whiteSpace: "pre-wrap", border: m.role === "user" ? "none" : "1px solid " + t.border }}>{m.content}</div></div>; })}
+            {loading ? <div style={{ fontSize: 11, color: t.text4 }}>입력 중...</div> : null}
           </div>
-          <div style={{ padding: "11px 12px", borderTop: "1px solid " + t.border, display: "flex", gap: 7 }}>
-            <input value={input} onChange={function (e) { setInput(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") send(); }} placeholder="무엇이든 물어보세요..." style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 11, padding: "9px 13px", fontSize: 13, color: t.text, outline: "none" }} />
-            <button onClick={send} disabled={loading} style={{ background: "#6366f1", border: "none", borderRadius: 11, padding: "0 14px", color: "#fff", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center" }}><Send size={14} strokeWidth={2} /></button>
+          <div style={{ padding: 10, borderTop: "1px solid " + t.border, display: "flex", gap: 6, flexShrink: 0 }}>
+            <input value={input} onChange={function (e) { setInput(e.target.value); }} onKeyDown={function (e) { if (e.key === "Enter") send(); }} placeholder="메시지 입력..." style={{ flex: 1, background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 10, padding: "8px 10px", fontSize: 12.5, color: t.text, outline: "none", minWidth: 0 }} />
+            <button onClick={send} style={{ background: "#6366f1", border: "none", borderRadius: 10, padding: "0 12px", color: "#fff", cursor: "pointer", display: "flex", alignItems: "center", flexShrink: 0 }}><Send size={14} strokeWidth={2} /></button>
           </div>
         </div>
-      ) : null}
-      <button onClick={function () { setOpen(!open); }} style={{ position: "fixed", bottom: 24, right: "clamp(8px, 3vw, 24px)", width: 54, height: 54, borderRadius: "50%", background: "linear-gradient(135deg,#6366f1,#ec4899)", border: "none", boxShadow: "0 8px 24px #6366f160", cursor: "pointer", zIndex: 9999, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {open ? <X size={22} strokeWidth={2} color="#fff" /> : <Bot size={24} strokeWidth={2} color="#fff" />}
-      </button>
+      )}
     </div>
   );
 }
 
 function ActivityLogPanel(props) {
   const { t } = useTheme();
-  const { logs, currentUser, onRestore } = props;
-  const [filter, setFilter] = useState("all");
-  const ACTION_INFO = {
-    create: { color: "#34d399", label: "생성", icon: Plus },
-    update: { color: "#38bdf8", label: "수정", icon: Pencil },
-    delete: { color: "#f87171", label: "삭제", icon: Trash2 },
-    move: { color: "#c084fc", label: "단계 이동", icon: ArrowRight },
-    approve: { color: "#34d399", label: "승인", icon: CheckCircle2 },
-    reject: { color: "#fb923c", label: "수정 요청", icon: CornerUpLeft },
+  const { onRestore, onCleanup, isAdmin } = props;
+  const log = (props.log || []).slice().sort(function (a, b) { return b.createdAt - a.createdAt; });
+  const ACTION_COLOR = { "생성": "#34d399", "삭제": "#f87171", "단계 변경": "#818cf8", "일괄 삭제": "#f87171", "일괄 변경": "#fbbf24", "복구": "#38bdf8" };
+  const [restoredIds, setRestoredIds] = useState({});
+  const exportLog = function () {
+    downloadCSV("활동로그_전체.csv", log.map(function (entry) { return { 시간: entry.time, 실행자: entry.actor, 동작: entry.action, 내용: entry.detail }; }));
   };
-  const visible = (filter === "all" ? logs : logs.filter(function (l) { return l.action === filter; })).slice().sort(function (a, b) { return b.createdAt - a.createdAt; }).slice(0, 200);
-  const canRestore = currentUser.role === "admin" || currentUser.role === "manager";
-  const filterBtn = function (v, label) { return <button key={v} onClick={function () { setFilter(v); }} style={{ padding: "5px 13px", borderRadius: 20, border: "1px solid " + (filter === v ? "#6366f1" : t.border), background: filter === v ? "#6366f120" : "transparent", cursor: "pointer", fontSize: 12, fontWeight: filter === v ? 700 : 500, color: filter === v ? "#818cf8" : t.text4 }}>{label}</button>; };
+  const cleanupOld = function () {
+    if (!onCleanup) return;
+    const days = window.prompt("몇 일 이전 기록을 삭제할까요? (예: 180) — 먼저 CSV로 백업하시는 걸 추천드려요.", "180");
+    if (!days || isNaN(Number(days))) return;
+    const cutoff = Date.now() - Number(days) * 24 * 60 * 60 * 1000;
+    const removeCount = log.filter(function (e) { return e.createdAt < cutoff; }).length;
+    if (removeCount === 0) { alert("삭제할 오래된 기록이 없습니다."); return; }
+    if (!window.confirm(removeCount + "개의 기록(그 이전은 영구 삭제)을 정리하시겠습니까? 이 작업은 되돌릴 수 없어요.")) return;
+    onCleanup(cutoff);
+  };
   return (
-    <div style={{ maxWidth: 760, margin: "0 auto" }}>
-      <div style={{ background: "linear-gradient(135deg,#475569,#334155)", borderRadius: 16, padding: "16px 22px", marginBottom: 18, display: "flex", alignItems: "center", gap: 12 }}>
-        <History size={24} strokeWidth={1.75} color="#fff" />
-        <div><div style={{ fontSize: 16, fontWeight: 800, color: "#fff" }}>활동 로그</div><div style={{ fontSize: 12, color: "#ffffff88", marginTop: 2 }}>누가 언제 무엇을 변경했는지 기록돼요 (최근 200건)</div></div>
+    <div style={{ maxWidth: 800, margin: "0 auto" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+        <button onClick={exportLog} style={{ display: "flex", alignItems: "center", gap: 6, background: t.surface2, border: "1px solid " + t.border, borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: t.text3, cursor: "pointer" }}><Download size={13} strokeWidth={2} /> 전체 CSV로 내보내기</button>
+        {isAdmin && onCleanup ? <button onClick={cleanupOld} style={{ display: "flex", alignItems: "center", gap: 6, background: "#f8717118", border: "1px solid #f8717130", borderRadius: 11, padding: "7px 14px", fontWeight: 700, fontSize: 12, color: "#f87171", cursor: "pointer" }}><Trash2 size={13} strokeWidth={2} /> 오래된 기록 정리</button> : null}
       </div>
-      <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap" }}>
-        {filterBtn("all", "전체")}
-        {Object.keys(ACTION_INFO).map(function (k) { return filterBtn(k, ACTION_INFO[k].label); })}
-      </div>
-      {visible.length === 0 ? <EmptyState icon={History} text="기록된 활동이 없습니다" /> : null}
       <div style={{ background: t.surface, borderRadius: 16, border: "1px solid " + t.border, overflow: "hidden" }}>
-        {visible.map(function (log, i) {
-          const info = ACTION_INFO[log.action] || { color: "#94a3b8", label: log.action, icon: Circle };
-          const LogIcon = info.icon;
+        <div style={{ padding: "12px 18px", borderBottom: "1px solid " + t.border, fontSize: 12, fontWeight: 700, color: t.text4, textTransform: "uppercase", letterSpacing: ".5px" }}>전체 활동 ({log.length}) · 자동 삭제 없이 모두 보존돼요 · 최근 200개만 표시</div>
+        {log.length === 0 ? <EmptyState icon={History} text="활동 기록이 없습니다" /> : null}
+        {log.slice(0, 200).map(function (entry) {
+          const canRestore = entry.action === "삭제" && entry.snapshot && entry.restoreType && onRestore;
+          const alreadyRestored = restoredIds[entry.id];
           return (
-            <div key={log.id} style={{ display: "flex", alignItems: "flex-start", gap: 12, padding: "12px 16px", borderBottom: i === visible.length - 1 ? "none" : "1px solid " + t.border }}>
-              <div style={{ width: 30, height: 30, borderRadius: 11, background: info.color + "18", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 2 }}><LogIcon size={14} strokeWidth={2} color={info.color} /></div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 13, color: t.text2, lineHeight: 1.6 }}>
-                  <b style={{ color: t.text }}>{log.user}</b> 님이 <span style={{ color: info.color, fontWeight: 700 }}>[{info.label}]</span> <b style={{ color: t.text }}>{log.targetTitle}</b>
-                  {log.detail ? <span style={{ color: t.text4 }}> — {log.detail}</span> : null}
-                </div>
-                <div style={{ fontSize: 10.5, color: t.text5, marginTop: 3 }}>{log.kindLabel} · {new Date(log.createdAt).toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</div>
-              </div>
-              {canRestore && log.action === "delete" && log.snapshot ? (
-                <button onClick={function () { if (window.confirm('"' + log.targetTitle + '" 항목을 복구할까요?')) onRestore(log); }} style={{ display: "flex", alignItems: "center", gap: 4, background: "#34d39918", border: "1px solid #34d39940", borderRadius: 9, padding: "5px 11px", fontSize: 11, color: "#34d399", cursor: "pointer", fontWeight: 700, flexShrink: 0 }}><RotateCcw size={11} strokeWidth={2} /> 복구</button>
-              ) : null}
+            <div key={entry.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 18px", borderBottom: "1px solid " + t.border, flexWrap: "wrap" }}>
+              <span style={{ fontSize: 10, color: ACTION_COLOR[entry.action] || t.text4, background: (ACTION_COLOR[entry.action] || t.text4) + "18", borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0 }}>{entry.action}</span>
+              <span style={{ fontSize: 13, color: t.text2, flex: 1, minWidth: 0 }}>{entry.detail}</span>
+              <span style={{ fontSize: 11, color: t.text4, flexShrink: 0 }}>{entry.actor}</span>
+              <span style={{ fontSize: 10, color: t.text5, flexShrink: 0 }}>{entry.time}</span>
+              {canRestore ? <button disabled={alreadyRestored} onClick={function () { onRestore(entry); setRestoredIds(function (prev) { return Object.assign({}, prev, { [entry.id]: true }); }); }} style={{ background: alreadyRestored ? t.surface2 : "#38bdf820", border: "1px solid " + (alreadyRestored ? t.border : "#38bdf840"), borderRadius: 10, padding: "4px 10px", fontSize: 11, cursor: alreadyRestored ? "default" : "pointer", color: alreadyRestored ? t.text5 : "#38bdf8", fontWeight: 700, flexShrink: 0 }}><span style={{display:"inline-flex",alignItems:"center",gap:4}}>{alreadyRestored ? <Check size={11} strokeWidth={2.5}/> : <RotateCcw size={11} strokeWidth={2}/>}{alreadyRestored ? "복구됨" : "복구"}</span></button> : null}
             </div>
           );
         })}
@@ -3206,40 +3306,54 @@ function ActivityLogPanel(props) {
 
 function SearchModal(props) {
   const { t } = useTheme();
-  const { onClose, tasks, marketingTasks, designTasks, aiAds, intAds, onSelectVideo, onSelectMarketing, onSelectDesign, onGoTab } = props;
-  const [q, setQ] = useState("");
-  const inputRef = useRef(null);
-  useEffect(function () { if (inputRef.current) inputRef.current.focus(); }, []);
-  const query = q.trim().toLowerCase();
-  const match = function (str) { return str && String(str).toLowerCase().indexOf(query) !== -1; };
-  const results = [];
-  if (query.length >= 1) {
-    tasks.forEach(function (tk) { if (match(tk.title) || match(tk.desc) || match(tk.assignee)) results.push({ kind: "video", label: "영상", color: "#818cf8", icon: Film, title: tk.title, sub: tk.assignee + " · " + tk.status + " · " + (tk.due || ""), onClick: function () { onSelectVideo(tk); onClose(); } }); });
-    (marketingTasks || []).forEach(function (mt) { if (match(mt.title) || match(mt.desc) || match(mt.assignee)) results.push({ kind: "marketing", label: "마케팅", color: "#fb923c", icon: CalendarDays, title: mt.title, sub: mt.assignee + " · " + mt.status + " · " + (mt.due || ""), onClick: function () { onSelectMarketing(mt); onClose(); } }); });
-    (designTasks || []).forEach(function (dt) { if (match(dt.title) || match(dt.desc) || match(dt.assignee)) results.push({ kind: "design", label: "디자인", color: "#f87171", icon: Palette, title: dt.title, sub: dt.assignee + " · " + dt.status + " · " + (dt.due || ""), onClick: function () { onSelectDesign(dt); onClose(); } }); });
-    (aiAds || []).concat(intAds || []).forEach(function (ad) { if (match(ad.content) || match(ad.requester)) results.push({ kind: "ad", label: "광고", color: "#fbbf24", icon: Megaphone, title: ad.content || "광고", sub: (ad.requester || "") + " · " + (ad.workStatus || ""), onClick: function () { onGoTab("ad"); onClose(); } }); });
-  }
+  const { videoTasks, marketingTasks, designTasks, ads, onSelectVideo, onSelectMarketing, onSelectDesign, onNavigateTab, onClose } = props;
+  const [overtimeEntries] = useFirebaseData("overtimeEntries", []);
+  const [query, setQuery] = useState("");
+  const q = query.trim().toLowerCase();
+  const TYPE_INFO = { video: { icon: Film, label: "영상", color: "#818cf8" }, marketing: { icon: CalendarDays, label: "마케팅", color: "#fb923c" }, design: { icon: Palette, label: "디자인", color: "#f87171" }, ad: { icon: Megaphone, label: "광고", color: "#fbbf24" }, overtime: { icon: Clock, label: "야근", color: "#38bdf8" } };
+  const matches = function (tk) {
+    const hay = [tk.title, tk.desc, tk.assignee, tk.tag, tk.category, tk.status].concat((tk.comments || []).map(function (c) { return c.text; })).filter(Boolean).join(" ").toLowerCase();
+    return hay.indexOf(q) !== -1;
+  };
+  const matchesAd = function (ad) {
+    const hay = [ad.content, ad.requester, ad.note, ad.modifyContent].filter(Boolean).join(" ").toLowerCase();
+    return hay.indexOf(q) !== -1;
+  };
+  const matchesOvertime = function (e) {
+    const hay = [e.reason, e.user].filter(Boolean).join(" ").toLowerCase();
+    return hay.indexOf(q) !== -1;
+  };
+  const results = q ? videoTasks.filter(matches).map(function (tk) { return Object.assign({}, tk, { kind: "video" }); })
+    .concat(marketingTasks.filter(matches).map(function (tk) { return Object.assign({}, tk, { kind: "marketing" }); }))
+    .concat(designTasks.filter(matches).map(function (tk) { return Object.assign({}, tk, { kind: "design" }); }))
+    .concat((ads || []).filter(matchesAd).map(function (ad) { return { id: ad.id, kind: "ad", title: ad.content || "광고", assignee: ad.requester, status: ad.workStatus, due: ad.workDate || ad.expectedDate || "" }; }))
+    .concat((overtimeEntries || []).filter(matchesOvertime).map(function (e) { return { id: e.id, kind: "overtime", title: e.reason || "야근 기록", assignee: e.user, status: e.hours + "시간", due: e.date }; })) : [];
+  const handleClick = function (item) {
+    onClose();
+    if (item.kind === "video") onSelectVideo(item);
+    else if (item.kind === "marketing") onSelectMarketing(item);
+    else if (item.kind === "design") onSelectDesign(item);
+    else if (item.kind === "ad") onNavigateTab("ad");
+    else if (item.kind === "overtime") onNavigateTab("overtime");
+  };
   return (
-    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "#000000aa", zIndex: 450, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "12vh", backdropFilter: "blur(4px)" }}>
-      <div onClick={function (e) { e.stopPropagation(); }} style={{ width: "min(92vw, 540px)", background: t.surface, borderRadius: 18, border: "1px solid " + t.border, boxShadow: "0 24px 64px #000c", overflow: "hidden" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", borderBottom: "1px solid " + t.border }}>
-          <Search size={16} strokeWidth={2} color={t.text4} />
-          <input ref={inputRef} value={q} onChange={function (e) { setQ(e.target.value); }} onKeyDown={function (e) { if (e.key === "Escape") onClose(); }} placeholder="영상·마케팅·디자인·광고 통합 검색... (제목, 담당자, 설명)" style={{ flex: 1, background: "transparent", border: "none", fontSize: 14, color: t.text, outline: "none" }} />
-          <button onClick={onClose} style={{ background: t.surface2, border: "none", borderRadius: 8, padding: "3px 9px", color: t.text4, cursor: "pointer", fontSize: 11 }}>ESC</button>
+    <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "#00000099", zIndex: 400, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "10vh", backdropFilter: "blur(4px)" }}>
+      <div onClick={function (e) { e.stopPropagation(); }} style={{ background: t.surface, borderRadius: 20, width: "min(92vw, 560px)", maxHeight: "70vh", display: "flex", flexDirection: "column", boxShadow: "0 24px 64px #000c" }}>
+        <div style={{ padding: "16px 18px", borderBottom: "1px solid " + t.border }}>
+          <input autoFocus value={query} onChange={function (e) { setQuery(e.target.value); }} placeholder="제목, 담당자, 코멘트로 검색... (영상·마케팅·디자인·광고·야근 전체)" style={{ width: "100%", background: t.inputBg, border: "1px solid " + t.inputBorder, borderRadius: 12, padding: "10px 14px", fontSize: 14, color: t.text, outline: "none", boxSizing: "border-box" }} />
         </div>
-        <div style={{ maxHeight: "50vh", overflowY: "auto" }}>
-          {query.length === 0 ? <div style={{ padding: "26px 0", textAlign: "center", color: t.text5, fontSize: 12.5 }}>검색어를 입력하세요</div> : null}
-          {query.length >= 1 && results.length === 0 ? <div style={{ padding: "26px 0", textAlign: "center", color: t.text5, fontSize: 12.5, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}><SearchX size={20} strokeWidth={1.5} /> "{q}" 검색 결과가 없어요</div> : null}
-          {results.slice(0, 30).map(function (r, i) {
-            const RIcon = r.icon;
+        <div style={{ overflowY: "auto", padding: "6px 8px" }}>
+          {!q ? <EmptyState icon={Search} text="검색어를 입력하세요" /> : null}
+          {q && results.length === 0 ? <EmptyState icon={SearchX} text="검색 결과가 없습니다" /> : null}
+          {results.map(function (item) {
+            const info = TYPE_INFO[item.kind];
             return (
-              <div key={i} onClick={r.onClick} style={{ display: "flex", alignItems: "center", gap: 11, padding: "11px 18px", borderBottom: "1px solid " + t.border, cursor: "pointer" }}>
-                <span style={{ fontSize: 10, color: r.color, background: r.color + "18", padding: "2px 8px", borderRadius: 20, fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><RIcon size={10} strokeWidth={2.5} /> {r.label}</span>
+              <div key={item.kind + "_" + item.id} onClick={function () { handleClick(item); }} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", borderRadius: 11, cursor: "pointer" }}>
+                <span style={{ fontSize: 10, background: info.color + "20", color: info.color, borderRadius: 20, padding: "2px 8px", fontWeight: 700, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3 }}><info.icon size={10} strokeWidth={2.5} /> {info.label}</span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{r.title}</div>
-                  <div style={{ fontSize: 11, color: t.text4, marginTop: 1 }}>{r.sub}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: t.text, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{item.title}</div>
+                  <div style={{ fontSize: 11, color: t.text4 }}>{item.assignee} · {item.status} · {item.due}</div>
                 </div>
-                <ArrowRight size={13} strokeWidth={2} color={t.text5} style={{ flexShrink: 0 }} />
               </div>
             );
           })}
@@ -3248,6 +3362,7 @@ function SearchModal(props) {
     </div>
   );
 }
+
 // ============================================================================
 // TimbelAssistant.jsx — TIMBEL 스케줄러용 AI 가이드 캐릭터 (프로토타입 v1)
 // ----------------------------------------------------------------------------
@@ -3636,398 +3751,354 @@ function TimbelAssistant(props) {
 }
 
 export default function App() {
-  const [isDark, setIsDark] = useState(function () { return getCookie("timbel_theme") !== "light"; });
+  useEffect(function () {
+    document.body.style.margin = "0"; document.body.style.padding = "0";
+    document.documentElement.style.margin = "0"; document.documentElement.style.padding = "0";
+  }, []);
+  const [isDark, setIsDarkRaw] = useState(function () { const saved = getCookie("timbel_theme"); return saved === "light" ? false : true; });
+  const [calendarMenuOpen, setCalendarMenuOpen] = useState(false);
+  const [calendarMenuPos, setCalendarMenuPos] = useState({ top: 0, left: 0 });
+  const calendarBtnRef = useRef(null);
+  const [opsMenuOpen, setOpsMenuOpen] = useState(false);
+  const [opsMenuPos, setOpsMenuPos] = useState({ top: 0, left: 0 });
+  const opsBtnRef = useRef(null);
+  const setIsDark = function (v) { setIsDarkRaw(v); setCookie("timbel_theme", v ? "dark" : "light", 365); };
   const t = isDark ? DARK : LIGHT;
-  const toggleDark = function (v) { setIsDark(v); setCookie("timbel_theme", v ? "dark" : "light", 365); };
-  const [users, setUsers, usersReady] = useFirebaseData("users", []);
-  const [tasks, setTasks, tasksReady] = useFirebaseData("tasks", []);
-  const [marketingTasks, setMarketingTasks] = useFirebaseData("marketingTasks", []);
-  const [designTasks, setDesignTasks] = useFirebaseData("designTasks", []);
-  const [notices, setNotices] = useFirebaseData("notices", []);
-  const [notifications, setNotifications] = useFirebaseData("notifications", []);
+  useEffect(function () { document.body.style.background = t.bg; document.documentElement.style.background = t.bg; }, [t.bg]);
+
+  const [users, setUsersRaw, usersReady] = useFirebaseData("users", []);
+  const [tasks, setTasksRaw, tasksReady] = useFirebaseData("tasks", []);
+  const [marketingTasks, setMarketingTasksRaw, marketingTasksReady] = useFirebaseData("marketingTasks", []);
+  const [designTasks, setDesignTasksRaw, designTasksReady] = useFirebaseData("designTasks", []);
+  const [activityLog, setActivityLogRaw] = useFirebaseData("activityLog", []);
+  const [adminAuth, setAdminAuthRaw] = useFirebaseData("adminAuth", { password: DEFAULT_ADMIN_PASSWORD_HASH });
+  const [notices, setNoticesRaw, noticesReady] = useFirebaseData("notices", []);
+  const [notifications, setNotificationsRaw] = useFirebaseData("notifications", []);
+  const [directMessages, setDirectMessagesRaw] = useFirebaseData("directMessages", []);
+  const DEFAULT_ROLE_PERMISSIONS = {
+    viewer: ALL_TABS.map(function (t) { return t.id; }).filter(function (id) { return ["ad", "ai", "overtime", "activity"].indexOf(id) === -1; }),
+    member: ALL_TABS.map(function (t) { return t.id; }).filter(function (id) { return id !== "activity"; }),
+    manager: ALL_TABS.map(function (t) { return t.id; }),
+  };
+  const [rolePermissions, setRolePermissionsRaw] = useFirebaseData("settings/rolePermissions", DEFAULT_ROLE_PERMISSIONS);
+  const [staleDays, setStaleDaysRaw] = useFirebaseData("settings/staleDays", 3);
+  const [wipLimits, setWipLimitsRaw] = useFirebaseData("settings/wipLimits", {});
+  const [requests, setRequestsRaw] = useFirebaseData("requests", []);
+  const synced = usersReady && tasksReady && noticesReady && marketingTasksReady && designTasksReady;
+
+  useEffect(function () {
+    if (!usersReady || users.length > 0) return;
+    setUsersRaw([
+      { id: "user_1", name: "박래성", password: DEFAULT_SEED_PASSWORD_HASH, dept: "영상팀", rank: "팀장", position: "디렉터", officePhone: "02-1234-5678", mobile: "010-1234-5678", role: "manager", approved: true },
+      { id: "user_2", name: "이한희", password: DEFAULT_SEED_PASSWORD_HASH, dept: "영상팀", rank: "팀원", position: "에디터", officePhone: "02-1234-5679", mobile: "010-9876-5432", role: "member", approved: true },
+    ]);
+  }, [usersReady]);
+  useEffect(function () {
+    if (!noticesReady || notices.length > 0) return;
+    setNoticesRaw([{ id: "notice_1", title: "시스템 오픈 안내", content: "TIMBEL 업무 스케줄러가 오픈되었습니다!", active: true }]);
+  }, [noticesReady]);
+  useEffect(function () {
+    if (!tasksReady || tasks.length > 0) return;
+    setTasksRaw([
+      { id: "task_1", title: "6월 메인 브이로그", desc: "월간 하이라이트 영상", assignee: "박래성", priority: "높음", tag: "유튜브", due: "2026-06-30", status: "편집", comments: [] },
+      { id: "task_2", title: "신제품 리뷰 영상", desc: "스마트폰 언박싱 & 리뷰", assignee: "이한희", priority: "높음", tag: "유튜브", due: "2026-06-28", status: "촬영", comments: [] },
+      { id: "task_3", title: "여름 쇼츠 #1", desc: "15초 숏폼 콘텐츠", assignee: "박래성", priority: "중간", tag: "쇼츠", due: "2026-06-27", status: "업무 완료", comments: [] },
+    ]);
+  }, [tasksReady]);
+
+  const [currentUser, setCurrentUserRaw] = useState(null);
+  const [authChecked, setAuthChecked] = useState(false);
+  const [tab, setTab] = useState("home");
+  const [showAdd, setShowAdd] = useState(false);
+  const [addDate, setAddDate] = useState("");
+  const [selectedTask, setSelectedTask] = useState(null);
+  const [showAddMarketing, setShowAddMarketing] = useState(false);
+  const [addMarketingDate, setAddMarketingDate] = useState("");
+  const [selectedMarketingTask, setSelectedMarketingTask] = useState(null);
+  const [showAddDesign, setShowAddDesign] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
+  const [addDesignDate, setAddDesignDate] = useState("");
+  const [selectedDesignTask, setSelectedDesignTask] = useState(null);
+  const [showProfile, setShowProfile] = useState(false);
   const [aiAds, setAiAds] = useFirebaseData("ads/ai", []);
   const [intAds, setIntAds] = useFirebaseData("ads/interview", []);
-  const [adminPasswordHash, setAdminPasswordHash] = useFirebaseData("adminPassword", DEFAULT_ADMIN_PASSWORD_HASH);
-  const [rolePermissions, setRolePermissions] = useFirebaseData("rolePermissions", {
-    viewer: ["home", "unified", "calendar", "adCalendar", "designCalendar", "timeline", "board", "stats"],
-    member: ["home", "unified", "calendar", "adCalendar", "designCalendar", "timeline", "board", "ad", "stats", "overtime", "messages", "ai", "activity", "requests"],
-    manager: ["home", "unified", "calendar", "adCalendar", "designCalendar", "timeline", "board", "ad", "stats", "overtime", "messages", "ai", "activity", "requests"],
-  });
-  const [staleDays, setStaleDays] = useFirebaseData("settings/staleDays", 3);
-  const [wipLimits, setWipLimits] = useFirebaseData("settings/wipLimits", {});
-  const [requests, setRequests] = useFirebaseData("requests", []);
-  const [activityLog, setActivityLog] = useFirebaseData("activityLog", []);
-  const [sessions, setSessions] = useFirebaseData("sessions", {});
-  const mySessionId = useRef("session_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8));
-  const [currentUser, setCurrentUser] = useState(null);
-  const [sessionConflict, setSessionConflict] = useState(false);
-  const [tab, setTab] = useState("home");
-  const [selectedTask, setSelectedTask] = useState(null);
-  const [selectedMarketing, setSelectedMarketing] = useState(null);
-  const [selectedDesign, setSelectedDesign] = useState(null);
-  const [showAdd, setShowAdd] = useState(null);
-  const [showMarketingAdd, setShowMarketingAdd] = useState(null);
-  const [showDesignAdd, setShowDesignAdd] = useState(null);
-  const [showProfile, setShowProfile] = useState(false);
-  const [showSearch, setShowSearch] = useState(false);
-  const [calDropOpen, setCalDropOpen] = useState(false);
-  const [opsDropOpen, setOpsDropOpen] = useState(false);
-  const seededRef = useRef(false);
+  const adsData = aiAds.concat(intAds);
 
+  const isAdmin = currentUser && currentUser.role === "admin";
+  const isViewer = currentUser && currentUser.role === "viewer";
+  const isManager = currentUser && currentUser.role === "manager";
+  const myUnreadMessages = currentUser ? directMessages.filter(function (m) { return m.to === currentUser.name && !(m.readBy && m.readBy[currentUser.name]); }).length : 0;
+
+  const setCurrentUser = function (user) {
+    setCurrentUserRaw(user);
+    if (user) setCookie("timbel_user", JSON.stringify({ id: user.id, name: user.name }), 30);
+    else deleteCookie("timbel_user");
+  };
+  const [mySessionId] = useState(function () { return "sess_" + Date.now() + "_" + Math.random().toString(36).slice(2, 10); });
+  const [hasClaimedSession, setHasClaimedSession] = useState(false);
+  const [sessionInfo] = useFirebaseData(currentUser ? "sessions/" + currentUser.name : "sessions/_none_", null);
   useEffect(function () {
-    if (!usersReady || seededRef.current) return;
-    seededRef.current = true;
-    if (users.length === 0) {
-      setUsers([
-        { id: "user_1", name: "박래성", password: DEFAULT_SEED_PASSWORD_HASH, dept: "영상팀", rank: "팀장", position: "PD", officePhone: "", mobile: "010-0000-0000", role: "manager", approved: true },
-        { id: "user_2", name: "이한희", password: DEFAULT_SEED_PASSWORD_HASH, dept: "영상팀", rank: "사원", position: "편집자", officePhone: "", mobile: "010-0000-0000", role: "member", approved: true },
-      ]);
+    if (!currentUser) { setHasClaimedSession(false); return; }
+    setHasClaimedSession(false);
+    const claim = async function () {
+      try {
+        await dbSet(ref(rtdb, "sessions/" + currentUser.name), { sessionId: mySessionId, device: (navigator.userAgent || "").slice(0, 80), time: Date.now() });
+      } catch (e) {}
+      setHasClaimedSession(true);
+    };
+    claim();
+  }, [currentUser ? currentUser.name : null]);
+  useEffect(function () {
+    if (!currentUser || !hasClaimedSession || !sessionInfo) return;
+    if (sessionInfo.sessionId && sessionInfo.sessionId !== mySessionId) {
+      alert("다른 기기(또는 브라우저)에서 같은 계정으로 로그인되어, 보안을 위해 이 화면은 자동으로 로그아웃됩니다.");
+      setCurrentUser(null);
     }
-  }, [usersReady]);
-
+  }, [sessionInfo, hasClaimedSession]);
   useEffect(function () {
-    if (!tasksReady) return;
+    if (!synced || authChecked) return;
     const saved = getCookie("timbel_user");
-    if (saved && !currentUser) {
-      if (saved === "admin") setCurrentUser(Object.assign({}, ADMIN_USER, { password: adminPasswordHash }));
-      else {
-        const u = users.find(function (x) { return x.name === saved && x.approved; });
-        if (u) setCurrentUser(u);
-      }
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed.id === "admin") setCurrentUserRaw(Object.assign({}, ADMIN_USER, { password: adminAuth ? adminAuth.password : DEFAULT_ADMIN_PASSWORD_HASH }));
+        else { const found = users.find(function (u) { return u.id === parsed.id; }); if (found && found.approved) setCurrentUserRaw(found); else deleteCookie("timbel_user"); }
+      } catch (e) { deleteCookie("timbel_user"); }
     }
-  }, [tasksReady, users.length]);
+    setAuthChecked(true);
+  }, [synced, users]);
 
-  useEffect(function () {
-    if (!currentUser) return;
-    const next = Object.assign({}, sessions);
-    next[currentUser.name] = mySessionId.current;
-    setSessions(next);
-  }, [currentUser && currentUser.name]);
+  const logActivity = function (action, detail, extra) {
+    const entry = Object.assign({ id: "log_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), actor: currentUser ? currentUser.name : "?", action: action, detail: detail, createdAt: Date.now(), time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }, extra || {});
+    setActivityLogRaw((activityLog || []).concat([entry]));
+  };
+  const moveTask = function (id, dir) { const tk0 = tasks.find(function (tk) { return tk.id === id; }); setTasksRaw(tasks.map(function (tk) { return tk.id === id ? Object.assign({}, tk, { status: STAGES[STAGES.indexOf(tk.status) + dir], statusChangedAt: Date.now() }) : tk; })); if (tk0) logActivity("단계 변경", "영상 업무 \"" + tk0.title + "\" → " + STAGES[STAGES.indexOf(tk0.status) + dir]); };
+  const deleteTask = function (id) { const tk0 = tasks.find(function (tk) { return tk.id === id; }); setTasksRaw(tasks.filter(function (tk) { return tk.id !== id; })); if (tk0) logActivity("삭제", "영상 업무 \"" + tk0.title + "\" 삭제", { restoreType: "video", snapshot: tk0 }); };
+  const addTask = function (payload) { setTasksRaw(tasks.concat(payload)); logActivity("생성", (Array.isArray(payload) ? payload : [payload]).length > 1 ? "영상 업무 " + payload.length + "건 등록 (반복)" : "영상 업무 \"" + (Array.isArray(payload) ? payload[0].title : payload.title) + "\" 등록"); };
+  const updateTask = function (u) { setTasksRaw(tasks.map(function (tk) { return tk.id === u.id ? u : tk; })); setSelectedTask(u); };
+  const updateTaskSeries = function (seriesId, changes) { setTasksRaw(tasks.map(function (tk) { return tk.seriesId === seriesId ? Object.assign({}, tk, changes) : tk; })); setSelectedTask(function (prev) { return Object.assign({}, prev, changes); }); logActivity("일괄 변경", "영상 반복 시리즈 정보 일괄 수정"); };
+  const openAdd = function (date) { setAddDate(date || ""); setShowAdd(true); };
+  const moveMarketingTask = function (id, dir) { const tk0 = marketingTasks.find(function (tk) { return tk.id === id; }); setMarketingTasksRaw(marketingTasks.map(function (tk) { return tk.id === id ? Object.assign({}, tk, { status: MARKETING_STAGES[MARKETING_STAGES.indexOf(tk.status) + dir], statusChangedAt: Date.now() }) : tk; })); if (tk0) logActivity("단계 변경", "마케팅 업무 \"" + tk0.title + "\" → " + MARKETING_STAGES[MARKETING_STAGES.indexOf(tk0.status) + dir]); };
+  const deleteMarketingTask = function (id) { const tk0 = marketingTasks.find(function (tk) { return tk.id === id; }); setMarketingTasksRaw(marketingTasks.filter(function (tk) { return tk.id !== id; })); if (tk0) logActivity("삭제", "마케팅 업무 \"" + tk0.title + "\" 삭제", { restoreType: "marketing", snapshot: tk0 }); };
+  const addMarketingTask = function (payload) { setMarketingTasksRaw(marketingTasks.concat(payload)); logActivity("생성", (Array.isArray(payload) ? payload : [payload]).length > 1 ? "마케팅 업무 " + payload.length + "건 등록 (반복)" : "마케팅 업무 \"" + (Array.isArray(payload) ? payload[0].title : payload.title) + "\" 등록"); };
+  const updateMarketingTask = function (u) { setMarketingTasksRaw(marketingTasks.map(function (tk) { return tk.id === u.id ? u : tk; })); setSelectedMarketingTask(u); };
+  const updateMarketingTaskSeries = function (seriesId, changes) { setMarketingTasksRaw(marketingTasks.map(function (tk) { return tk.seriesId === seriesId ? Object.assign({}, tk, changes) : tk; })); setSelectedMarketingTask(function (prev) { return Object.assign({}, prev, changes); }); logActivity("일괄 변경", "마케팅 반복 시리즈 정보 일괄 수정"); };
+  const openAddMarketing = function (date) { setAddMarketingDate(date || ""); setShowAddMarketing(true); };
+  const moveDesignTask = function (id, dir) { const tk0 = designTasks.find(function (tk) { return tk.id === id; }); setDesignTasksRaw(designTasks.map(function (tk) { return tk.id === id ? Object.assign({}, tk, { status: DESIGN_STAGES[DESIGN_STAGES.indexOf(tk.status) + dir], statusChangedAt: Date.now() }) : tk; })); if (tk0) logActivity("단계 변경", "디자인 업무 \"" + tk0.title + "\" → " + DESIGN_STAGES[DESIGN_STAGES.indexOf(tk0.status) + dir]); };
+  const deleteDesignTask = function (id) { const tk0 = designTasks.find(function (tk) { return tk.id === id; }); setDesignTasksRaw(designTasks.filter(function (tk) { return tk.id !== id; })); if (tk0) logActivity("삭제", "디자인 업무 \"" + tk0.title + "\" 삭제", { restoreType: "design", snapshot: tk0 }); };
+  const addDesignTask = function (payload) { setDesignTasksRaw(designTasks.concat(payload)); logActivity("생성", (Array.isArray(payload) ? payload : [payload]).length > 1 ? "디자인 업무 " + payload.length + "건 등록 (반복)" : "디자인 업무 \"" + (Array.isArray(payload) ? payload[0].title : payload.title) + "\" 등록"); };
+  const updateDesignTask = function (u) { setDesignTasksRaw(designTasks.map(function (tk) { return tk.id === u.id ? u : tk; })); setSelectedDesignTask(u); };
+  const updateDesignTaskSeries = function (seriesId, changes) { setDesignTasksRaw(designTasks.map(function (tk) { return tk.seriesId === seriesId ? Object.assign({}, tk, changes) : tk; })); setSelectedDesignTask(function (prev) { return Object.assign({}, prev, changes); }); logActivity("일괄 변경", "디자인 반복 시리즈 정보 일괄 수정"); };
+  const restoreDeletedItem = function (entry) {
+    if (!entry.snapshot || !entry.restoreType) return;
+    if (entry.restoreType === "video") setTasksRaw(tasks.concat([entry.snapshot]));
+    else if (entry.restoreType === "marketing") setMarketingTasksRaw(marketingTasks.concat([entry.snapshot]));
+    else if (entry.restoreType === "design") setDesignTasksRaw(designTasks.concat([entry.snapshot]));
+    const label = entry.restoreType === "video" ? "영상" : entry.restoreType === "marketing" ? "마케팅" : "디자인";
+    logActivity("복구", label + " 업무 \"" + entry.snapshot.title + "\" 복구");
+  };
+  const cleanupActivityLog = function (cutoffTimestamp) {
+    const kept = (activityLog || []).filter(function (e) { return e.createdAt >= cutoffTimestamp; });
+    setActivityLogRaw(kept);
+  };
+  const openAddDesign = function (date) { setAddDesignDate(date || ""); setShowAddDesign(true); };
+  const bulkDeleteTasks = function (ids) { setTasksRaw(tasks.filter(function (tk) { return ids.indexOf(tk.id) === -1; })); logActivity("일괄 삭제", "영상 업무 " + ids.length + "건 일괄 삭제"); };
+  const bulkAssignTasks = function (ids, assignee) { setTasksRaw(tasks.map(function (tk) { return ids.indexOf(tk.id) !== -1 ? Object.assign({}, tk, { assignee: assignee }) : tk; })); logActivity("일괄 변경", "영상 업무 " + ids.length + "건 담당자를 " + assignee + "(으)로 일괄 변경"); };
+  const bulkDeleteMarketingTasks = function (ids) { setMarketingTasksRaw(marketingTasks.filter(function (tk) { return ids.indexOf(tk.id) === -1; })); logActivity("일괄 삭제", "마케팅 업무 " + ids.length + "건 일괄 삭제"); };
+  const bulkAssignMarketingTasks = function (ids, assignee) { setMarketingTasksRaw(marketingTasks.map(function (tk) { return ids.indexOf(tk.id) !== -1 ? Object.assign({}, tk, { assignee: assignee }) : tk; })); logActivity("일괄 변경", "마케팅 업무 " + ids.length + "건 담당자를 " + assignee + "(으)로 일괄 변경"); };
+  const bulkDeleteDesignTasks = function (ids) { setDesignTasksRaw(designTasks.filter(function (tk) { return ids.indexOf(tk.id) === -1; })); logActivity("일괄 삭제", "디자인 업무 " + ids.length + "건 일괄 삭제"); };
+  const bulkAssignDesignTasks = function (ids, assignee) { setDesignTasksRaw(designTasks.map(function (tk) { return ids.indexOf(tk.id) !== -1 ? Object.assign({}, tk, { assignee: assignee }) : tk; })); logActivity("일괄 변경", "디자인 업무 " + ids.length + "건 담당자를 " + assignee + "(으)로 일괄 변경"); };
+  const myRoleTabs = rolePermissions && currentUser ? (rolePermissions[currentUser.role] || []) : [];
+  const vt = Array.isArray(myRoleTabs) ? myRoleTabs : Object.values(myRoleTabs || {});
+  const displayTabs = isAdmin ? ALL_TABS : ALL_TABS.filter(function (tp) { return vt.includes(tp.id); });
+  const setRolePermissions = function (next) { setRolePermissionsRaw(next); };
 
-  useEffect(function () {
-    if (!currentUser) return;
-    const registered = sessions[currentUser.name];
-    if (registered && registered !== mySessionId.current) setSessionConflict(true);
-  }, [sessions, currentUser && currentUser.name]);
-
-  const logActivity = function (action, kindLabel, targetTitle, detail, snapshot, restoreType) {
-    if (!currentUser) return;
-    const entry = { id: "log_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), action: action, kindLabel: kindLabel, targetTitle: targetTitle, detail: detail || "", user: currentUser.name, createdAt: Date.now() };
-    if (snapshot) { entry.snapshot = snapshot; entry.restoreType = restoreType; }
-    setActivityLog(trimArray(activityLog.concat([entry]), 300));
+  const sendNotification = function (toUser, fromUser, taskTitle, text) {
+    const newNotif = { id: "notif_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7), toUser: toUser, fromUser: fromUser, taskTitle: taskTitle, text: text.length > 60 ? text.slice(0, 60) + "..." : text, kind: "comment", readBy: {}, createdAt: Date.now(), time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
+    setNotificationsRaw((notifications || []).concat([newNotif]));
   };
-
-  const login = function (u) { setCurrentUser(u); setCookie("timbel_user", u.name, 7); setSessionConflict(false); };
-  const logout = function () {
-    if (currentUser) {
-      const next = Object.assign({}, sessions);
-      if (next[currentUser.name] === mySessionId.current) delete next[currentUser.name];
-      setSessions(next);
-    }
-    setCurrentUser(null); deleteCookie("timbel_user"); setTab("home");
+  const sendAdNotification = function (ad, adTypeLabel, fromUser) {
+    const label = ad && ad.content ? ad.content : "새 광고";
+    const newNotif = { id: "notif_ad_" + Date.now() + "_" + Math.random().toString(36).slice(2, 7), toUser: "all", fromUser: fromUser || "알 수 없음", taskTitle: adTypeLabel, text: label, kind: "ad", readBy: {}, createdAt: Date.now(), time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) };
+    setNotificationsRaw((notifications || []).concat([newNotif]));
   };
-
-  const upgradeUser = function (u) { setUsers(users.map(function (x) { return x.id === u.id ? u : x; })); };
-  const updateProfile = function (u) {
-    setUsers(users.map(function (x) { return x.id === u.id ? u : x; }));
-    setCurrentUser(u);
-    setCookie("timbel_user", u.name, 7);
+  const markNotifRead = function (notifId) {
+    setNotificationsRaw((notifications || []).map(function (n) { if (n.id !== notifId) return n; const rb = Object.assign({}, n.readBy || {}); rb[currentUser.name] = true; return Object.assign({}, n, { readBy: rb }); }));
   };
-
-  const submitGuestRequest = function (form) {
-    setRequests(requests.concat([{ id: "req_" + Date.now(), requesterName: form.requesterName, requesterTeam: form.requesterTeam, title: form.title, desc: form.desc, type: form.type, desiredDate: form.desiredDate, urgency: form.urgency, assignee: form.assignee || "", status: "대기", createdAt: Date.now() }]));
+  const markAllNotifsRead = function () {
+    setNotificationsRaw((notifications || []).map(function (n) { if (n.toUser !== currentUser.name && n.toUser !== "all") return n; const rb = Object.assign({}, n.readBy || {}); rb[currentUser.name] = true; return Object.assign({}, n, { readBy: rb }); }));
   };
-
-  const acceptRequest = function (r) {
-    const base = { title: r.title, desc: r.desc || "요청: " + r.requesterName, assignee: r.assignee, priority: r.urgency === "높음" ? "높음" : r.urgency === "낮음" ? "낮음" : "중간", due: r.desiredDate || new Date().toISOString().slice(0, 10), deadline: "", fileUrl: "", createdAt: Date.now(), statusChangedAt: Date.now(), comments: [], subtasks: [], timeSpent: 0 };
-    if (r.type === "마케팅") setMarketingTasks(marketingTasks.concat([Object.assign({}, base, { id: "task_" + Date.now(), tag: "기타", status: "기획" })]));
-    else if (r.type === "디자인") setDesignTasks(designTasks.concat([Object.assign({}, base, { id: "task_" + Date.now(), tag: "기타", status: "기획" })]));
-    else setTasks(tasks.concat([Object.assign({}, base, { id: "task_" + Date.now(), tag: "유튜브", status: "기획", category: "기획" })]));
-    logActivity("create", "업무 요청", r.title, "요청 수락 → 캘린더 등록");
+  const handleNotifClick = function (notif) {
+    if (notif.kind === "ad") { setTab("ad"); return; }
+    const found = tasks.find(function (tk) { return tk.title === notif.taskTitle; });
+    if (found) { setTab("calendar"); setSelectedTask(found); }
   };
-
-  const notify = function (toUser, fromUser, taskTitle, text) {
-    setNotifications(trimArray(notifications.concat([{ id: "notif_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), toUser: toUser, fromUser: fromUser, taskTitle: taskTitle, text: text, readBy: {}, createdAt: Date.now(), time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }]), 200));
-  };
-  const notifyAd = function (ad, typeLabel, fromUser) {
-    setNotifications(trimArray(notifications.concat([{ id: "notif_" + Date.now() + "_" + Math.random().toString(36).slice(2, 6), toUser: "all", fromUser: fromUser || "누군가", kind: "ad", taskTitle: typeLabel, text: (ad.content || "새 광고") + " 항목이 등록되었습니다", readBy: {}, createdAt: Date.now(), time: new Date().toLocaleString("ko-KR", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) }]), 200));
-  };
-  const markRead = function (id) {
-    setNotifications(notifications.map(function (n) { if (n.id !== id) return n; const readBy = Object.assign({}, n.readBy); readBy[currentUser.name] = true; return Object.assign({}, n, { readBy: readBy }); }));
-  };
-  const markAllRead = function () {
-    setNotifications(notifications.map(function (n) { if (n.toUser !== currentUser.name && n.toUser !== "all") return n; const readBy = Object.assign({}, n.readBy); readBy[currentUser.name] = true; return Object.assign({}, n, { readBy: readBy }); }));
-  };
-  const clickNotif = function (n) {
-    if (n.kind === "ad") { setTab("ad"); return; }
-    const tk = tasks.find(function (x) { return x.title === n.taskTitle; });
-    if (tk) { setSelectedTask(tk); return; }
-    const mt = marketingTasks.find(function (x) { return x.title === n.taskTitle; });
-    if (mt) { setSelectedMarketing(mt); return; }
-    const dt = designTasks.find(function (x) { return x.title === n.taskTitle; });
-    if (dt) setSelectedDesign(dt);
-  };
-
-  const isVideoWork = function (tk) { return !tk.category || VIDEO_WORK_CATEGORIES.indexOf(tk.category) !== -1; };
-  const todayObj = new Date();
-  const pad0 = function (n) { return String(n).padStart(2, "0"); };
-  const todayStr0 = todayObj.getFullYear() + "-" + pad0(todayObj.getMonth() + 1) + "-" + pad0(todayObj.getDate());
-  const myOverdueItems = currentUser ? tasks.filter(function (tk) { return tk.assignee === currentUser.name && tk.due && tk.due < todayStr0 && tk.status === STAGES[0]; }).map(function (tk) { return Object.assign({}, tk, { typeLabel: "영상", alertType: "start", onOpen: function () { setSelectedTask(tk); } }); })
-    .concat(marketingTasks.filter(function (mt) { return mt.assignee === currentUser.name && mt.due && mt.due < todayStr0 && mt.status === MARKETING_STAGES[0]; }).map(function (mt) { return Object.assign({}, mt, { typeLabel: "마케팅", alertType: "start", onOpen: function () { setSelectedMarketing(mt); } }); }))
-    .concat(designTasks.filter(function (dt) { return dt.assignee === currentUser.name && dt.due && dt.due < todayStr0 && dt.status === DESIGN_STAGES[0]; }).map(function (dt) { return Object.assign({}, dt, { typeLabel: "디자인", alertType: "start", onOpen: function () { setSelectedDesign(dt); } }); })) : [];
-  const in2DaysObj = new Date(todayObj.getTime() + 2 * 24 * 60 * 60 * 1000);
-  const in2DaysStr = in2DaysObj.getFullYear() + "-" + pad0(in2DaysObj.getMonth() + 1) + "-" + pad0(in2DaysObj.getDate());
-  const isNotDone = function (item, doneLabel) { return item.status !== doneLabel; };
-  const myDeadlineItems = currentUser ? tasks.filter(function (tk) { return tk.assignee === currentUser.name && tk.deadline && tk.deadline <= in2DaysStr && isNotDone(tk, "업무 완료"); }).map(function (tk) { return Object.assign({}, tk, { typeLabel: "영상", alertType: "deadline", isPast: tk.deadline < todayStr0, onOpen: function () { setSelectedTask(tk); } }); })
-    .concat(marketingTasks.filter(function (mt) { return mt.assignee === currentUser.name && mt.deadline && mt.deadline <= in2DaysStr && isNotDone(mt, "완료"); }).map(function (mt) { return Object.assign({}, mt, { typeLabel: "마케팅", alertType: "deadline", isPast: mt.deadline < todayStr0, onOpen: function () { setSelectedMarketing(mt); } }); }))
-    .concat(designTasks.filter(function (dt) { return dt.assignee === currentUser.name && dt.deadline && dt.deadline <= in2DaysStr && isNotDone(dt, "완료"); }).map(function (dt) { return Object.assign({}, dt, { typeLabel: "디자인", alertType: "deadline", isPast: dt.deadline < todayStr0, onOpen: function () { setSelectedDesign(dt); } }); })) : [];
-  const overdueItems = myOverdueItems.concat(myDeadlineItems);
-
-  const addTasks = function (newTasks) { setTasks(tasks.concat(newTasks)); newTasks.forEach(function (tk) { logActivity("create", "영상", tk.title); }); };
-  const updateTask = function (u) { setTasks(tasks.map(function (x) { return x.id === u.id ? u : x; })); setSelectedTask(u); };
-  const updateTaskSeries = function (seriesId, changes) {
-    setTasks(tasks.map(function (x) { return x.seriesId === seriesId ? Object.assign({}, x, changes) : x; }));
-    setSelectedTask(null);
-  };
-  const moveTask = function (id, dir) {
-    setTasks(tasks.map(function (x) {
-      if (x.id !== id) return x;
-      const idx = STAGES.indexOf(x.status);
-      const next = STAGES[Math.max(0, Math.min(STAGES.length - 1, idx + dir))];
-      logActivity("move", "영상", x.title, x.status + " → " + next);
-      return Object.assign({}, x, { status: next, statusChangedAt: Date.now() });
-    }));
-  };
-  const deleteTask = function (id) {
-    const target = tasks.find(function (x) { return x.id === id; });
-    if (target) logActivity("delete", "영상", target.title, "", target, "video");
-    setTasks(tasks.filter(function (x) { return x.id !== id; }));
-    setSelectedTask(null);
-  };
-  const bulkDeleteTasks = function (ids) {
-    tasks.filter(function (x) { return ids.indexOf(x.id) !== -1; }).forEach(function (target) { logActivity("delete", "영상", target.title, "일괄 삭제", target, "video"); });
-    setTasks(tasks.filter(function (x) { return ids.indexOf(x.id) === -1; }));
-  };
-  const bulkAssignTasks = function (ids, assignee) {
-    setTasks(tasks.map(function (x) { return ids.indexOf(x.id) !== -1 ? Object.assign({}, x, { assignee: assignee }) : x; }));
-    logActivity("update", "영상", ids.length + "개 항목", "일괄 담당자 변경 → " + assignee);
+  const nowForOverdue = new Date();
+  const pad3 = function (n) { return String(n).padStart(2, "0"); };
+  const todayStrForOverdue = nowForOverdue.getFullYear() + "-" + pad3(nowForOverdue.getMonth() + 1) + "-" + pad3(nowForOverdue.getDate());
+  const in2ForDeadline = new Date(nowForOverdue); in2ForDeadline.setDate(in2ForDeadline.getDate() + 2);
+  const in2StrForDeadline = in2ForDeadline.getFullYear() + "-" + pad3(in2ForDeadline.getMonth() + 1) + "-" + pad3(in2ForDeadline.getDate());
+  const myOverdueItems = currentUser ? []
+    .concat(tasks.filter(function (tk) { return tk.assignee === currentUser.name && tk.due && tk.due < todayStrForOverdue && tk.status === STAGES[0]; }).map(function (tk) { return { id: "ov_video_" + tk.id, kind: "video", typeLabel: "영상", title: tk.title, due: tk.due, ref: tk }; }))
+    .concat(marketingTasks.filter(function (mt) { return mt.assignee === currentUser.name && mt.due && mt.due < todayStrForOverdue && mt.status === MARKETING_STAGES[0]; }).map(function (mt) { return { id: "ov_marketing_" + mt.id, kind: "marketing", typeLabel: "마케팅", title: mt.title, due: mt.due, ref: mt }; }))
+    .concat(designTasks.filter(function (dt) { return dt.assignee === currentUser.name && dt.due && dt.due < todayStrForOverdue && dt.status === DESIGN_STAGES[0]; }).map(function (dt) { return { id: "ov_design_" + dt.id, kind: "design", typeLabel: "디자인", title: dt.title, due: dt.due, ref: dt }; }))
+    : [];
+  const myDeadlineItems = currentUser ? []
+    .concat(tasks.filter(function (tk) { return tk.assignee === currentUser.name && tk.deadline && tk.status !== "업무 완료" && tk.deadline <= in2StrForDeadline; }).map(function (tk) { return { id: "dl_video_" + tk.id, kind: "video", typeLabel: "영상", title: tk.title, deadline: tk.deadline, isPast: tk.deadline < todayStrForOverdue, alertType: "deadline", ref: tk }; }))
+    .concat(marketingTasks.filter(function (mt) { return mt.assignee === currentUser.name && mt.deadline && mt.status !== "완료" && mt.deadline <= in2StrForDeadline; }).map(function (mt) { return { id: "dl_marketing_" + mt.id, kind: "marketing", typeLabel: "마케팅", title: mt.title, deadline: mt.deadline, isPast: mt.deadline < todayStrForOverdue, alertType: "deadline", ref: mt }; }))
+    .concat(designTasks.filter(function (dt) { return dt.assignee === currentUser.name && dt.deadline && dt.status !== "완료" && dt.deadline <= in2StrForDeadline; }).map(function (dt) { return { id: "dl_design_" + dt.id, kind: "design", typeLabel: "디자인", title: dt.title, deadline: dt.deadline, isPast: dt.deadline < todayStrForOverdue, alertType: "deadline", ref: dt }; }))
+    : [];
+  const allAlertItems = myOverdueItems.concat(myDeadlineItems);
+  const handleOverdueClick = function (item) {
+    if (item.kind === "video") { setTab("calendar"); setSelectedTask(item.ref); }
+    else if (item.kind === "marketing") { setTab("adCalendar"); setSelectedMarketingTask(item.ref); }
+    else if (item.kind === "design") { setTab("designCalendar"); setSelectedDesignTask(item.ref); }
   };
 
-  const addMarketing = function (newTasks) { setMarketingTasks(marketingTasks.concat(newTasks)); newTasks.forEach(function (tk) { logActivity("create", "마케팅", tk.title); }); };
-  const updateMarketing = function (u) { setMarketingTasks(marketingTasks.map(function (x) { return x.id === u.id ? u : x; })); setSelectedMarketing(u); };
-  const updateMarketingSeries = function (seriesId, changes) {
-    setMarketingTasks(marketingTasks.map(function (x) { return x.seriesId === seriesId ? Object.assign({}, x, changes) : x; }));
-    setSelectedMarketing(null);
-  };
-  const moveMarketing = function (id, dir) {
-    setMarketingTasks(marketingTasks.map(function (x) {
-      if (x.id !== id) return x;
-      const idx = MARKETING_STAGES.indexOf(x.status);
-      const next = MARKETING_STAGES[Math.max(0, Math.min(MARKETING_STAGES.length - 1, idx + dir))];
-      logActivity("move", "마케팅", x.title, x.status + " → " + next);
-      return Object.assign({}, x, { status: next, statusChangedAt: Date.now() });
-    }));
-  };
-  const deleteMarketing = function (id) {
-    const target = marketingTasks.find(function (x) { return x.id === id; });
-    if (target) logActivity("delete", "마케팅", target.title, "", target, "marketing");
-    setMarketingTasks(marketingTasks.filter(function (x) { return x.id !== id; }));
-    setSelectedMarketing(null);
-  };
-  const bulkDeleteMarketing = function (ids) {
-    marketingTasks.filter(function (x) { return ids.indexOf(x.id) !== -1; }).forEach(function (target) { logActivity("delete", "마케팅", target.title, "일괄 삭제", target, "marketing"); });
-    setMarketingTasks(marketingTasks.filter(function (x) { return ids.indexOf(x.id) === -1; }));
-  };
-  const bulkAssignMarketing = function (ids, assignee) {
-    setMarketingTasks(marketingTasks.map(function (x) { return ids.indexOf(x.id) !== -1 ? Object.assign({}, x, { assignee: assignee }) : x; }));
-    logActivity("update", "마케팅", ids.length + "개 항목", "일괄 담당자 변경 → " + assignee);
-  };
-
-  const addDesign = function (newTasks) { setDesignTasks(designTasks.concat(newTasks)); newTasks.forEach(function (tk) { logActivity("create", "디자인", tk.title); }); };
-  const updateDesign = function (u) { setDesignTasks(designTasks.map(function (x) { return x.id === u.id ? u : x; })); setSelectedDesign(u); };
-  const updateDesignSeries = function (seriesId, changes) {
-    setDesignTasks(designTasks.map(function (x) { return x.seriesId === seriesId ? Object.assign({}, x, changes) : x; }));
-    setSelectedDesign(null);
-  };
-  const moveDesign = function (id, dir) {
-    setDesignTasks(designTasks.map(function (x) {
-      if (x.id !== id) return x;
-      const idx = DESIGN_STAGES.indexOf(x.status);
-      const next = DESIGN_STAGES[Math.max(0, Math.min(DESIGN_STAGES.length - 1, idx + dir))];
-      logActivity("move", "디자인", x.title, x.status + " → " + next);
-      return Object.assign({}, x, { status: next, statusChangedAt: Date.now() });
-    }));
-  };
-  const deleteDesign = function (id) {
-    const target = designTasks.find(function (x) { return x.id === id; });
-    if (target) logActivity("delete", "디자인", target.title, "", target, "design");
-    setDesignTasks(designTasks.filter(function (x) { return x.id !== id; }));
-    setSelectedDesign(null);
-  };
-  const bulkDeleteDesign = function (ids) {
-    designTasks.filter(function (x) { return ids.indexOf(x.id) !== -1; }).forEach(function (target) { logActivity("delete", "디자인", target.title, "일괄 삭제", target, "design"); });
-    setDesignTasks(designTasks.filter(function (x) { return ids.indexOf(x.id) === -1; }));
-  };
-  const bulkAssignDesign = function (ids, assignee) {
-    setDesignTasks(designTasks.map(function (x) { return ids.indexOf(x.id) !== -1 ? Object.assign({}, x, { assignee: assignee }) : x; }));
-    logActivity("update", "디자인", ids.length + "개 항목", "일괄 담당자 변경 → " + assignee);
-  };
-
-  const restoreFromLog = function (log) {
-    if (!log.snapshot) return;
-    if (log.restoreType === "video") setTasks(tasks.concat([log.snapshot]));
-    else if (log.restoreType === "marketing") setMarketingTasks(marketingTasks.concat([log.snapshot]));
-    else if (log.restoreType === "design") setDesignTasks(designTasks.concat([log.snapshot]));
-    logActivity("create", log.kindLabel, log.targetTitle, "삭제 항목 복구");
-  };
-
+  if (!synced || !authChecked) {
+    return (
+      <div style={{ minHeight: "100vh", background: t.bg, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", fontFamily: "-apple-system,sans-serif", gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "center" }}><Film size={28} strokeWidth={1.5} color={t.text} /></div>
+        <div style={{ fontSize: 15, fontWeight: 700, color: t.text }}>TIMBEL 업무 스케줄러</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#fbbf24", fontSize: 13 }}><div style={{ width: 8, height: 8, borderRadius: "50%", background: "#fbbf24" }} />Firebase 연결 중...</div>
+      </div>
+    );
+  }
   if (!currentUser) {
     return (
       <ThemeCtx.Provider value={{ t: t, isDark: isDark }}>
-        <AuthScreen onLogin={login} users={users} onRegister={function (u) { return setUsers(users.concat([u])); }} adminPasswordHash={adminPasswordHash} onUpgradeUser={upgradeUser} onToggleDark={toggleDark} onSubmitRequest={submitGuestRequest} />
+        <AuthScreen onLogin={setCurrentUser} users={users} onRegister={async function (u) { await setUsersRaw(users.concat([u])); }} adminPasswordHash={adminAuth ? adminAuth.password : DEFAULT_ADMIN_PASSWORD_HASH} onUpgradeUser={function (u) { setUsersRaw(users.map(function (x) { return x.id === u.id ? u : x; })); }} onToggleDark={setIsDark} onSubmitRequest={function (reqForm) {
+          const requesterLabel = reqForm.requesterName + (reqForm.requesterTeam ? " (" + reqForm.requesterTeam + ")" : "") + " · 비회원";
+          const newReq = { id: "req_" + Date.now(), title: reqForm.title, desc: reqForm.desc, type: reqForm.type, desiredDate: reqForm.desiredDate, urgency: reqForm.urgency, assignee: reqForm.assignee, requester: requesterLabel, status: "대기", createdAt: Date.now() };
+          setRequestsRaw((requests || []).concat([newReq]));
+          const notifText = reqForm.title + " (" + reqForm.type + ") 비회원 업무 요청이 접수됐어요";
+          sendNotification("admin", requesterLabel, reqForm.title, notifText);
+          if (reqForm.assignee) sendNotification(reqForm.assignee, requesterLabel, reqForm.title, notifText);
+        }} />
       </ThemeCtx.Provider>
     );
   }
 
-  const isAdmin = currentUser.role === "admin";
-  const canEdit = isAdmin || currentUser.role === "manager" || currentUser.role === "member";
-  const allowedTabIds = isAdmin ? ALL_TABS.map(function (x) { return x.id; }) : (rolePermissions[currentUser.role] || []);
-  const visibleTabs = ALL_TABS.filter(function (x) { return allowedTabIds.indexOf(x.id) !== -1; });
-  const calendarTabIds = ["unified", "calendar", "adCalendar", "designCalendar", "timeline"];
-  const opsTabIds = ["stats", "overtime", "ai", "activity", "requests"];
-  const calendarTabs = visibleTabs.filter(function (x) { return calendarTabIds.indexOf(x.id) !== -1; });
-  const opsTabs = visibleTabs.filter(function (x) { return opsTabIds.indexOf(x.id) !== -1; });
-  const otherTabs = visibleTabs.filter(function (x) { return calendarTabIds.indexOf(x.id) === -1 && opsTabIds.indexOf(x.id) === -1; });
-  const calDropActive = calendarTabIds.indexOf(tab) !== -1;
-  const opsDropActive = opsTabIds.indexOf(tab) !== -1;
-  const activeTabInfo = ALL_TABS.find(function (x) { return x.id === tab; });
-  const unreadMessages = 0;
-
-  const tabBtnStyle = function (active) {
-    return { display: "flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 11, border: "none", cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: 12.5, background: active ? "#6366f1" : "transparent", color: active ? "#fff" : t.text4, whiteSpace: "nowrap", flexShrink: 0 };
-  };
-
   return (
     <ThemeCtx.Provider value={{ t: t, isDark: isDark }}>
-      <div style={{ minHeight: "100vh", background: t.bg, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI','Malgun Gothic',sans-serif", color: t.text }}>
-        {sessionConflict ? (
-          <div style={{ position: "fixed", inset: 0, background: "#000000cc", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", backdropFilter: "blur(4px)" }}>
-            <div style={{ background: t.surface, borderRadius: 20, padding: "28px 30px", width: "min(90vw, 380px)", textAlign: "center", boxShadow: "0 24px 64px #000c" }}>
-              <div style={{ display: "flex", justifyContent: "center", marginBottom: 12 }}><AlertTriangle size={30} strokeWidth={1.75} color="#fbbf24" /></div>
-              <div style={{ fontSize: 16, fontWeight: 800, color: t.text, marginBottom: 8 }}>다른 기기에서 로그인됨</div>
-              <div style={{ fontSize: 13, color: t.text4, lineHeight: 1.7, marginBottom: 18 }}>{currentUser.name} 계정이 다른 곳에서 로그인되어 이 세션은 종료됩니다.</div>
-              <button onClick={logout} style={{ width: "100%", background: "#6366f1", border: "none", borderRadius: 12, padding: "11px 0", fontWeight: 700, fontSize: 14, color: "#fff", cursor: "pointer" }}>확인</button>
-            </div>
-          </div>
-        ) : null}
-        {showProfile ? <ProfileModal currentUser={currentUser} onClose={function () { setShowProfile(false); }} onUpdate={updateProfile} /> : null}
-        {showSearch ? <SearchModal onClose={function () { setShowSearch(false); }} tasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} aiAds={aiAds} intAds={intAds} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketing} onSelectDesign={setSelectedDesign} onGoTab={setTab} /> : null}
-        {selectedTask ? <TaskDetailModal task={selectedTask} onClose={function () { setSelectedTask(null); }} onUpdate={canEdit ? updateTask : function () {}} onMove={canEdit ? moveTask : null} users={users} currentUser={currentUser} onNotify={notify} allTasks={tasks} onUpdateSeries={canEdit ? updateTaskSeries : null} categories={TASK_CATEGORIES} /> : null}
-        {selectedMarketing ? <TaskDetailModal task={selectedMarketing} onClose={function () { setSelectedMarketing(null); }} onUpdate={canEdit ? updateMarketing : function () {}} onMove={canEdit ? moveMarketing : null} users={users} currentUser={currentUser} onNotify={notify} allTasks={marketingTasks} onUpdateSeries={canEdit ? updateMarketingSeries : null} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} tags={MARKETING_TAGS} categoryLabel="카테고리" editTitle="마케팅 업무 수정" /> : null}
-        {selectedDesign ? <TaskDetailModal task={selectedDesign} onClose={function () { setSelectedDesign(null); }} onUpdate={canEdit ? updateDesign : function () {}} onMove={canEdit ? moveDesign : null} users={users} currentUser={currentUser} onNotify={notify} allTasks={designTasks} onUpdateSeries={canEdit ? updateDesignSeries : null} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} tags={DESIGN_TAGS} categoryLabel="카테고리" editTitle="디자인 업무 수정" /> : null}
-        {showAdd !== null ? <AddTaskModal onAdd={addTasks} onClose={function () { setShowAdd(null); }} defaultDate={typeof showAdd === "string" ? showAdd : ""} users={users} allTasks={tasks} categories={TASK_CATEGORIES} /> : null}
-        {showMarketingAdd !== null ? <AddTaskModal onAdd={addMarketing} onClose={function () { setShowMarketingAdd(null); }} defaultDate={typeof showMarketingAdd === "string" ? showMarketingAdd : ""} users={users} allTasks={marketingTasks} tags={MARKETING_TAGS} stages={MARKETING_STAGES} title="새 마케팅 업무 추가" categoryLabel="카테고리" /> : null}
-        {showDesignAdd !== null ? <AddTaskModal onAdd={addDesign} onClose={function () { setShowDesignAdd(null); }} defaultDate={typeof showDesignAdd === "string" ? showDesignAdd : ""} users={users} allTasks={designTasks} tags={DESIGN_TAGS} stages={DESIGN_STAGES} title="새 디자인 업무 추가" categoryLabel="카테고리" /> : null}
+      <div style={{ minHeight: "100vh", background: t.bg, fontFamily: "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif", color: t.text }}>
+        <style dangerouslySetInnerHTML={{ __html: "button:not(:disabled){transition:opacity .15s ease,transform .1s ease,box-shadow .15s ease;} button:not(:disabled):hover{opacity:.85;} button:not(:disabled):active{transform:scale(0.97);} input,select,textarea{transition:border-color .15s ease,box-shadow .15s ease;} input:focus,select:focus,textarea:focus{outline:none;border-color:#6366f1 !important;box-shadow:0 0 0 3px rgba(99,102,241,0.16);}" }} />
+        <FloatingChatWidget tasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} />
+        <TimbelAssistant isDark={isDark} onNavigateTab={setTab} currentUser={currentUser} tasksSummary={tasks.concat(marketingTasks).concat(designTasks).slice(0, 30).map(function (tk) { return "[" + tk.status + "] " + tk.title + " (담당:" + tk.assignee + ")"; }).join("\n")} />
+        {showAdd ? <AddTaskModal onAdd={addTask} onClose={function () { setShowAdd(false); }} defaultDate={addDate} users={users} title="업무 추가" categories={TASK_CATEGORIES} allTasks={tasks} /> : null}
+        {selectedTask ? <TaskDetailModal task={selectedTask} onClose={function () { setSelectedTask(null); }} onUpdate={updateTask} onMove={isViewer ? null : function (id, dir) { moveTask(id, dir); setSelectedTask(function (prev) { return Object.assign({}, prev, { status: STAGES[STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} editTitle="업무 정보 수정" categories={TASK_CATEGORIES} allTasks={tasks} onUpdateSeries={isViewer ? null : updateTaskSeries} /> : null}
+        {showAddMarketing ? <AddTaskModal onAdd={addMarketingTask} onClose={function () { setShowAddMarketing(false); }} defaultDate={addMarketingDate} users={users} stages={MARKETING_STAGES} tags={MARKETING_TAGS} title="새 마케팅 업무 추가" categoryLabel="카테고리" allTasks={marketingTasks} /> : null}
+        {selectedMarketingTask ? <TaskDetailModal task={selectedMarketingTask} onClose={function () { setSelectedMarketingTask(null); }} onUpdate={updateMarketingTask} onMove={isViewer ? null : function (id, dir) { moveMarketingTask(id, dir); setSelectedMarketingTask(function (prev) { return Object.assign({}, prev, { status: MARKETING_STAGES[MARKETING_STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} tags={MARKETING_TAGS} categoryLabel="카테고리" editTitle="마케팅 업무 수정" allTasks={marketingTasks} onUpdateSeries={isViewer ? null : updateMarketingTaskSeries} /> : null}
+        {showAddDesign ? <AddTaskModal onAdd={addDesignTask} onClose={function () { setShowAddDesign(false); }} defaultDate={addDesignDate} users={users} stages={DESIGN_STAGES} tags={DESIGN_TAGS} title="새 디자인 업무 추가" categoryLabel="카테고리" allTasks={designTasks} /> : null}
+        {showSearch ? <SearchModal videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onNavigateTab={setTab} onClose={function () { setShowSearch(false); }} /> : null}
+        {selectedDesignTask ? <TaskDetailModal task={selectedDesignTask} onClose={function () { setSelectedDesignTask(null); }} onUpdate={updateDesignTask} onMove={isViewer ? null : function (id, dir) { moveDesignTask(id, dir); setSelectedDesignTask(function (prev) { return Object.assign({}, prev, { status: DESIGN_STAGES[DESIGN_STAGES.indexOf(prev.status) + dir] }); }); }} users={users} currentUser={currentUser} onNotify={sendNotification} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} tags={DESIGN_TAGS} categoryLabel="카테고리" editTitle="디자인 업무 수정" allTasks={designTasks} onUpdateSeries={isViewer ? null : updateDesignTaskSeries} /> : null}
+        {showProfile ? <ProfileModal currentUser={currentUser} onClose={function () { setShowProfile(false); }} onUpdate={function (updated) { if (isAdmin) { setAdminAuthRaw({ password: updated.password }); setCurrentUser(updated); } else { setUsersRaw(users.map(function (u) { return u.id === updated.id ? updated : u; })); setCurrentUser(updated); } setShowProfile(false); }} /> : null}
 
-        <div style={{ background: t.headerBg, borderBottom: "1px solid " + t.border, position: "sticky", top: 0, zIndex: 80 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "12px clamp(12px,3vw,24px) 10px", flexWrap: "wrap" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginRight: "auto" }}>
-              <div>
-                <div style={{ fontSize: 11, fontWeight: 900, color: "#818cf8", letterSpacing: "2px" }}>TIMBEL</div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: t.text, marginTop: -1 }}>업무 스케줄러</div>
-              </div>
-              <SyncBadge synced={tasksReady} />
-            </div>
-            <button onClick={function () { setShowSearch(true); }} style={{ display: "flex", alignItems: "center", gap: 7, background: t.surface2, border: "1px solid " + t.border, borderRadius: 20, padding: "7px 14px", cursor: "pointer", color: t.text4, fontSize: 12 }}><Search size={13} strokeWidth={2} /> 통합 검색</button>
-            <div style={{ display: "flex", alignItems: "center", background: t.surface2, borderRadius: 10, padding: 3, gap: 2 }}>
-              <button onClick={function () { toggleDark(false); }} style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", background: !isDark ? "#fff" : "transparent", color: !isDark ? "#1e293b" : t.text4, fontWeight: !isDark ? 700 : 500, fontSize: 11.5 }}><Sun size={12} strokeWidth={2} /> 일반</button>
-              <button onClick={function () { toggleDark(true); }} style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 10px", borderRadius: 8, border: "none", cursor: "pointer", background: isDark ? "#1e293b" : "transparent", color: isDark ? "#818cf8" : t.text4, fontWeight: isDark ? 700 : 500, fontSize: 11.5 }}><Moon size={12} strokeWidth={2} /> 다크</button>
-            </div>
-            <NotificationBell notifications={notifications} currentUser={currentUser} onMarkRead={markRead} onMarkAllRead={markAllRead} onClickNotif={clickNotif} overdueItems={overdueItems} onClickOverdue={function (item) { item.onOpen(); }} />
-            <div onClick={function () { setShowProfile(true); }} style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", background: t.surface2, borderRadius: 20, padding: "5px 12px 5px 5px" }}>
-              <Avatar name={currentUser.name} size={26} users={users} />
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: t.text, display: "flex", alignItems: "center", gap: 5 }}>{currentUser.name}<span style={{ fontSize: 9, background: (ROLE_COLOR[currentUser.role] || "#6b7280") + "20", color: ROLE_COLOR[currentUser.role] || "#9ca3af", borderRadius: 20, padding: "1px 6px", fontWeight: 700 }}>{ROLE_LABEL[currentUser.role] || "팀원"}</span></div>
-                <div style={{ fontSize: 10, color: t.text4 }}>{currentUser.dept} · {currentUser.rank}</div>
-              </div>
-            </div>
-            <button onClick={logout} style={{ display: "flex", alignItems: "center", gap: 5, background: "none", border: "1px solid " + t.border, borderRadius: 10, padding: "7px 12px", cursor: "pointer", color: t.text4, fontSize: 12 }}><LogOut size={12} strokeWidth={2} /> 로그아웃</button>
+        <div style={{ boxShadow: "0 1px 0 " + t.border, padding: "12px clamp(10px,4vw,24px)", display: "flex", flexWrap: "wrap", rowGap: 8, justifyContent: "space-between", alignItems: "center", background: t.headerBg, position: "sticky", top: 0, zIndex: 50 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", rowGap: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}><span style={{ fontSize: 15, fontWeight: 900, color: "#818cf8", letterSpacing: "2px" }}>TIMBEL</span><span style={{ fontSize: 13, fontWeight: 600, color: t.text3 }}>업무 스케줄러</span></div>
+            {isAdmin ? <span style={{ fontSize: 10, background: "#f8717120", color: "#f87171", border: "1px solid #f8717140", borderRadius: 20, padding: "2px 9px", fontWeight: 700, display: "inline-flex", alignItems: "center", gap: 3 }}><Shield size={10} strokeWidth={2} /> 관리자</span> : null}
+            <span title={"영상 " + tasks.length + " · 마케팅 " + marketingTasks.length + " · 디자인 " + designTasks.length} style={{ fontSize: 11, color: t.text4, background: t.surface2, padding: "2px 9px", borderRadius: 20, border: "1px solid " + t.border, cursor: "default" }}>{tasks.length + marketingTasks.length + designTasks.length}개</span>
+            <SyncBadge synced={synced} />
           </div>
-          <div style={{ display: "flex", gap: 3, padding: "0 clamp(12px,3vw,24px) 8px", overflowX: "auto" }}>
-            {otherTabs.filter(function (tp) { return tp.id === "home"; }).map(function (tp) { return <button key={tp.id} data-guide={"tab-" + tp.id} onClick={function () { setTab(tp.id); setCalDropOpen(false); setOpsDropOpen(false); }} style={tabBtnStyle(tab === tp.id)}><tp.icon size={14} strokeWidth={tab === tp.id ? 2.25 : 1.75} />{tp.text}</button>; })}
-            {calendarTabs.length > 0 ? (
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <button onClick={function () { setCalDropOpen(!calDropOpen); setOpsDropOpen(false); }} style={Object.assign({}, tabBtnStyle(calDropActive), { display: "flex" })}>
-                  <Calendar size={14} strokeWidth={calDropActive ? 2.25 : 1.75} />
-                  {calDropActive && activeTabInfo ? activeTabInfo.text : "캘린더"}
-                  <span style={{ fontSize: 9, marginLeft: 1 }}>▾</span>
-                </button>
-                {calDropOpen ? (
-                  <div style={{ position: "fixed", inset: 0, zIndex: 85 }} onClick={function () { setCalDropOpen(false); }}>
-                    <div onClick={function (e) { e.stopPropagation(); }} style={{ position: "absolute", top: 118, left: "clamp(12px,3vw,24px)", background: t.surface, border: "1px solid " + t.border, borderRadius: 14, boxShadow: "0 16px 48px #000a", overflow: "hidden", minWidth: 180 }}>
-                      {calendarTabs.map(function (tp) {
-                        return <button key={tp.id} data-guide={"tab-" + tp.id} onClick={function () { setTab(tp.id); setCalDropOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "11px 16px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text2, textAlign: "left" }}><tp.icon size={15} strokeWidth={1.75} />{tp.text}</button>;
-                      })}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", rowGap: 6 }}>
+            <button onClick={function () { setShowSearch(true); }} style={{ background: t.surface2, border: "none", borderRadius: 20, padding: "8px 11px", cursor: "pointer", display: "flex", alignItems: "center" }}><Search size={16} strokeWidth={1.75} color={t.text3} /></button>
+            <NotificationBell notifications={notifications || []} currentUser={currentUser} onMarkRead={markNotifRead} onMarkAllRead={markAllNotifsRead} onClickNotif={handleNotifClick} overdueItems={allAlertItems} onClickOverdue={handleOverdueClick} />
+            <div style={{ display: "flex", alignItems: "center", background: t.surface2, border: "none", borderRadius: 12, padding: 3, gap: 2 }}>
+              <button onClick={function () { setIsDark(false); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: !isDark ? "#fff" : "transparent", color: !isDark ? "#1e293b" : t.text4, fontWeight: !isDark ? 700 : 500, fontSize: 12 }}><Sun size={13} strokeWidth={2} /> 일반</button>
+              <button onClick={function () { setIsDark(true); }} style={{ display: "flex", alignItems: "center", gap: 5, padding: "5px 12px", borderRadius: 8, border: "none", cursor: "pointer", background: isDark ? "#1e293b" : "transparent", color: isDark ? "#818cf8" : t.text4, fontWeight: isDark ? 700 : 500, fontSize: 12 }}><Moon size={13} strokeWidth={2} /> 다크</button>
+            </div>
+            {displayTabs.some(function (tp) { return tp.id === "messages"; }) ? (
+              <button data-guide="tab-messages" onClick={function () { setTab("messages"); }} style={{ position: "relative", background: tab === "messages" ? "#6366f1" : t.surface2, border: "none", borderRadius: 20, padding: "8px 11px", cursor: "pointer", fontSize: 15, color: tab === "messages" ? "#fff" : t.text3, display: "flex", alignItems: "center" }} title="메시지(메모)">
+                <MessageCircle size={16} strokeWidth={1.75} />
+                {myUnreadMessages > 0 ? <span style={{ position: "absolute", top: -4, right: -4, background: "#f87171", color: "#fff", fontSize: 10, fontWeight: 700, borderRadius: 99, minWidth: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", padding: "0 4px" }}>{myUnreadMessages > 9 ? "9+" : myUnreadMessages}</span> : null}
+              </button>
             ) : null}
-            {otherTabs.filter(function (tp) { return tp.id !== "home" && tp.id !== "messages"; }).map(function (tp) { return <button key={tp.id} data-guide={"tab-" + tp.id} onClick={function () { setTab(tp.id); setCalDropOpen(false); setOpsDropOpen(false); }} style={tabBtnStyle(tab === tp.id)}><tp.icon size={14} strokeWidth={tab === tp.id ? 2.25 : 1.75} />{tp.text}</button>; })}
-            {opsTabs.length > 0 ? (
-              <div style={{ position: "relative", flexShrink: 0 }}>
-                <button onClick={function () { setOpsDropOpen(!opsDropOpen); setCalDropOpen(false); }} style={Object.assign({}, tabBtnStyle(opsDropActive), { display: "flex" })}>
-                  <Settings size={14} strokeWidth={opsDropActive ? 2.25 : 1.75} />
-                  {opsDropActive && activeTabInfo ? activeTabInfo.text : "관리 도구"}
-                  <span style={{ fontSize: 9, marginLeft: 1 }}>▾</span>
-                </button>
-                {opsDropOpen ? (
-                  <div style={{ position: "fixed", inset: 0, zIndex: 85 }} onClick={function () { setOpsDropOpen(false); }}>
-                    <div onClick={function (e) { e.stopPropagation(); }} style={{ position: "absolute", top: 118, left: "clamp(12px,3vw,24px)", background: t.surface, border: "1px solid " + t.border, borderRadius: 14, boxShadow: "0 16px 48px #000a", overflow: "hidden", minWidth: 180 }}>
-                      {opsTabs.map(function (tp) {
-                        return <button key={tp.id} data-guide={"tab-" + tp.id} onClick={function () { setTab(tp.id); setOpsDropOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 9, width: "100%", padding: "11px 16px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text2, textAlign: "left" }}><tp.icon size={15} strokeWidth={1.75} />{tp.text}</button>;
-                      })}
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-            {visibleTabs.some(function (x) { return x.id === "messages"; }) ? (
-              <button data-guide="tab-messages" onClick={function () { setTab("messages"); setCalDropOpen(false); setOpsDropOpen(false); }} style={tabBtnStyle(tab === "messages")}><MessageCircle size={14} strokeWidth={tab === "messages" ? 2.25 : 1.75} />메시지(메모)</button>
-            ) : null}
-            {isAdmin ? <button data-guide="tab-admin" onClick={function () { setTab("admin"); setCalDropOpen(false); setOpsDropOpen(false); }} style={Object.assign({}, tabBtnStyle(tab === "admin"), { background: tab === "admin" ? "#f87171" : "transparent", color: tab === "admin" ? "#fff" : "#f87171" })}><Shield size={14} strokeWidth={2} />관리자</button> : null}
+            <div style={{ display: "flex", alignItems: "center", gap: 7, background: t.surface2, border: "none", borderRadius: 12, padding: "5px 12px" }}>
+              <Avatar name={currentUser.name} size={22} users={users} />
+              <div><div style={{ fontSize: 12, fontWeight: 700, color: t.text }}>{currentUser.name}</div><div style={{ fontSize: 10, color: t.text4 }}>{currentUser.rank} · {currentUser.position}</div></div>
+            </div>
+            <button onClick={function () { setShowProfile(true); }} style={{ display: "flex", alignItems: "center", gap: 5, background: t.surface2, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, color: t.text4, cursor: "pointer" }}><UserCog size={13} strokeWidth={2} /> 내 정보</button>
+            <button onClick={function () { setCurrentUser(null); }} style={{ background: t.surface2, border: "none", borderRadius: 10, padding: "7px 12px", fontSize: 12, color: t.text4, cursor: "pointer" }}>로그아웃</button>
+            {!isAdmin && !isViewer ? <button onClick={function () { openAdd(); }} style={{ background: "#6366f1", border: "none", borderRadius: 10, padding: "7px 15px", fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer" }}>+ 추가</button> : null}
           </div>
         </div>
 
         <NoticeBanner notices={notices} />
 
-        <div style={{ padding: "20px clamp(12px,3vw,24px) 60px", maxWidth: 1200, margin: "0 auto" }}>
-          {(tab === "calendar" || tab === "adCalendar" || tab === "designCalendar" || tab === "board") && canEdit ? (
-            <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 14, gap: 8 }}>
-              {tab === "calendar" || tab === "board" ? <button onClick={function () { setShowAdd(true); }} style={{ display: "flex", alignItems: "center", gap: 6, background: "#6366f1", border: "none", borderRadius: 12, padding: "9px 18px", fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer" }}><Plus size={14} strokeWidth={2.5} /> 새 영상</button> : null}
-              {tab === "adCalendar" ? <button onClick={function () { setShowMarketingAdd(true); }} style={{ display: "flex", alignItems: "center", gap: 6, background: "#fb923c", border: "none", borderRadius: 12, padding: "9px 18px", fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer" }}><Plus size={14} strokeWidth={2.5} /> 새 마케팅 업무</button> : null}
-              {tab === "designCalendar" ? <button onClick={function () { setShowDesignAdd(true); }} style={{ display: "flex", alignItems: "center", gap: 6, background: "#f87171", border: "none", borderRadius: 12, padding: "9px 18px", fontWeight: 700, fontSize: 13, color: "#fff", cursor: "pointer" }}><Plus size={14} strokeWidth={2.5} /> 새 디자인 업무</button> : null}
+        {(function () {
+          const CALENDAR_TAB_IDS = ["unified", "calendar", "adCalendar", "designCalendar", "timeline"];
+          const OPS_TAB_IDS = ["overtime", "activity"];
+          const calendarTabs = displayTabs.filter(function (tp) { return CALENDAR_TAB_IDS.indexOf(tp.id) !== -1; });
+          const opsTabs = displayTabs.filter(function (tp) { return OPS_TAB_IDS.indexOf(tp.id) !== -1; });
+          const otherTabs = displayTabs.filter(function (tp) { return CALENDAR_TAB_IDS.indexOf(tp.id) === -1 && OPS_TAB_IDS.indexOf(tp.id) === -1; });
+          const calendarActive = CALENDAR_TAB_IDS.indexOf(tab) !== -1;
+          const opsActive = OPS_TAB_IDS.indexOf(tab) !== -1;
+          const activeCalendarTab = calendarTabs.find(function (tp) { return tp.id === tab; });
+          const activeOpsTab = opsTabs.find(function (tp) { return tp.id === tab; });
+          const tabBtnStyle = function (active, color) { return { position: "relative", flexShrink: 0, display: "flex", alignItems: "center", gap: 6, padding: "9px 16px", background: active ? (color || "#6366f1") + "16" : "none", border: "none", borderRadius: 20, cursor: "pointer", fontWeight: active ? 700 : 500, fontSize: 13, color: active ? (color || "#818cf8") : t.text4, whiteSpace: "nowrap", transition: "background .15s" }; };
+          return (
+            <div style={{ boxShadow: "0 1px 0 " + t.border, padding: "8px clamp(6px,3vw,24px)", background: t.headerBg, overflowX: "auto", overflowY: "hidden", WebkitOverflowScrolling: "touch" }}>
+              <div style={{ maxWidth: 1300, margin: "0 auto", display: "flex", gap: 2, justifyContent: "center", width: "max-content", minWidth: "100%" }}>
+                {isAdmin ? <button data-guide="tab-admin" onClick={function () { setTab("admin"); }} style={tabBtnStyle(tab === "admin", "#f87171")}><Shield size={15} strokeWidth={1.75} />관리자</button> : null}
+                {otherTabs.filter(function (tp) { return tp.id === "home"; }).map(function (tp) { return <button key={tp.id} data-guide={"tab-" + tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}><tp.icon size={15} strokeWidth={1.75} />{tp.text}</button>; })}
+                {calendarTabs.length > 0 ? (
+                  <div style={{ position: "relative" }}>
+                    <button ref={calendarBtnRef} onClick={function () {
+                      if (!calendarMenuOpen && calendarBtnRef.current) {
+                        const rect = calendarBtnRef.current.getBoundingClientRect();
+                        setCalendarMenuPos({ top: rect.bottom + 4, left: rect.left });
+                      }
+                      setCalendarMenuOpen(!calendarMenuOpen);
+                    }} style={tabBtnStyle(calendarActive)}><Calendar size={15} strokeWidth={1.75} />{activeCalendarTab ? activeCalendarTab.text : "캘린더"} ▾</button>
+                    {calendarMenuOpen ? <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={function () { setCalendarMenuOpen(false); }} /> : null}
+                    {calendarMenuOpen ? (
+                      <div style={{ position: "fixed", top: calendarMenuPos.top, left: calendarMenuPos.left, minWidth: 190, background: t.surface, border: "1px solid " + t.border, borderRadius: 12, boxShadow: "0 12px 32px #000a", overflow: "hidden", zIndex: 95 }}>
+                        {calendarTabs.map(function (tp) { return <button key={tp.id} data-guide={"tab-" + tp.id} onClick={function () { setTab(tp.id); setCalendarMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "10px 14px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text3, whiteSpace: "nowrap" }}><tp.icon size={15} strokeWidth={1.75} />{tp.text}</button>; })}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+                {otherTabs.filter(function (tp) { return tp.id !== "home" && tp.id !== "messages"; }).map(function (tp) { return <button key={tp.id} data-guide={"tab-" + tp.id} onClick={function () { setTab(tp.id); }} style={tabBtnStyle(tab === tp.id)}><tp.icon size={15} strokeWidth={1.75} />{tp.text}</button>; })}
+                {opsTabs.length > 0 ? (
+                  <div style={{ position: "relative" }}>
+                    <button ref={opsBtnRef} onClick={function () {
+                      if (!opsMenuOpen && opsBtnRef.current) {
+                        const rect = opsBtnRef.current.getBoundingClientRect();
+                        setOpsMenuPos({ top: rect.bottom + 4, left: rect.left });
+                      }
+                      setOpsMenuOpen(!opsMenuOpen);
+                    }} style={tabBtnStyle(opsActive)}><Settings size={15} strokeWidth={1.75} />{activeOpsTab ? activeOpsTab.text : "관리 도구"} ▾</button>
+                    {opsMenuOpen ? <div style={{ position: "fixed", inset: 0, zIndex: 90 }} onClick={function () { setOpsMenuOpen(false); }} /> : null}
+                    {opsMenuOpen ? (
+                      <div style={{ position: "fixed", top: opsMenuPos.top, left: opsMenuPos.left, minWidth: 190, background: t.surface, border: "1px solid " + t.border, borderRadius: 12, boxShadow: "0 12px 32px #000a", overflow: "hidden", zIndex: 95 }}>
+                        {opsTabs.map(function (tp) { return <button key={tp.id} data-guide={"tab-" + tp.id} onClick={function () { setTab(tp.id); setOpsMenuOpen(false); }} style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", textAlign: "left", padding: "10px 14px", background: tab === tp.id ? "#6366f118" : "none", border: "none", cursor: "pointer", fontSize: 13, fontWeight: tab === tp.id ? 700 : 500, color: tab === tp.id ? "#818cf8" : t.text3, whiteSpace: "nowrap" }}><tp.icon size={15} strokeWidth={1.75} />{tp.text}</button>; })}
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
             </div>
-          ) : null}
-          {tab === "home" ? <HomePanel currentUser={currentUser} users={users} tasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} aiAds={aiAds} intAds={intAds} notices={notices} staleDays={staleDays} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketing} onSelectDesign={setSelectedDesign} onGoTab={setTab} /> : null}
-          {tab === "unified" ? <CombinedCalendarView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={aiAds.concat(intAds)} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketing} onSelectDesign={setSelectedDesign} onSelectAd={function () { setTab("ad"); }} users={users} onBulkDeleteVideo={canEdit ? bulkDeleteTasks : null} onBulkAssignVideo={canEdit ? bulkAssignTasks : null} onBulkDeleteMarketing={canEdit ? bulkDeleteMarketing : null} onBulkAssignMarketing={canEdit ? bulkAssignMarketing : null} onBulkDeleteDesign={canEdit ? bulkDeleteDesign : null} onBulkAssignDesign={canEdit ? bulkAssignDesign : null} /> : null}
-          {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={canEdit ? function (d) { setShowAdd(d); } : null} ads={aiAds.concat(intAds)} onMove={canEdit ? moveTask : null} onDelete={canEdit ? deleteTask : null} onSelectAd={function () { setTab("ad"); }} onBulkDelete={canEdit ? bulkDeleteTasks : null} onBulkAssign={canEdit ? bulkAssignTasks : null} users={users} currentUser={currentUser} categoryOptions={TASK_CATEGORIES} /> : null}
-          {tab === "adCalendar" ? <CalendarView tasks={marketingTasks} onSelectTask={setSelectedMarketing} onAddTask={canEdit ? function (d) { setShowMarketingAdd(d); } : null} onMove={canEdit ? moveMarketing : null} onDelete={canEdit ? deleteMarketing : null} onBulkDelete={canEdit ? bulkDeleteMarketing : null} onBulkAssign={canEdit ? bulkAssignMarketing : null} users={users} currentUser={currentUser} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} taskLabel="마케팅 업무" taskUnitLabel="업무" categoryOptions={MARKETING_TAGS} categoryField="tag" /> : null}
-          {tab === "designCalendar" ? <CalendarView tasks={designTasks} onSelectTask={setSelectedDesign} onAddTask={canEdit ? function (d) { setShowDesignAdd(d); } : null} onMove={canEdit ? moveDesign : null} onDelete={canEdit ? deleteDesign : null} onBulkDelete={canEdit ? bulkDeleteDesign : null} onBulkAssign={canEdit ? bulkAssignDesign : null} users={users} currentUser={currentUser} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} taskLabel="디자인 업무" taskUnitLabel="업무" categoryOptions={DESIGN_TAGS} categoryField="tag" /> : null}
-          {tab === "timeline" ? <TimelineView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketing} onSelectDesign={setSelectedDesign} users={users} currentUser={currentUser} /> : null}
-          {tab === "board" ? <BoardView tasks={tasks.filter(isVideoWork)} onSelectTask={setSelectedTask} onMove={canEdit ? moveTask : null} onDelete={canEdit ? deleteTask : null} users={users} ads={aiAds.concat(intAds)} onSelectAd={function () { setTab("ad"); }} designTasks={designTasks} onSelectDesign={setSelectedDesign} marketingTasks={marketingTasks} onSelectMarketing={setSelectedMarketing} onBulkDeleteTasks={canEdit ? bulkDeleteTasks : null} onBulkAssignTasks={canEdit ? bulkAssignTasks : null} onBulkDeleteMarketing={canEdit ? bulkDeleteMarketing : null} onBulkAssignMarketing={canEdit ? bulkAssignMarketing : null} onBulkDeleteDesign={canEdit ? bulkDeleteDesign : null} onBulkAssignDesign={canEdit ? bulkAssignDesign : null} currentUser={currentUser} wipLimits={wipLimits} /> : null}
-          {tab === "ad" ? (canEdit ? <AdPanel aiAds={aiAds} setAiAds={setAiAds} intAds={intAds} setIntAds={setIntAds} onNewAd={notifyAd} currentUser={currentUser} /> : <EmptyState icon={Lock} text="광고 제작 관리는 팀원 이상만 접근할 수 있습니다" />) : null}
-          {tab === "stats" ? <StatsPanel videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} currentUser={currentUser} /> : null}
-          {tab === "overtime" ? <OvertimePanel currentUser={currentUser} users={users} isAdmin={isAdmin} /> : null}
-          {tab === "messages" ? <MessagesPanel currentUser={currentUser} users={users} /> : null}
-          {tab === "ai" ? <AIPanel tasks={tasks} users={users} ads={aiAds.concat(intAds)} designTasks={designTasks} /> : null}
-          {tab === "activity" ? <ActivityLogPanel logs={activityLog} currentUser={currentUser} onRestore={restoreFromLog} /> : null}
-          {tab === "requests" ? <RequestsPanel requests={requests} setRequests={setRequests} currentUser={currentUser} users={users} onAccept={acceptRequest} /> : null}
-          {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsers} notices={notices} onUpdateNotices={setNotices} rolePermissions={rolePermissions} setRolePermissions={setRolePermissions} tasks={tasks} onUpdateTasks={setTasks} staleDays={staleDays} setStaleDays={setStaleDays} wipLimits={wipLimits} setWipLimits={setWipLimits} /> : null}
-        </div>
+          );
+        })()}
 
-        <FloatingChatWidget tasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} />
-        <TimbelAssistant isDark={isDark} onNavigateTab={setTab} currentUser={currentUser} tasksSummary={tasks.concat(marketingTasks).concat(designTasks).slice(0, 30).map(function (tk) { return "[" + tk.status + "] " + tk.title + " (담당:" + tk.assignee + ")"; }).join("\n")} />
+        <div style={{ maxWidth: 1300, margin: "0 auto", padding: "clamp(10px,4vw,20px)", minWidth: 0, boxSizing: "border-box" }}>
+          {tab === "admin" && isAdmin ? <AdminPanel users={users} onUpdateUsers={setUsersRaw} notices={notices} onUpdateNotices={setNoticesRaw} rolePermissions={rolePermissions || DEFAULT_ROLE_PERMISSIONS} setRolePermissions={setRolePermissions} tasks={tasks} onUpdateTasks={setTasksRaw} staleDays={staleDays} setStaleDays={setStaleDaysRaw} wipLimits={wipLimits} setWipLimits={setWipLimitsRaw} /> : null}
+          {tab === "home" ? <HomePanel currentUser={currentUser} users={users} videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} staleDays={staleDays} /> : null}
+          {tab === "unified" ? <CombinedCalendarView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} ads={adsData} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} onSelectAd={function () { setTab("ad"); }} users={users} onBulkDeleteVideo={isViewer ? null : bulkDeleteTasks} onBulkAssignVideo={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} /> : null}
+          {tab === "calendar" ? <CalendarView tasks={tasks} onSelectTask={setSelectedTask} onAddTask={isViewer ? function () {} : openAdd} ads={adsData} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} onSelectAd={function () { setTab("ad"); }} onBulkDelete={isViewer ? null : bulkDeleteTasks} onBulkAssign={isViewer ? null : bulkAssignTasks} users={users} currentUser={currentUser} categoryOptions={TASK_CATEGORIES} categoryField="category" /> : null}
+          {tab === "adCalendar" ? <CalendarView tasks={marketingTasks} onSelectTask={setSelectedMarketingTask} onAddTask={isViewer ? function () {} : openAddMarketing} ads={adsData} onMove={isViewer ? null : moveMarketingTask} onDelete={isViewer ? null : deleteMarketingTask} onSelectAd={function () { setTab("ad"); }} stages={MARKETING_STAGES} stageColor={MARKETING_STAGE_COLOR} stageIcon={MARKETING_STAGE_ICON} taskLabel="마케팅 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssign={isViewer ? null : bulkAssignMarketingTasks} users={users} currentUser={currentUser} categoryOptions={MARKETING_TAGS} categoryField="tag" /> : null}
+          {tab === "designCalendar" ? <CalendarView tasks={designTasks} onSelectTask={setSelectedDesignTask} onAddTask={isViewer ? function () {} : openAddDesign} ads={[]} onMove={isViewer ? null : moveDesignTask} onDelete={isViewer ? null : deleteDesignTask} stages={DESIGN_STAGES} stageColor={DESIGN_STAGE_COLOR} stageIcon={DESIGN_STAGE_ICON} taskLabel="디자인 업무" taskUnitLabel="업무" onBulkDelete={isViewer ? null : bulkDeleteDesignTasks} onBulkAssign={isViewer ? null : bulkAssignDesignTasks} users={users} currentUser={currentUser} categoryOptions={DESIGN_TAGS} categoryField="tag" /> : null}
+          {tab === "timeline" ? <TimelineView videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} onSelectVideo={setSelectedTask} onSelectMarketing={setSelectedMarketingTask} onSelectDesign={setSelectedDesignTask} users={users} currentUser={currentUser} /> : null}
+          {tab === "board" ? <BoardView tasks={tasks} onSelectTask={setSelectedTask} onMove={isViewer ? null : moveTask} onDelete={isViewer ? null : deleteTask} users={users} ads={adsData} onSelectAd={function () { setTab("ad"); }} designTasks={designTasks} onSelectDesign={setSelectedDesignTask} marketingTasks={marketingTasks} onSelectMarketing={setSelectedMarketingTask} onBulkDeleteTasks={isViewer ? null : bulkDeleteTasks} onBulkAssignTasks={isViewer ? null : bulkAssignTasks} onBulkDeleteMarketing={isViewer ? null : bulkDeleteMarketingTasks} onBulkAssignMarketing={isViewer ? null : bulkAssignMarketingTasks} onBulkDeleteDesign={isViewer ? null : bulkDeleteDesignTasks} onBulkAssignDesign={isViewer ? null : bulkAssignDesignTasks} currentUser={currentUser} wipLimits={wipLimits} /> : null}
+          {tab === "ad" ? <AdPanel aiAds={aiAds} setAiAds={setAiAds} intAds={intAds} setIntAds={setIntAds} onNewAd={sendAdNotification} currentUser={currentUser} /> : null}
+          {tab === "stats" ? <div style={{ maxWidth: 760, margin: "0 auto" }}><StatsPanel videoTasks={tasks} marketingTasks={marketingTasks} designTasks={designTasks} currentUser={currentUser} /></div> : null}
+          {tab === "overtime" ? <OvertimePanel currentUser={currentUser} users={users} isAdmin={isAdmin} /> : null}
+          {tab === "messages" ? <MessagesPanel currentUser={currentUser} users={users} isAdmin={isAdmin} messages={directMessages} setMessages={setDirectMessagesRaw} /> : null}
+          {tab === "ai" ? <AIPanel tasks={tasks} users={users} ads={adsData} designTasks={designTasks} /> : null}
+          {tab === "activity" ? <ActivityLogPanel log={activityLog} onRestore={restoreDeletedItem} onCleanup={cleanupActivityLog} isAdmin={isAdmin} /> : null}
+          {tab === "requests" ? <RequestsPanel requests={requests} setRequests={setRequestsRaw} currentUser={currentUser} isManager={isManager || isAdmin} users={users} onNotify={sendNotification} /> : null}
+        </div>
       </div>
     </ThemeCtx.Provider>
   );
