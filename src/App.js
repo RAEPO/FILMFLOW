@@ -3610,11 +3610,36 @@ function TimbelAssistant(props) {
     if (window.speechSynthesis) window.speechSynthesis.addEventListener("voiceschanged", refreshVoiceList);
     return function () { if (window.speechSynthesis) window.speechSynthesis.removeEventListener("voiceschanged", refreshVoiceList); };
   }, []);
+  const ttsCache = useRef({});   // 같은 문장 재생성 방지 (투어 대사 등 크레딧 절약)
+  const audioRef = useRef(null);
+  const speakElevenLabs = async function (plain) {
+    let url = ttsCache.current[plain];
+    if (!url) {
+      const r = await fetch("/api/tts", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ text: plain }) });
+      const ct = r.headers.get("content-type") || "";
+      if (!r.ok || ct.indexOf("audio") === -1) throw new Error("tts unavailable");
+      const blob = await r.blob();
+      url = URL.createObjectURL(blob);
+      ttsCache.current[plain] = url;
+    }
+    const audio = new Audio(url);
+    audioRef.current = audio;
+    setSpeaking(true);
+    audio.onended = function () { setSpeaking(false); };
+    audio.onerror = function () { setSpeaking(false); };
+    await audio.play();
+  };
   const speakVoice = function (text) {
-    if (!voiceOnRef.current || !window.speechSynthesis || !text) return;
-    window.speechSynthesis.cancel();
+    if (!voiceOnRef.current || !text) return;
     const plain = text.replace(/[✨💭😄🤔👉🏃💨🎉→←×]/g, "").replace(/\s+/g, " ").trim();
     if (!plain) return;
+    stopVoice();
+    // 1순위: ElevenLabs (/api/tts) → 실패 시 브라우저 TTS 폴백
+    speakElevenLabs(plain).catch(function () { speakBrowserTTS(plain); });
+  };
+  const speakBrowserTTS = function (plain) {
+    if (!window.speechSynthesis) return;
+    window.speechSynthesis.cancel();
     const u = new SpeechSynthesisUtterance(plain);
     u.lang = "ko-KR";
     const v = getKoVoice();
@@ -3630,6 +3655,7 @@ function TimbelAssistant(props) {
     window.speechSynthesis.speak(u);
   };
   const stopVoice = function () {
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
     if (window.speechSynthesis) window.speechSynthesis.cancel();
     if (speakTimer.current) clearTimeout(speakTimer.current);
     setSpeaking(false);
@@ -3743,12 +3769,21 @@ function TimbelAssistant(props) {
       "규칙: 특정 기능/탭 위치를 묻거나 '보여줘/어디야/데려가줘' 류의 요청이면 action=open_tab + 해당 탭 id. '투어/둘러보기/전체 사용법'을 원하면 action=tour. 그 외 업무 현황 질문·일반 대화는 action=none으로 두고 speech에서 충분히 답하세요.";
     try {
       const apiMessages = newMessages.slice(-12).map(function (m) { return { role: m.role, content: m.content }; });
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model: "claude-sonnet-4-6", max_tokens: 800, system: system, messages: apiMessages }),
-      });
-      const data = await res.json();
+      const payload = { model: "claude-sonnet-4-6", max_tokens: 800, system: system, messages: apiMessages };
+      let data = null;
+      try {
+        const proxyRes = await fetch("/api/chat", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(payload) });
+        const proxyData = await proxyRes.json();
+        if (proxyRes.ok && proxyData && proxyData.content) data = proxyData;
+      } catch (eProxy) {}
+      if (!data) {
+        const res = await fetch("https://api.anthropic.com/v1/messages", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        data = await res.json();
+      }
       const text = data.content.map(function (c) { return c.text || ""; }).join("");
       let parsed;
       try { parsed = JSON.parse(text.replace(/```json|```/g, "").trim()); }
