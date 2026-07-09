@@ -3432,13 +3432,14 @@ const HANDY_IMG_RUNNING = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAOYAAAE
 
 function CharacterSprite(props) {
   const { emotion, walking, facing, talking, pointing, speaking } = props;
+  const LIPSYNC_ENABLED = false; // 입모양 움직임 스위치 (나중에 true로 바꾸면 재활성화)
   const [mouthOpen, setMouthOpen] = useState(false);
   useEffect(function () {
-    if (!speaking) { setMouthOpen(false); return; }
+    if (!LIPSYNC_ENABLED || !speaking) { setMouthOpen(false); return; }
     const iv = setInterval(function () { setMouthOpen(function (v) { return !v; }); }, 140);
     return function () { clearInterval(iv); };
   }, [speaking]);
-  const lipsync = speaking && !walking && emotion !== "thinking"; // 말할 땐 립싱크가 포즈보다 우선
+  const lipsync = LIPSYNC_ENABLED && speaking && !walking && emotion !== "thinking";
   const bodyAnim = walking ? "hdWalk 0.4s ease-in-out infinite" : talking ? "hdTalk 0.5s ease-in-out infinite" : "hdIdle 2.8s ease-in-out infinite";
   return (
     <div style={{ position: "relative", width: CHAR_W, height: CHAR_H }}>
