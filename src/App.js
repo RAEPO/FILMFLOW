@@ -3634,14 +3634,14 @@ function TimbelAssistant(props) {
   const [chatOpen, setChatOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [glbFailed, setGlbFailed] = useState(false); // 3D 로드 실패 시 PNG 폴백
-  const [mouth3d, setMouth3d] = useState(false); // 3D 립싱크 프레임
+  const [voiceOn, setVoiceOn] = useState(function () { return getCookie("timbel_handy_voice") !== "off"; });
+  const [speaking, setSpeaking] = useState(false);
+  const [mouth3d, setMouth3d] = useState(false); // 3D 립싱크 프레임 (speaking 선언 뒤에 위치해야 함)
   useEffect(function () {
     if (!speaking) { setMouth3d(false); return; }
     const iv = setInterval(function () { setMouth3d(function (v) { return !v; }); }, 130);
     return function () { clearInterval(iv); };
   }, [speaking]);
-  const [voiceOn, setVoiceOn] = useState(function () { return getCookie("timbel_handy_voice") !== "off"; });
-  const [speaking, setSpeaking] = useState(false);
   const [voiceList, setVoiceList] = useState([]);
   const [voiceName, setVoiceName] = useState(function () { return getCookie("timbel_handy_voice_name") || ""; });
   const [voiceRate, setVoiceRate] = useState(function () { return Number(getCookie("timbel_handy_voice_rate")) || 1.05; });
