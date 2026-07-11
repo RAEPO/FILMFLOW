@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef, createContext, useContext } from "react";
 import { Home, LayoutGrid, Calendar, CalendarDays, Palette, Kanban, Megaphone, BarChart3, Settings, MessageCircle, Bot, Shield, Clock, History, Search, Pencil, Film, Lightbulb, CheckCircle2, Users, ClipboardList, Flag, Upload, Paperclip, Palmtree, Repeat, AlertTriangle, User, Image as ImageIcon, Zap, Rocket, Bell, Folder, Trash2, Eye, Heart, TrendingUp, Hand, Sparkles, Video, Scissors, Inbox, Lock, Key, Plus, Tag, Circle, CornerUpLeft, Download, RefreshCw, FileText, Mic, Mail, Smile, RotateCcw, SearchX, Sun, Moon, X, Check, ArrowLeft, ArrowRight, Send, LogOut, UserCog, GanttChart, Link } from "lucide-react";
+import * as THREE from "three";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { initializeApp } from "firebase/app";
 import { getDatabase, ref, onValue, set as dbSet } from "firebase/database";
 
@@ -3466,6 +3468,91 @@ function CharacterSprite(props) {
   );
 }
 
+// ── 3D 핸디 (Three.js) ──
+// GLB 파일 경로: 프로젝트 public 폴더에 handy.glb 로 저장하세요.
+// 로드 실패 시 자동으로 기존 PNG 핸디로 전환됩니다.
+const HANDY_GLB_URL = "/handy.glb";
+
+function Handy3D(props) {
+  const { onError } = props;
+  const mountRef = useRef(null);
+  const stateRef = useRef({});
+  stateRef.current = { emotion: props.emotion, walking: props.walking, facing: props.facing, speaking: props.speaking, pointing: props.pointing };
+  useEffect(function () {
+    const mount = mountRef.current;
+    if (!mount) return;
+    let disposed = false;
+    const W = CHAR_W, H = CHAR_H;
+    const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+    renderer.setSize(W, H);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    if ("outputColorSpace" in renderer) renderer.outputColorSpace = THREE.SRGBColorSpace;
+    mount.appendChild(renderer.domElement);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 50);
+    camera.position.set(0, 0.95, 3.6);
+    camera.lookAt(0, 0.78, 0);
+    scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c4de, 1.2));
+    const dir = new THREE.DirectionalLight(0xffffff, 1.6);
+    dir.position.set(1.5, 3, 2.5);
+    scene.add(dir);
+    let model = null;
+    const clock = new THREE.Clock();
+    const loader = new GLTFLoader();
+    loader.load(HANDY_GLB_URL, function (gltf) {
+      if (disposed) return;
+      model = gltf.scene;
+      // 정규화: 키를 1.6유닛으로, 발을 바닥(y=0)에
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      model.scale.setScalar(1.6 / (size.y || 1));
+      const box2 = new THREE.Box3().setFromObject(model);
+      const center = box2.getCenter(new THREE.Vector3());
+      model.position.x -= center.x;
+      model.position.z -= center.z;
+      model.position.y -= box2.min.y;
+      scene.add(model);
+    }, undefined, function () { if (!disposed && onError) onError(); });
+    let raf;
+    const animate = function () {
+      raf = requestAnimationFrame(animate);
+      const t = clock.getElapsedTime();
+      const st = stateRef.current;
+      if (model) {
+        // 상하 바운스 (상태별 진폭/속도)
+        let bobAmp = 0.015, bobSpeed = 2.2;
+        if (st.walking) { bobAmp = 0.055; bobSpeed = 9; }
+        else if (st.emotion === "happy") { bobAmp = 0.06; bobSpeed = 6; }
+        else if (st.speaking) { bobAmp = 0.025; bobSpeed = 5.5; }
+        model.position.y = Math.abs(Math.sin(t * bobSpeed)) * bobAmp;
+        // 몸 방향: 이동/가리키기 중엔 진행 방향으로 회전
+        let targetRotY = -0.12;
+        if (st.walking || st.pointing) targetRotY = st.facing === "left" ? 0.85 : -0.85;
+        model.rotation.y += (targetRotY - model.rotation.y) * 0.12;
+        // 기울기: 걸을 때 좌우 흔들, 생각할 때 갸웃
+        let targetRotZ = 0;
+        if (st.walking) targetRotZ = Math.sin(t * 9) * 0.05;
+        else if (st.emotion === "thinking") targetRotZ = 0.1;
+        model.rotation.z += (targetRotZ - model.rotation.z) * 0.1;
+      }
+      renderer.render(scene, camera);
+    };
+    animate();
+    return function () {
+      disposed = true;
+      cancelAnimationFrame(raf);
+      renderer.dispose();
+      if (renderer.domElement && renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
+    };
+  }, []);
+  return (
+    <div style={{ position: "relative", width: CHAR_W, height: CHAR_H }}>
+      <div style={{ position: "absolute", left: "50%", bottom: 0, width: CHAR_W * 0.6, height: 8, marginLeft: -(CHAR_W * 0.3), borderRadius: "50%", background: "#000", opacity: 0.2 }} />
+      <div ref={mountRef} style={{ position: "absolute", inset: 0 }} />
+    </div>
+  );
+}
+
 // ── 메인 컴포넌트 ──
 function TimbelAssistant(props) {
   const { isDark, onNavigateTab, currentUser, tasks, marketingTasks, designTasks } = props;
@@ -3482,6 +3569,7 @@ function TimbelAssistant(props) {
   const [bubble, setBubble] = useState("");
   const [chatOpen, setChatOpen] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const [glbFailed, setGlbFailed] = useState(false); // 3D 로드 실패 시 PNG 폴백
   const [voiceOn, setVoiceOn] = useState(function () { return getCookie("timbel_handy_voice") !== "off"; });
   const [speaking, setSpeaking] = useState(false);
   const [voiceList, setVoiceList] = useState([]);
@@ -3910,7 +3998,11 @@ function TimbelAssistant(props) {
         onPointerCancel={onPointerUp}
         title={dragging ? "" : "클릭: 대화 / 드래그: 위치 이동"}
         style={{ position: "fixed", left: pos.x, top: pos.y, zIndex: 9000, cursor: dragging ? "grabbing" : "grab", userSelect: "none", WebkitTapHighlightColor: "transparent", touchAction: "none", opacity: dragging ? 0.85 : 1, transition: dragging ? "none" : "opacity 0.15s" }}>
-        <CharacterSprite emotion={emotion} walking={walking} facing={facing} talking={loading || (chatOpen && !!bubble)} pointing={pointing} speaking={speaking} />
+        {glbFailed ? (
+          <CharacterSprite emotion={emotion} walking={walking} facing={facing} talking={loading || (chatOpen && !!bubble)} pointing={pointing} speaking={speaking} />
+        ) : (
+          <Handy3D emotion={emotion} walking={walking} facing={facing} speaking={speaking} pointing={pointing} onError={function () { setGlbFailed(true); }} />
+        )}
       </div>
     </div>
   );
