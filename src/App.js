@@ -3468,12 +3468,10 @@ function CharacterSprite(props) {
   );
 }
 
-// ── 3D 핸디 (Three.js, 상태별 모델 전환 방식) ──
-// public 폴더 필요 파일:
-//   handy_idle.glb  (대기)   handy_run.glb  (달리기)
-//   handy_wave.glb  (손인사)  handy_talk.glb (말하기)
-//   handy_mouth_open.jpg (입 벌린 텍스처)
-// 일부 파일이 없으면 대기 모델로 대체, 전부 실패하면 PNG 핸디로 폴백됩니다.
+// ── 3D 핸디 (Three.js, 하이브리드: 클립 블렌딩 우선 + 모델 전환 폴백) ──
+// public 폴더: handy_idle.glb, handy_run.glb, handy_wave.glb, handy_talk.glb, handy_mouth_open.jpg
+// 다른 GLB의 동작 데이터가 대기 모델 뼈대와 호환되면 → 한 모델 위에서 부드럽게 블렌딩(크로스페이드)
+// 호환 안 되면 → 해당 동작만 모델 통째 전환(기존 방식)으로 자동 폴백
 const HANDY_MODELS = {
   idle: "/handy_idle.glb",
   run: "/handy_run.glb",
@@ -3505,13 +3503,13 @@ function Handy3D(props) {
     dir.position.set(1.5, 3, 2.5);
     scene.add(dir);
 
-    // 상태별 모델 슬롯
-    const slots = {};   // key → { model, mixer, faceMat, baseTex, headBone }
-    let openTex = null;
-    let activeKey = null;
-    let greetUntil = -1;
-    let failCount = 0;
-    const KEYS = Object.keys(HANDY_MODELS);
+    let baseModel = null, baseMixer = null, boneSet = null;
+    let faceMat = null, baseTex = null, openTex = null, headBone = null;
+    const blendActions = {};  // 블렌딩 모드 동작들 (기준 모델 위에서 재생)
+    const swapSlots = {};     // 폴백: 모델 통째 전환 슬롯
+    let currentAction = null, activeSwapKey = null;
+    let greetUntil = -1, failCount = 0;
+    const KEYS = ["idle", "run", "wave", "talk"];
 
     new THREE.TextureLoader().load("/handy_mouth_open.jpg", function (t) {
       t.flipY = false;
@@ -3519,48 +3517,92 @@ function Handy3D(props) {
       openTex = t;
     });
 
+    const normalize = function (model) {
+      const box = new THREE.Box3().setFromObject(model);
+      const size = box.getSize(new THREE.Vector3());
+      model.scale.setScalar(1.6 / (size.y || 1));
+      const box2 = new THREE.Box3().setFromObject(model);
+      const center = box2.getCenter(new THREE.Vector3());
+      model.position.x -= center.x;
+      model.position.z -= center.z;
+      model.position.y -= box2.min.y;
+    };
+    const stripRootMotion = function (clip) {
+      clip.tracks = clip.tracks.filter(function (tr) { return tr.name.indexOf("Hips.position") === -1; });
+      return clip;
+    };
+
     const clock = new THREE.Clock();
     const loader = new GLTFLoader();
-    KEYS.forEach(function (key) {
-      loader.load(HANDY_MODELS[key], function (gltf) {
-        if (disposed) return;
-        const model = gltf.scene;
-        let faceMat = null, baseTex = null;
-        model.traverse(function (obj) {
-          if (!faceMat && obj.isMesh && obj.material && obj.material.map) {
-            faceMat = obj.material;
-            baseTex = obj.material.map;
-          }
-        });
-        const headBone = model.getObjectByName("Head");
-        // 정규화: 키 1.6유닛, 발 y=0 (A포즈/동작 무관하게 일관 크기)
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        model.scale.setScalar(1.6 / (size.y || 1));
-        const box2 = new THREE.Box3().setFromObject(model);
-        const center = box2.getCenter(new THREE.Vector3());
-        model.position.x -= center.x;
-        model.position.z -= center.z;
-        model.position.y -= box2.min.y;
-        model.visible = false;
-        scene.add(model);
-        let mixer = null;
-        if (gltf.animations && gltf.animations.length > 0) {
-          mixer = new THREE.AnimationMixer(model);
-          const act = mixer.clipAction(gltf.animations[0]);
-          act.setLoop(THREE.LoopRepeat);
-          act.play();
+
+    // 1) 기준 모델(대기) 먼저 로드
+    loader.load(HANDY_MODELS.idle, function (gltf) {
+      if (disposed) return;
+      baseModel = gltf.scene;
+      baseModel.traverse(function (obj) {
+        if (!faceMat && obj.isMesh && obj.material && obj.material.map) {
+          faceMat = obj.material;
+          baseTex = obj.material.map;
         }
-        slots[key] = { model: model, mixer: mixer, faceMat: faceMat, baseTex: baseTex, headBone: headBone };
-        if (key === "wave" && greetUntil < 0) greetUntil = clock.getElapsedTime() + 2.6; // 등장 인사
-      }, undefined, function () {
-        failCount++;
-        if (failCount >= KEYS.length && onError && !disposed) onError(); // 전부 실패 → PNG 폴백
       });
+      headBone = baseModel.getObjectByName("Head");
+      // 뼈 이름 집합 (호환성 검사용)
+      boneSet = {};
+      baseModel.traverse(function (obj) { if (obj.isBone || obj.type === "Bone") boneSet[obj.name] = true; });
+      normalize(baseModel);
+      scene.add(baseModel);
+      baseMixer = new THREE.AnimationMixer(baseModel);
+      if (gltf.animations && gltf.animations.length > 0) {
+        const act = baseMixer.clipAction(gltf.animations[0]);
+        act.setLoop(THREE.LoopRepeat);
+        blendActions.idle = act;
+        act.play();
+        currentAction = act;
+      }
+      // 2) 나머지 동작 GLB 로드 → 호환성 검사 → 블렌딩 or 스왑
+      ["run", "wave", "talk"].forEach(function (key) {
+        loader.load(HANDY_MODELS[key], function (g2) {
+          if (disposed || !g2.animations || g2.animations.length === 0) return;
+          const clip = stripRootMotion(g2.animations[0]);
+          // 호환성: 트랙 대상 뼈가 기준 모델에 존재하는 비율
+          let hit = 0;
+          clip.tracks.forEach(function (tr) {
+            const node = tr.name.split(".")[0];
+            if (boneSet[node]) hit++;
+          });
+          const ratio = clip.tracks.length ? hit / clip.tracks.length : 0;
+          if (ratio > 0.8) {
+            const act = baseMixer.clipAction(clip);
+            act.setLoop(THREE.LoopRepeat);
+            blendActions[key] = act;
+            console.log("[핸디] '" + key + "' → 블렌딩 모드 (호환률 " + Math.round(ratio * 100) + "%)");
+          } else {
+            // 폴백: 모델 통째 등록
+            const m2 = g2.scene;
+            normalize(m2);
+            m2.visible = false;
+            scene.add(m2);
+            const mx = new THREE.AnimationMixer(m2);
+            const a2 = mx.clipAction(g2.animations[0]);
+            a2.setLoop(THREE.LoopRepeat);
+            a2.play();
+            swapSlots[key] = { model: m2, mixer: mx };
+            console.log("[핸디] '" + key + "' → 모델 전환 모드 (호환률 " + Math.round(ratio * 100) + "%)");
+          }
+          if (key === "wave" && greetUntil < 0) greetUntil = clock.getElapsedTime() + 2.6;
+        }, undefined, function () { /* 없으면 생략 */ });
+      });
+    }, undefined, function () {
+      failCount++;
+      if (onError && !disposed) onError(); // 기준 모델 실패 → PNG 폴백
     });
 
-    const pick = function (want) {
-      return slots[want] ? want : (slots.idle ? "idle" : Object.keys(slots)[0]);
+    const switchBlend = function (name) {
+      const next = blendActions[name] || blendActions.idle;
+      if (!next || next === currentAction) return;
+      next.reset().fadeIn(0.35).play();
+      if (currentAction) currentAction.fadeOut(0.35);
+      currentAction = next;
     };
 
     let raf;
@@ -3569,33 +3611,43 @@ function Handy3D(props) {
       const dt = clock.getDelta();
       const t = clock.getElapsedTime();
       const st = stateRef.current;
-      const loadedKeys = Object.keys(slots);
-      if (loadedKeys.length > 0) {
-        // 상태 → 모델 결정
+      if (baseModel) {
         let want = "idle";
         if (st.walking) want = "run";
         else if (st.speaking) want = "talk";
         else if (st.emotion === "happy" || (greetUntil > 0 && t < greetUntil)) want = "wave";
-        const key = pick(want);
-        // 모델 전환 (겉모습 동일 시드라 순간 전환해도 자연스러움)
-        if (key !== activeKey) {
-          if (activeKey && slots[activeKey]) slots[activeKey].model.visible = false;
-          slots[key].model.visible = true;
-          activeKey = key;
+
+        const useSwap = swapSlots[want] && !blendActions[want];
+        if (useSwap) {
+          // 폴백 경로: 기준 모델 숨기고 해당 모델 표시
+          if (activeSwapKey !== want) {
+            baseModel.visible = false;
+            Object.keys(swapSlots).forEach(function (k) { swapSlots[k].model.visible = (k === want); });
+            activeSwapKey = want;
+          }
+          swapSlots[want].mixer.update(dt);
+          var activeModel = swapSlots[want].model;
+        } else {
+          if (activeSwapKey) {
+            Object.keys(swapSlots).forEach(function (k) { swapSlots[k].model.visible = false; });
+            baseModel.visible = true;
+            activeSwapKey = null;
+          }
+          switchBlend(want);
+          baseMixer.update(dt);
+          var activeModel = baseModel;
         }
-        const slot = slots[key];
-        if (slot.mixer) slot.mixer.update(dt);
         // 몸 방향
         let targetRotY = -0.12;
         if (st.walking || st.pointing) targetRotY = st.facing === "left" ? 0.85 : -0.85;
-        slot.model.rotation.y += (targetRotY - slot.model.rotation.y) * 0.12;
-        // 생각 중 고개 갸웃 (믹서 이후 덧입힘)
-        if (slot.headBone && st.emotion === "thinking") slot.headBone.rotation.z += 0.16;
-        // 입 립싱크: 텍스처 교체
-        if (slot.faceMat && slot.baseTex) {
+        activeModel.rotation.y += (targetRotY - activeModel.rotation.y) * 0.12;
+        // 생각 갸웃
+        if (headBone && st.emotion === "thinking" && activeModel === baseModel) headBone.rotation.z += 0.16;
+        // 입 립싱크 (기준 모델 재질)
+        if (faceMat && baseTex) {
           const wantOpen = st.speaking && st.mouthOpen && openTex;
-          const target = wantOpen ? openTex : slot.baseTex;
-          if (slot.faceMat.map !== target) slot.faceMat.map = target;
+          const target = wantOpen ? openTex : baseTex;
+          if (faceMat.map !== target) faceMat.map = target;
         }
       }
       renderer.render(scene, camera);
@@ -3604,7 +3656,8 @@ function Handy3D(props) {
     return function () {
       disposed = true;
       cancelAnimationFrame(raf);
-      Object.keys(slots).forEach(function (k) { if (slots[k].mixer) slots[k].mixer.stopAllAction(); });
+      if (baseMixer) baseMixer.stopAllAction();
+      Object.keys(swapSlots).forEach(function (k) { swapSlots[k].mixer.stopAllAction(); });
       renderer.dispose();
       if (renderer.domElement && renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
     };
