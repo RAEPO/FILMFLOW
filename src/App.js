@@ -3468,27 +3468,49 @@ function CharacterSprite(props) {
   );
 }
 
-// ── 3D 핸디 (Three.js, 하이브리드: 클립 블렌딩 우선 + 모델 전환 폴백) ──
-// public 폴더: handy_idle.glb, handy_run.glb, handy_wave.glb, handy_talk.glb, handy_mouth_open.jpg
-// 다른 GLB의 동작 데이터가 대기 모델 뼈대와 호환되면 → 한 모델 위에서 부드럽게 블렌딩(크로스페이드)
-// 호환 안 되면 → 해당 동작만 모델 통째 전환(기존 방식)으로 자동 폴백
-const HANDY_MODELS = {
-  idle: "/handy_idle.glb",
-  run: "/handy_run.glb",
-  wave: "/handy_wave.glb",
-  talk: "/handy_talk.glb",
+// ── 3D 핸디 (Three.js, 단일 모델 + AI 제스처 엔진) ──
+// public 폴더 필요 파일: handy_idle.glb (리깅+대기 동작 포함), handy_mouth_open.jpg
+// 모든 몸짓(끄덕임, 도리도리, 인사, 점프 등)은 뼈를 코드로 움직여 연기합니다.
+const HANDY_GLB_URL = "/handy_idle.glb";
+
+// 제스처 정의: dur(밀리초), apply(뼈들, 진행도 0~1, 시간, 모델)
+// squash(model, S, sy): 세로 sy배 늘리고 가로는 부피 보존으로 자동 보정 (스쿼시&스트레치)
+function handySquash(model, S, sy) {
+  const sxz = 1 / Math.sqrt(Math.max(0.4, sy));
+  model.scale.set(S * sxz, S * sy, S * sxz);
+}
+const HANDY_GESTURES = {
+  nod:        { dur: 1200, apply: function (B, p, t, model, S) { if (B.Head) B.Head.rotation.x += Math.sin(p * Math.PI * 4) * 0.22; } },
+  shake:      { dur: 1400, apply: function (B, p, t, model, S) { if (B.Head) B.Head.rotation.y += Math.sin(p * Math.PI * 5) * 0.28; } },
+  bow:        { dur: 1600, apply: function (B, p, t, model, S) { const k = Math.sin(p * Math.PI) * 0.5; if (B.Spine) B.Spine.rotation.x += k; if (B.Head) B.Head.rotation.x += k * 0.3; handySquash(model, S, 1 - Math.sin(p * Math.PI) * 0.08); } },
+  wave:       { dur: 1800, apply: function (B, p, t, model, S) { const lift = Math.sin(Math.min(p * 2, 1) * Math.PI * 0.5) * (p > 0.85 ? (1 - p) / 0.15 : 1); if (B.RightArm) B.RightArm.rotation.z -= lift * 2.0; if (B.RightForeArm) B.RightForeArm.rotation.z -= lift * (0.5 + Math.sin(t * 12) * 0.35); handySquash(model, S, 1 + lift * 0.04); } },
+  jump:       { dur: 1300, apply: function (B, p, t, model, S) {
+    const hop = Math.abs(Math.sin(p * Math.PI * 2));
+    model.position.y += hop * 0.12;
+    // 이륙 직전 움츠림 → 공중에서 쭉 늘어남 → 착지 시 눌림
+    const stretch = 1 + Math.sin(p * Math.PI * 4) * 0.14 * (hop > 0.15 ? 1 : -1);
+    handySquash(model, S, stretch);
+    if (B.LeftArm) B.LeftArm.rotation.z += Math.sin(p * Math.PI) * 0.7;
+    if (B.RightArm) B.RightArm.rotation.z -= Math.sin(p * Math.PI) * 0.7;
+  } },
+  lean:       { dur: 1600, apply: function (B, p, t, model, S) { const k = Math.sin(p * Math.PI) * 0.16; if (B.Spine02) B.Spine02.rotation.x += k; if (B.Head) B.Head.rotation.x -= k * 0.5; } },
+  lookaround: { dur: 2200, apply: function (B, p, t, model, S) { if (B.Head) B.Head.rotation.y += Math.sin(p * Math.PI * 2) * 0.42; } },
+  excited:    { dur: 1400, apply: function (B, p, t, model, S) { model.position.y += Math.abs(Math.sin(t * 14)) * 0.045; handySquash(model, S, 1 + Math.abs(Math.sin(t * 14)) * 0.1); if (B.LeftArm) B.LeftArm.rotation.z += 0.5 + Math.sin(t * 13) * 0.25; if (B.RightArm) B.RightArm.rotation.z -= 0.5 + Math.sin(t * 13 + 1.5) * 0.25; } },
+  tilt:       { dur: 1800, apply: function (B, p, t, model, S) { if (B.Head) B.Head.rotation.z += Math.sin(Math.min(p * 3, 1) * Math.PI * 0.5) * 0.18; } },
+  grow:       { dur: 1700, apply: function (B, p, t, model, S) { const k = Math.sin(Math.min(p * 2.2, 1) * Math.PI * 0.5) * (p > 0.8 ? (1 - p) / 0.2 : 1); const s = 1 + k * 0.28; model.scale.setScalar(S * s); if (B.LeftArm) B.LeftArm.rotation.z += k * 0.5; if (B.RightArm) B.RightArm.rotation.z -= k * 0.5; } },
+  shrink:     { dur: 1700, apply: function (B, p, t, model, S) { const k = Math.sin(Math.min(p * 2.2, 1) * Math.PI * 0.5) * (p > 0.8 ? (1 - p) / 0.2 : 1); model.scale.setScalar(S * (1 - k * 0.22)); if (B.Head) B.Head.rotation.x += k * 0.3; if (B.Spine) B.Spine.rotation.x += k * 0.15; } },
 };
 
 function Handy3D(props) {
   const { onError } = props;
   const mountRef = useRef(null);
   const stateRef = useRef({});
-  stateRef.current = { emotion: props.emotion, walking: props.walking, facing: props.facing, speaking: props.speaking, pointing: props.pointing, mouthOpen: props.mouthOpen };
+  stateRef.current = { emotion: props.emotion, walking: props.walking, facing: props.facing, speaking: props.speaking, pointing: props.pointing, mouthOpen: props.mouthOpen, gesture: props.gesture };
   useEffect(function () {
     const mount = mountRef.current;
     if (!mount) return;
     let disposed = false;
-    const W = CHAR_W, H = CHAR_H;
+    const W = Math.round(CHAR_W * 2.4), H = Math.round(CHAR_H * 2.0); // 넉넉한 캔버스 (날개/점프/커짐 잘림 방지)
     const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
     renderer.setSize(W, H);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
@@ -3496,20 +3518,17 @@ function Handy3D(props) {
     mount.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 50);
-    camera.position.set(0, 0.95, 3.6);
-    camera.lookAt(0, 0.78, 0);
+    camera.position.set(0, 0.95, 7.2); // 캔버스가 커진 만큼 뒤로 → 화면상 크기는 이전과 동일
+    camera.lookAt(0, 0.82, 0);
     scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c4de, 1.2));
     const dir = new THREE.DirectionalLight(0xffffff, 1.6);
     dir.position.set(1.5, 3, 2.5);
     scene.add(dir);
 
-    let baseModel = null, baseMixer = null, boneSet = null;
-    let faceMat = null, baseTex = null, openTex = null, headBone = null;
-    const blendActions = {};  // 블렌딩 모드 동작들 (기준 모델 위에서 재생)
-    const swapSlots = {};     // 폴백: 모델 통째 전환 슬롯
-    let currentAction = null, activeSwapKey = null;
-    let greetUntil = -1, failCount = 0;
-    const KEYS = ["idle", "run", "wave", "talk"];
+    let model = null, mixer = null;
+    let faceMat = null, baseTex = null, openTex = null;
+    const bones = {};
+    let baseY = 0, baseScale = 1;
 
     new THREE.TextureLoader().load("/handy_mouth_open.jpg", function (t) {
       t.flipY = false;
@@ -3517,93 +3536,37 @@ function Handy3D(props) {
       openTex = t;
     });
 
-    const normalize = function (model) {
+    const clock = new THREE.Clock();
+    const loader = new GLTFLoader();
+    loader.load(HANDY_GLB_URL, function (gltf) {
+      if (disposed) return;
+      model = gltf.scene;
+      model.traverse(function (obj) {
+        if (!faceMat && obj.isMesh && obj.material && obj.material.map) {
+          faceMat = obj.material;
+          baseTex = obj.material.map;
+        }
+        if (obj.isBone || obj.type === "Bone") bones[obj.name] = obj;
+      });
       const box = new THREE.Box3().setFromObject(model);
       const size = box.getSize(new THREE.Vector3());
-      model.scale.setScalar(1.6 / (size.y || 1));
+      baseScale = 1.6 / (size.y || 1);
+      model.scale.setScalar(baseScale);
       const box2 = new THREE.Box3().setFromObject(model);
       const center = box2.getCenter(new THREE.Vector3());
       model.position.x -= center.x;
       model.position.z -= center.z;
       model.position.y -= box2.min.y;
-    };
-    const stripRootMotion = function (clip) {
-      clip.tracks = clip.tracks.filter(function (tr) { return tr.name.indexOf("Hips.position") === -1; });
-      return clip;
-    };
-
-    const clock = new THREE.Clock();
-    const loader = new GLTFLoader();
-
-    // 1) 기준 모델(대기) 먼저 로드
-    loader.load(HANDY_MODELS.idle, function (gltf) {
-      if (disposed) return;
-      baseModel = gltf.scene;
-      baseModel.traverse(function (obj) {
-        if (!faceMat && obj.isMesh && obj.material && obj.material.map) {
-          faceMat = obj.material;
-          baseTex = obj.material.map;
-        }
-      });
-      headBone = baseModel.getObjectByName("Head");
-      // 뼈 이름 집합 (호환성 검사용)
-      boneSet = {};
-      baseModel.traverse(function (obj) { if (obj.isBone || obj.type === "Bone") boneSet[obj.name] = true; });
-      normalize(baseModel);
-      scene.add(baseModel);
-      baseMixer = new THREE.AnimationMixer(baseModel);
+      baseY = model.position.y;
+      scene.add(model);
       if (gltf.animations && gltf.animations.length > 0) {
-        const act = baseMixer.clipAction(gltf.animations[0]);
+        mixer = new THREE.AnimationMixer(model);
+        const act = mixer.clipAction(gltf.animations[0]);
         act.setLoop(THREE.LoopRepeat);
-        blendActions.idle = act;
         act.play();
-        currentAction = act;
       }
-      // 2) 나머지 동작 GLB 로드 → 호환성 검사 → 블렌딩 or 스왑
-      ["run", "wave", "talk"].forEach(function (key) {
-        loader.load(HANDY_MODELS[key], function (g2) {
-          if (disposed || !g2.animations || g2.animations.length === 0) return;
-          const clip = stripRootMotion(g2.animations[0]);
-          // 호환성: 트랙 대상 뼈가 기준 모델에 존재하는 비율
-          let hit = 0;
-          clip.tracks.forEach(function (tr) {
-            const node = tr.name.split(".")[0];
-            if (boneSet[node]) hit++;
-          });
-          const ratio = clip.tracks.length ? hit / clip.tracks.length : 0;
-          if (ratio > 0.8) {
-            const act = baseMixer.clipAction(clip);
-            act.setLoop(THREE.LoopRepeat);
-            blendActions[key] = act;
-            console.log("[핸디] '" + key + "' → 블렌딩 모드 (호환률 " + Math.round(ratio * 100) + "%)");
-          } else {
-            // 폴백: 모델 통째 등록
-            const m2 = g2.scene;
-            normalize(m2);
-            m2.visible = false;
-            scene.add(m2);
-            const mx = new THREE.AnimationMixer(m2);
-            const a2 = mx.clipAction(g2.animations[0]);
-            a2.setLoop(THREE.LoopRepeat);
-            a2.play();
-            swapSlots[key] = { model: m2, mixer: mx };
-            console.log("[핸디] '" + key + "' → 모델 전환 모드 (호환률 " + Math.round(ratio * 100) + "%)");
-          }
-          if (key === "wave" && greetUntil < 0) greetUntil = clock.getElapsedTime() + 2.6;
-        }, undefined, function () { /* 없으면 생략 */ });
-      });
-    }, undefined, function () {
-      failCount++;
-      if (onError && !disposed) onError(); // 기준 모델 실패 → PNG 폴백
-    });
-
-    const switchBlend = function (name) {
-      const next = blendActions[name] || blendActions.idle;
-      if (!next || next === currentAction) return;
-      next.reset().fadeIn(0.35).play();
-      if (currentAction) currentAction.fadeOut(0.35);
-      currentAction = next;
-    };
+      console.log("[핸디] 모델 로드 완료 — 뼈 " + Object.keys(bones).length + "개, 제스처 엔진 가동");
+    }, undefined, function () { if (!disposed && onError) onError(); });
 
     let raf;
     const animate = function () {
@@ -3611,39 +3574,46 @@ function Handy3D(props) {
       const dt = clock.getDelta();
       const t = clock.getElapsedTime();
       const st = stateRef.current;
-      if (baseModel) {
-        let want = "idle";
-        if (st.walking) want = "run";
-        else if (st.speaking) want = "talk";
-        else if (st.emotion === "happy" || (greetUntil > 0 && t < greetUntil)) want = "wave";
+      if (model) {
+        // 1) 기본 레이어: 대기 애니메이션 (숨쉬기)
+        if (mixer) mixer.update(dt);
+        model.position.y = baseY;
+        model.scale.setScalar(baseScale); // 크기 리셋 (제스처가 매 프레임 다시 변형)
 
-        const useSwap = swapSlots[want] && !blendActions[want];
-        if (useSwap) {
-          // 폴백 경로: 기준 모델 숨기고 해당 모델 표시
-          if (activeSwapKey !== want) {
-            baseModel.visible = false;
-            Object.keys(swapSlots).forEach(function (k) { swapSlots[k].model.visible = (k === want); });
-            activeSwapKey = want;
-          }
-          swapSlots[want].mixer.update(dt);
-          var activeModel = swapSlots[want].model;
-        } else {
-          if (activeSwapKey) {
-            Object.keys(swapSlots).forEach(function (k) { swapSlots[k].model.visible = false; });
-            baseModel.visible = true;
-            activeSwapKey = null;
-          }
-          switchBlend(want);
-          baseMixer.update(dt);
-          var activeModel = baseModel;
+        // 2) 이동 레이어: 걷는 동안 통통 바운스 + 앞으로 기울기
+        if (st.walking) {
+          const hop = Math.abs(Math.sin(t * 9));
+          model.position.y = baseY + hop * 0.055;
+          handySquash(model, baseScale, 1 + (hop - 0.5) * 0.07); // 뛸 때 늘어나고 착지에 눌림
+          if (bones.Spine) bones.Spine.rotation.x += 0.12;
         }
-        // 몸 방향
+
+        // 3) 제스처 레이어: AI가 지정한 몸짓 (믹서 포즈 위에 덧입힘)
+        const g = st.gesture;
+        const gestureActive = g && g.name && HANDY_GESTURES[g.name] && (Date.now() - g.ts) < HANDY_GESTURES[g.name].dur;
+        if (gestureActive) {
+          const def = HANDY_GESTURES[g.name];
+          def.apply(bones, (Date.now() - g.ts) / def.dur, t, model, baseScale);
+        }
+
+        // 4) 상태 레이어: 말할 때 잔잔한 손짓+끄덕 / 생각할 때 갸웃
+        if (!gestureActive) {
+          if (st.speaking) {
+            handySquash(model, baseScale, 1 + Math.sin(t * 5.5) * 0.015); // 말할 때 미세한 들썩임
+            if (bones.Head) bones.Head.rotation.x += Math.sin(t * 5.5) * 0.045;
+            if (bones.RightForeArm) bones.RightForeArm.rotation.z -= (Math.sin(t * 4.5) * 0.5 + 0.5) * 0.25;
+            if (bones.LeftForeArm) bones.LeftForeArm.rotation.z += (Math.sin(t * 4.5 + 2) * 0.5 + 0.5) * 0.22;
+          } else if (st.emotion === "thinking") {
+            if (bones.Head) bones.Head.rotation.z += 0.16;
+          }
+        }
+
+        // 5) 몸 방향
         let targetRotY = -0.12;
         if (st.walking || st.pointing) targetRotY = st.facing === "left" ? 0.85 : -0.85;
-        activeModel.rotation.y += (targetRotY - activeModel.rotation.y) * 0.12;
-        // 생각 갸웃
-        if (headBone && st.emotion === "thinking" && activeModel === baseModel) headBone.rotation.z += 0.16;
-        // 입 립싱크 (기준 모델 재질)
+        model.rotation.y += (targetRotY - model.rotation.y) * 0.12;
+
+        // 6) 입 립싱크
         if (faceMat && baseTex) {
           const wantOpen = st.speaking && st.mouthOpen && openTex;
           const target = wantOpen ? openTex : baseTex;
@@ -3656,8 +3626,7 @@ function Handy3D(props) {
     return function () {
       disposed = true;
       cancelAnimationFrame(raf);
-      if (baseMixer) baseMixer.stopAllAction();
-      Object.keys(swapSlots).forEach(function (k) { swapSlots[k].mixer.stopAllAction(); });
+      if (mixer) mixer.stopAllAction();
       renderer.dispose();
       if (renderer.domElement && renderer.domElement.parentNode) renderer.domElement.parentNode.removeChild(renderer.domElement);
     };
@@ -3665,7 +3634,7 @@ function Handy3D(props) {
   return (
     <div style={{ position: "relative", width: CHAR_W, height: CHAR_H }}>
       <div style={{ position: "absolute", left: "50%", bottom: 0, width: CHAR_W * 0.6, height: 8, marginLeft: -(CHAR_W * 0.3), borderRadius: "50%", background: "#000", opacity: 0.2 }} />
-      <div ref={mountRef} style={{ position: "absolute", inset: 0 }} />
+      <div ref={mountRef} style={{ position: "absolute", left: -Math.round(CHAR_W * 0.7), bottom: -4, width: Math.round(CHAR_W * 2.4), height: Math.round(CHAR_H * 2.0), pointerEvents: "none" }} />
     </div>
   );
 }
@@ -3690,6 +3659,9 @@ function TimbelAssistant(props) {
   const [voiceOn, setVoiceOn] = useState(function () { return getCookie("timbel_handy_voice") !== "off"; });
   const [speaking, setSpeaking] = useState(false);
   const [mouth3d, setMouth3d] = useState(false); // 3D 립싱크 프레임 (speaking 선언 뒤에 위치해야 함)
+  const [gesture, setGesture] = useState(null); // AI가 고른 몸짓 {name, ts}
+  const playGesture = function (name) { if (name && name !== "none") setGesture({ name: name, ts: Date.now() }); };
+  useEffect(function () { const tm = setTimeout(function () { setGesture({ name: "wave", ts: Date.now() }); }, 1800); return function () { clearTimeout(tm); }; }, []); // 등장 인사
   useEffect(function () {
     if (!speaking) { setMouth3d(false); return; }
     const iv = setInterval(function () { setMouth3d(function (v) { return !v; }); }, 130);
@@ -3945,6 +3917,8 @@ function TimbelAssistant(props) {
     const target = res.target || "";
     const emo = res.emotion || "normal";
     setEmotion(emo);
+    if (res.gesture && res.gesture !== "none") playGesture(res.gesture);
+    else if (emo === "happy") playGesture("jump");
     if (action === "tour") { startTour(); return; }
     if (action === "open_tab" && GUIDE_MAP[target]) {
       if (onNavigateTab) onNavigateTab(target);
@@ -3976,8 +3950,8 @@ function TimbelAssistant(props) {
       "\n[스케줄러 탭 목록]\n" + tabList + "\n" +
       "\n[현재 업무 현황]\n" + summary + "\n" +
       "\n반드시 아래 JSON 형식으로만 응답하세요 (백틱, 설명 금지):\n" +
-      '{"speech":"사용자에게 보여줄 대답","action":"none|open_tab|tour","target":"open_tab일 때 탭 id","emotion":"normal|happy|thinking"}\n' +
-      "규칙: 특정 기능/탭 위치를 묻거나 '보여줘/어디야/데려가줘' 류의 요청이면 action=open_tab + 해당 탭 id. '투어/둘러보기/전체 사용법'을 원하면 action=tour. 그 외 업무 현황 질문·일반 대화는 action=none으로 두고 speech에서 충분히 답하세요.";
+      '{"speech":"사용자에게 보여줄 대답","action":"none|open_tab|tour","target":"open_tab일 때 탭 id","emotion":"normal|happy|thinking","gesture":"none|nod|shake|bow|wave|jump|lean|lookaround|excited|tilt|grow|shrink"}\n' +
+      "규칙: 특정 기능/탭 위치를 묻거나 '보여줘/어디야/데려가줘' 류의 요청이면 action=open_tab + 해당 탭 id. '투어/둘러보기/전체 사용법'을 원하면 action=tour. 그 외 업무 현황 질문·일반 대화는 action=none으로 두고 speech에서 충분히 답하세요. gesture는 대답 분위기에 맞는 몸짓: 동의/확인=nod, 부정/아쉬움=shake, 감사/사과=bow, 반가운 인사=wave, 축하/기쁨=jump, 신남/다급=excited, 중요한 설명=lean, 찾는 중=lookaround, 고민/애매=tilt, 자신감/대단한 소식=grow(커짐), 미안/소심/실수=shrink(움츠림), 해당 없으면 none.";
     try {
       const apiMessages = newMessages.slice(-12).map(function (m) { return { role: m.role, content: m.content }; });
       const payload = { model: "claude-sonnet-4-6", max_tokens: 800, system: system, messages: apiMessages };
@@ -4124,7 +4098,7 @@ function TimbelAssistant(props) {
         {glbFailed ? (
           <CharacterSprite emotion={emotion} walking={walking} facing={facing} talking={loading || (chatOpen && !!bubble)} pointing={pointing} speaking={speaking} />
         ) : (
-          <Handy3D emotion={emotion} walking={walking} facing={facing} speaking={speaking} pointing={pointing} mouthOpen={mouth3d} onError={function () { setGlbFailed(true); }} />
+          <Handy3D emotion={emotion} walking={walking} facing={facing} speaking={speaking} pointing={pointing} mouthOpen={mouth3d} gesture={gesture} onError={function () { setGlbFailed(true); }} />
         )}
       </div>
     </div>
