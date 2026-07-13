@@ -3518,8 +3518,8 @@ function Handy3D(props) {
     mount.appendChild(renderer.domElement);
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(30, W / H, 0.1, 50);
-    camera.position.set(0, 0.95, 7.2); // 캔버스가 커진 만큼 뒤로 → 화면상 크기는 이전과 동일
-    camera.lookAt(0, 0.82, 0);
+    camera.position.set(0, 1.7, 7.2); // 캔버스가 커진 만큼 뒤로 → 화면상 크기는 이전과 동일
+    camera.lookAt(0, 1.63, 0); // 시선을 높여 캐릭터를 화면 하단에 배치 (발이 그림자 위에 오도록)
     scene.add(new THREE.HemisphereLight(0xffffff, 0xb9c4de, 1.2));
     const dir = new THREE.DirectionalLight(0xffffff, 1.6);
     dir.position.set(1.5, 3, 2.5);
